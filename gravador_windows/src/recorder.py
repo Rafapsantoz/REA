@@ -62,6 +62,113 @@ def _ensure_windows_desktop() -> bool:
     return False
 
 
+# =========================================================================
+# Suporte a Captura do Cursor do Mouse em Tempo Real no Windows
+# =========================================================================
+
+_orig_mss_gdi_grab = None
+_cursor_capture_installed = False
+
+if sys.platform == "win32":
+    import ctypes
+    from ctypes import wintypes
+
+    class _POINT(ctypes.Structure):
+        _fields_ = [("x", wintypes.LONG), ("y", wintypes.LONG)]
+
+    class _CURSORINFO(ctypes.Structure):
+        _fields_ = [
+            ("cbSize", wintypes.DWORD),
+            ("flags", wintypes.DWORD),
+            ("hCursor", wintypes.HICON),
+            ("ptScreenPos", _POINT),
+        ]
+
+    class _ICONINFO(ctypes.Structure):
+        _fields_ = [
+            ("fIcon", wintypes.BOOL),
+            ("xHotspot", wintypes.DWORD),
+            ("yHotspot", wintypes.DWORD),
+            ("hbmMask", wintypes.HBITMAP),
+            ("hbmColor", wintypes.HBITMAP),
+        ]
+
+    _user32 = ctypes.windll.user32
+    _gdi32 = ctypes.windll.gdi32
+
+    _user32.GetCursorInfo.argtypes = [ctypes.c_void_p]
+    _user32.GetCursorInfo.restype = wintypes.BOOL
+
+    _user32.GetIconInfo.argtypes = [wintypes.HICON, ctypes.c_void_p]
+    _user32.GetIconInfo.restype = wintypes.BOOL
+
+    _user32.DrawIconEx.argtypes = [
+        wintypes.HDC,
+        ctypes.c_int,
+        ctypes.c_int,
+        wintypes.HICON,
+        ctypes.c_int,
+        ctypes.c_int,
+        wintypes.UINT,
+        wintypes.HBRUSH,
+        wintypes.UINT,
+    ]
+    _user32.DrawIconEx.restype = wintypes.BOOL
+
+    _gdi32.DeleteObject.argtypes = [wintypes.HGDIOBJ]
+    _gdi32.DeleteObject.restype = wintypes.BOOL
+
+    _DI_NORMAL = 0x0003
+
+
+def _setup_cursor_capture(enable: bool = True) -> None:
+    """Instala suporte a renderização do cursor do mouse no MSS sob Windows."""
+    global _orig_mss_gdi_grab, _cursor_capture_installed
+    if sys.platform != "win32" or not enable:
+        return
+
+    try:
+        import mss.windows.gdi
+        if _orig_mss_gdi_grab is None:
+            _orig_mss_gdi_grab = mss.windows.gdi.MSSImplGdi.grab
+
+        def _grab_with_cursor(self_impl, monitor):
+            # Executa BitBlt padrão do MSS para a memória DIB
+            _orig_mss_gdi_grab(self_impl, monitor)
+
+            # Renderiza o cursor do mouse diretamente no memdc antes de retornar os bytes
+            try:
+                ci = _CURSORINFO()
+                ci.cbSize = ctypes.sizeof(_CURSORINFO)
+                if _user32.GetCursorInfo(ctypes.byref(ci)) and (ci.flags & 1):
+                    mx, my = ci.ptScreenPos.x, ci.ptScreenPos.y
+                    m_left, m_top = monitor["left"], monitor["top"]
+                    m_width, m_height = monitor["width"], monitor["height"]
+
+                    # Desenha apenas se o cursor estiver visível no monitor de gravação
+                    if (m_left - 64 <= mx <= m_left + m_width + 64 and
+                        m_top - 64 <= my <= m_top + m_height + 64):
+                        ii = _ICONINFO()
+                        if _user32.GetIconInfo(ci.hCursor, ctypes.byref(ii)):
+                            cx = mx - m_left - ii.xHotspot
+                            cy = my - m_top - ii.yHotspot
+                            _user32.DrawIconEx(self_impl._memdc, cx, cy, ci.hCursor, 0, 0, 0, None, _DI_NORMAL)
+                            if ii.hbmMask:
+                                _gdi32.DeleteObject(ii.hbmMask)
+                            if ii.hbmColor:
+                                _gdi32.DeleteObject(ii.hbmColor)
+                            self_impl.gdi32.GdiFlush()
+            except Exception:
+                pass
+
+            return bytearray(self_impl._dib_array)
+
+        mss.windows.gdi.MSSImplGdi.grab = _grab_with_cursor
+        _cursor_capture_installed = True
+    except Exception as e:
+        logger.debug(f"Aviso ao instalar captura de cursor: {e}")
+
+
 class RecorderState(str, Enum):
     """Estados possíveis do ciclo de vida da gravação."""
     IDLE = "IDLE"
@@ -116,6 +223,10 @@ class ScreenRecorder:
         self._target_output_path: Optional[Path] = None
         self._temp_video_path: Optional[Path] = None
         self._temp_audio_path: Optional[Path] = None
+
+        # Ativa suporte à renderização do cursor do mouse se configurado
+        if getattr(self.config, "capture_cursor", True):
+            _setup_cursor_capture(True)
 
     # =========================================================================
     # Propriedades Públicas

@@ -367,23 +367,25 @@ class SaveSuccessDialog(ctk.CTkToplevel):
         btn_close.pack(side="left", padx=(6, 0))
 
     def _open_folder(self):
-        """Abre o Windows Explorer com o arquivo de gravação selecionado."""
+        """Abre o Windows Explorer com o arquivo de gravação selecionado ou a pasta correspondente."""
         try:
+            norm_path = os.path.normpath(self.file_path)
             if sys.platform == "win32":
-                kwargs = {}
-                if hasattr(subprocess, "CREATE_NO_WINDOW"):
-                    kwargs["creationflags"] = subprocess.CREATE_NO_WINDOW
-                startupinfo = subprocess.STARTUPINFO()
-                startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
-                startupinfo.wShowWindow = subprocess.SW_HIDE
-                kwargs["startupinfo"] = startupinfo
-                subprocess.Popen(f'explorer /select,"{self.file_path}"', **kwargs)
+                if os.path.exists(norm_path):
+                    # No Windows, 'explorer /select,"<caminho>"' abre o Explorer com o arquivo selecionado.
+                    # NOTA: Não usar SW_HIDE, pois explorer.exe é uma aplicação gráfica nativa (sem console CMD)
+                    # e SW_HIDE ocultaria a janela do Explorer.
+                    subprocess.Popen(f'explorer /select,"{norm_path}"')
+                else:
+                    folder = os.path.dirname(norm_path)
+                    target = folder if os.path.exists(folder) else os.path.expanduser("~")
+                    os.startfile(target)
             else:
-                subprocess.Popen(["xdg-open", os.path.dirname(self.file_path)])
+                subprocess.Popen(["xdg-open", os.path.dirname(norm_path)])
         except Exception as e:
             logger.error(f"Erro ao abrir pasta: {e}")
             try:
-                os.startfile(os.path.dirname(self.file_path))
+                os.startfile(os.path.dirname(os.path.normpath(self.file_path)))
             except Exception:
                 pass
 

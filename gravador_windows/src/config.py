@@ -26,6 +26,7 @@ class RecorderConfig:
     video_codec: str = "libx264"
     pix_fmt: str = "yuv420p"    # Formato de pixel padrão universal para MP4
     format: str = "mp4"
+    capture_cursor: bool = True # Captura o ponteiro/cursor do mouse em movimento no Windows
 
     # Configurações de Áudio
     audio_enabled: bool = False
