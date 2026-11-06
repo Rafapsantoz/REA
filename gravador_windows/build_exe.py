@@ -1,6 +1,6 @@
 """
-Script de Build Standalone para o Gravador de Tela REA.
-Empacota a aplicação em um executável autônomo portátil para Windows (GravadorREA.exe)
+Script de Build Standalone para o RPsec Recorder.
+Empacota a aplicação em um executável autônomo portátil para Windows (RPsecRecorder.exe)
 utilizando PyInstaller.
 
 Uso:
@@ -20,7 +20,7 @@ from pathlib import Path
 # Raiz do projeto
 ROOT_DIR = Path(__file__).resolve().parent
 ENTRY_POINT = ROOT_DIR / "main.py"
-OUTPUT_NAME = "GravadorREA"
+OUTPUT_NAME = "RPsecRecorder"
 DIST_DIR = ROOT_DIR / "dist"
 BUILD_DIR = ROOT_DIR / "build"
 SPEC_FILE = ROOT_DIR / f"{OUTPUT_NAME}.spec"

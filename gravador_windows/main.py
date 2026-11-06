@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-REA - Gravador de Tela Simplificado para Windows
+RPsec Recorder - Gravador de Tela Simplificado para Windows
 Ponto de entrada principal da aplicação.
 """
 
@@ -22,8 +22,8 @@ def main():
         format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
         datefmt="%H:%M:%S",
     )
-    logger = logging.getLogger("REA-App")
-    logger.info("Iniciando REA Screen Recorder...")
+    logger = logging.getLogger("RPsec-App")
+    logger.info("Iniciando RPsec Recorder...")
 
     # Instancia o motor de gravação de tela
     recorder = ScreenRecorder(config=DEFAULT_CONFIG)

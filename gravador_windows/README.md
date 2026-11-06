@@ -1,18 +1,19 @@
-# 🎥 REA - Gravador de Tela Simplificado para Windows
+# 🎥 RPsec Recorder - Gravador de Tela Simplificado para Windows
+*Um produto RPsecti Soluções Inteligentes*
 
-Uma ferramenta de gravação de tela **ultrarrápida, minimalista e direta ao ponto** para Windows, desenvolvida sob a filosofia REA (ferramentas simplificadas para produtividade e foco).
+Uma ferramenta de gravação de tela **ultrarrápida, minimalista e direta ao ponto** para Windows, desenvolvida para alta produtividade, leveza e foco.
 
 ---
 
 ## ✨ Recursos Principais
 
 - ⚡ **Zero Sobrecarga:** Desenvolvido em Python + MSS + FFmpeg pipe rawvideo. Usa apenas **~40 a 60 MB de memória RAM** durante a gravação.
-- 🎨 **Interface Windows 11 Dark Mode:** Visual limpo e moderno construído com `CustomTkinter`.
+- 🎨 **Interface Windows 11 (Modo Claro & Escuro):** Visual moderno e ergonômico construído com `CustomTkinter`.
 - 📁 **Fluxo Obrigatório de Salvamento:** Ao finalizar a gravação, abre imediatamente a janela nativa do Windows perguntando onde e com qual nome salvar o arquivo (`Gravacao_AAAA-MM-DD_HH-MM-SS.mp4`).
-- 🛡️ **Proteção Antiperda:** Caso você cancele o diálogo de salvamento, o aplicativo questiona se deseja salvar automaticamente na pasta padrão (`Vídeos/Gravações REA`) ou descartar o arquivo temporário.
+- 🛡️ **Proteção Antiperda:** Caso você cancele o diálogo de salvamento, o aplicativo questiona se deseja salvar automaticamente na pasta padrão (`Vídeos/Gravações RPsec`) ou descartar o arquivo temporário.
 - ⌨️ **Atalho Global de Teclado:** Pressione **`F9`** em qualquer momento para Iniciar e Parar a gravação, mesmo com a janela minimizada ou em segundo plano.
 - 🖥️ **Múltiplos Monitores:** Detecta automaticamente todos os monitores conectados, permitindo escolher qual tela gravar.
-- 🎙️ **Áudio Opcional:** Suporte a gravação de voz (microfone) sincronizada com o vídeo.
+- 🎙️ **Áudio Opcional:** Suporte a gravação de voz (microfone) sincronizada com o vídeo com indicador inteligente de status.
 
 ---
 
@@ -35,7 +36,7 @@ Para compilar em um único arquivo executável portátil que roda sem precisar d
 ```powershell
 .venv\Scripts\python build_exe.py
 ```
-O executável final será gerado na pasta `dist/GravadorREA.exe`.
+O executável final será gerado na pasta `dist/RPsecRecorder.exe`.
 
 ---
 

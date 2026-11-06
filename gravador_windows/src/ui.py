@@ -1,5 +1,5 @@
 """
-REA Screen Recorder - Interface Gráfica Moderna (UI/UX Desktop)
+RPsec Recorder - Interface Gráfica Moderna (UI/UX Desktop)
 Desenvolvido com CustomTkinter para Windows 11.
 Suporta gravação de tela, seleção de monitor, captura de áudio (microfone),
 atalho global F9, e fluxo completo de diálogo nativo de salvamento.
@@ -49,7 +49,7 @@ except ImportError:
 
 # Configuração de logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
-logger = logging.getLogger("REA_UI")
+logger = logging.getLogger("RPsec_UI")
 
 # Paleta de Cores Dinâmica com Alto Contraste (Modo Claro & Modo Escuro)
 COLOR_BG_ROOT = ("#EDF2F7", "#121215")        # Fundo geral (Cool Gray 100 / Deep Zinc)
@@ -403,7 +403,7 @@ class SaveCancelDialog(ctk.CTkToplevel):
     Diálogo protetor exibido quando o usuário cancela o diálogo de seleção de diretório.
     Garante que o trabalho gravado não seja perdido acidentalmente.
     Oferece:
-    - Salvar na pasta padrão ('Vídeos/Gravações REA')
+    - Salvar na pasta padrão ('Vídeos/Gravações RPsec')
     - Tentar novamente (reabre a janela de diálogo)
     - Descartar gravação
     """
@@ -583,7 +583,7 @@ class MockScreenRecorder:
         if not os.path.exists(temp_dir):
             temp_dir = os.path.expanduser("~")
 
-        self._temp_path = os.path.join(temp_dir, f"rea_mock_temp_{timestamp}.mp4")
+        self._temp_path = os.path.join(temp_dir, f"rpsec_mock_temp_{timestamp}.mp4")
 
         # Tenta gerar um clipe de 1 segundo com imageio se disponível
         try:
@@ -606,7 +606,7 @@ class MockScreenRecorder:
 
 class ScreenRecorderUI(ctk.CTk):
     """
-    Interface Gráfica Moderna Principal do Gravador de Tela REA.
+    Interface Gráfica Moderna Principal do RPsec Recorder.
     Implementa todos os controles, timer de alta precisão, atalho global F9,
     e o fluxo de encerramento com diálogo nativo do Windows.
     """
@@ -654,7 +654,7 @@ class ScreenRecorderUI(ctk.CTk):
         self._last_hotkey_time = 0.0
 
         # Configurações de Janela
-        self.title("REA Screen Recorder")
+        self.title("RPsec Recorder")
         self.geometry("460x590")
         self.minsize(440, 570)
         self.configure(fg_color=COLOR_BG_ROOT)
@@ -663,7 +663,7 @@ class ScreenRecorderUI(ctk.CTk):
         if sys.platform == "win32":
             try:
                 import ctypes
-                myappid = "rea.screenrecorder.windows.v1"
+                myappid = "rpsecti.recorder.windows.v1"
                 ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
             except Exception as e:
                 logger.debug(f"Falha ao definir AppUserModelID: {e}")
@@ -768,7 +768,7 @@ class ScreenRecorderUI(ctk.CTk):
 
         self.title_lbl = ctk.CTkLabel(
             title_row,
-            text="REA Screen Recorder",
+            text="RPsec Recorder",
             font=("Segoe UI", 18, "bold"),
             text_color=COLOR_TEXT_PRIMARY
         )
@@ -1305,12 +1305,12 @@ class ScreenRecorderUI(ctk.CTk):
     # =========================================================================
 
     def _get_default_save_dir(self) -> str:
-        """Retorna o diretório padrão de vídeos ('Vídeos/Gravações REA')."""
+        """Retorna o diretório padrão de vídeos ('Vídeos/Gravações RPsec')."""
         user_videos = os.path.join(os.path.expanduser("~"), "Videos")
         if not os.path.exists(user_videos):
             user_videos = os.path.expanduser("~")
-        rea_folder = os.path.join(user_videos, "Gravações REA")
-        return rea_folder
+        rpsec_folder = os.path.join(user_videos, "Gravações RPsec")
+        return rpsec_folder
 
     def _prompt_native_save_dialog(self, temp_path: str, duration_sec: float):
         """
@@ -1540,6 +1540,6 @@ class ScreenRecorderUI(ctk.CTk):
 # =============================================================================
 
 if __name__ == "__main__":
-    logger.info("Iniciando REA Screen Recorder em modo standalone (com MockRecorder)...")
+    logger.info("Iniciando RPsec Recorder em modo standalone (com MockRecorder)...")
     app = ScreenRecorderUI()
     app.mainloop()

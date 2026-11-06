@@ -1,4 +1,4 @@
-"""Configurações globais e padrões do REA Screen Recorder."""
+"""Configurações globais e padrões do RPsec Recorder."""
 
 from dataclasses import dataclass, field
 from pathlib import Path
