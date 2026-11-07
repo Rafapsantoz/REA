@@ -90,3 +90,50 @@ export function saveActiveCart(cart: CartItem[]): void {
 export function formatCurrency(value: number): string {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value)
 }
+
+export interface BackupData {
+  version: string
+  exportedAt: string
+  products: Product[]
+  sales: Sale[]
+  expenses: Expense[]
+}
+
+export function exportBackupJSON(): string {
+  const backup: BackupData = {
+    version: '1.0.0',
+    exportedAt: new Date().toISOString(),
+    products: loadProducts(),
+    sales: loadSales(),
+    expenses: loadExpenses(),
+  }
+  return JSON.stringify(backup, null, 2)
+}
+
+export function importBackupJSON(jsonStr: string): {
+  success: boolean
+  error?: string
+  data?: { products: Product[]; sales: Sale[]; expenses: Expense[] }
+} {
+  try {
+    const parsed = JSON.parse(jsonStr) as Partial<BackupData>
+    if (!Array.isArray(parsed.products) || !Array.isArray(parsed.sales) || !Array.isArray(parsed.expenses)) {
+      return { success: false, error: 'Formato de arquivo inválido. O backup deve conter listas de produtos, vendas e despesas.' }
+    }
+    localStorage.setItem(STORAGE_KEYS.PRODUCTS, JSON.stringify(parsed.products))
+    localStorage.setItem(STORAGE_KEYS.SALES, JSON.stringify(parsed.sales))
+    localStorage.setItem(STORAGE_KEYS.EXPENSES, JSON.stringify(parsed.expenses))
+
+    return {
+      success: true,
+      data: {
+        products: parsed.products,
+        sales: parsed.sales,
+        expenses: parsed.expenses,
+      },
+    }
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'Erro ao processar arquivo JSON'
+    return { success: false, error: message }
+  }
+}

@@ -1,6 +1,10 @@
-import React from 'react'
-import type { Sale, Expense } from '../types'
-import { formatCurrency } from '../storage'
+import React, { useState, useRef } from 'react'
+import type { Sale, Expense, Product } from '../types'
+import { 
+  formatCurrency, 
+  exportBackupJSON, 
+  importBackupJSON 
+} from '../storage'
 import { 
   TrendingUp, 
   TrendingDown, 
@@ -10,16 +14,39 @@ import {
   CreditCard, 
   UserCheck,
   Award,
-  Clock
+  Clock,
+  Share2,
+  Copy,
+  Check,
+  Download,
+  Upload,
+  ShieldCheck,
+  AlertCircle
 } from 'lucide-react'
 
 interface DailySummaryViewProps {
   sales: Sale[]
   expenses: Expense[]
+  products?: Product[]
+  onRestoreData?: (products: Product[], sales: Sale[], expenses: Expense[]) => void
 }
 
-export const DailySummaryView: React.FC<DailySummaryViewProps> = ({ sales, expenses }) => {
-  const todayStr = new Date().toISOString().split('T')[0]
+export const DailySummaryView: React.FC<DailySummaryViewProps> = ({ 
+  sales, 
+  expenses, 
+  onRestoreData 
+}) => {
+  const [copied, setCopied] = useState(false)
+  const [backupMessage, setBackupMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  const today = new Date()
+  const todayStr = today.toISOString().split('T')[0]
+  const formattedTodayDate = today.toLocaleDateString('pt-BR', { 
+    day: '2-digit', 
+    month: '2-digit', 
+    year: 'numeric' 
+  })
 
   // Vendas de hoje
   const todaySales = sales.filter(s => s.createdAt.startsWith(todayStr))
@@ -69,8 +96,111 @@ export const DailySummaryView: React.FC<DailySummaryViewProps> = ({ sales, expen
     .sort((a, b) => b[1].count - a[1].count)
     .slice(0, 5)
 
+  // Gerador de Mensagem para WhatsApp
+  const generateReportText = (): string => {
+    let msg = `📊 *FECHAMENTO DO CAIXA — RPSEC BALCÃO*\n`
+    msg += `🗓 *Data:* ${formattedTodayDate}\n\n`
+    msg += `💰 *Entradas Totais:* ${formatCurrency(totalSalesAmount)} (${todaySales.length} vendas)\n`
+    msg += `💵 *Dinheiro na Gaveta:* ${formatCurrency(cashTotal)}\n`
+    msg += `📱 *PIX Recebido:* ${formatCurrency(pixTotal)}\n`
+    msg += `💳 *Cartões (Déb/Créd):* ${formatCurrency(cardDebitTotal + cardCreditTotal)}\n`
+    if (creditPendingTotal > 0) {
+      msg += `📝 *Fiados Anotados:* ${formatCurrency(creditPendingTotal)}\n`
+    }
+    msg += `\n🔻 *Saídas / Despesas:* ${formatCurrency(totalExpensesAmount)} (${todayExpenses.length} despesas)\n`
+    msg += `\n⚖️ *SALDO LÍQUIDO DO DIA:* ${formatCurrency(netBalance)}\n`
+    
+    if (topItems.length > 0) {
+      msg += `\n🏆 *Mais Vendidos de Hoje:*\n`
+      topItems.forEach(([name, data], idx) => {
+        msg += `${idx + 1}. ${name} — ${data.count} un. (${formatCurrency(data.total)})\n`
+      })
+    }
+    msg += `\n_RPsec Balcão — Gestão Inteligente de Salgaderia_`
+    return msg
+  }
+
+  const handleCopyReport = async () => {
+    try {
+      await navigator.clipboard.writeText(generateReportText())
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2500)
+    } catch {
+      // Fallback simples
+    }
+  }
+
+  const handleShareWhatsApp = () => {
+    const text = encodeURIComponent(generateReportText())
+    window.open(`https://api.whatsapp.com/send?text=${text}`, '_blank')
+  }
+
+  // Backup handlers
+  const handleDownloadBackup = () => {
+    const json = exportBackupJSON()
+    const blob = new Blob([json], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `backup_rpsec_balcao_${todayStr}.json`
+    a.click()
+    URL.revokeObjectURL(url)
+    setBackupMessage({ type: 'success', text: 'Backup baixado com sucesso!' })
+    setTimeout(() => setBackupMessage(null), 3000)
+  }
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    const reader = new FileReader()
+    reader.onload = (event) => {
+      const content = event.target?.result as string
+      const result = importBackupJSON(content)
+      if (result.success && result.data) {
+        if (onRestoreData) {
+          onRestoreData(result.data.products, result.data.sales, result.data.expenses)
+        }
+        setBackupMessage({ type: 'success', text: 'Dados restaurados com sucesso!' })
+      } else {
+        setBackupMessage({ type: 'error', text: result.error || 'Falha ao restaurar arquivo.' })
+      }
+      setTimeout(() => setBackupMessage(null), 4000)
+    }
+    reader.readAsText(file)
+    if (fileInputRef.current) fileInputRef.current.value = ''
+  }
+
   return (
     <div className="flex flex-col gap-6">
+      {/* Barra de Ações Rápidas: Enviar Fechamento / Compartilhar WhatsApp */}
+      <div className="bg-slate-900 text-white p-4 sm:p-5 rounded-2xl shadow-sm flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <span className="text-xs uppercase font-bold text-amber-400 tracking-wider block">
+            Ações de Fechamento Diário
+          </span>
+          <h2 className="text-xl font-black text-white">Relatório do Balcão ({formattedTodayDate})</h2>
+        </div>
+
+        <div className="flex items-center gap-2 flex-wrap">
+          <button
+            onClick={handleCopyReport}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-100 font-bold text-sm transition-all border border-slate-700 cursor-pointer shadow-sm active:scale-95"
+          >
+            {copied ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4 text-amber-400" />}
+            {copied ? 'Copiado para o Celular!' : 'Copiar Texto'}
+          </button>
+
+          <button
+            onClick={handleShareWhatsApp}
+            className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-black text-sm transition-all cursor-pointer shadow-md active:scale-95"
+          >
+            <Share2 className="w-4 h-4" />
+            Enviar no WhatsApp
+          </button>
+        </div>
+      </div>
+
       {/* 3 Grandes Cartões Principais */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
         {/* Entradas */}
@@ -246,6 +376,64 @@ export const DailySummaryView: React.FC<DailySummaryViewProps> = ({ sales, expen
                 </span>
               </div>
             ))}
+          </div>
+        )}
+      </div>
+
+      {/* Seção de Backup & Segurança dos Dados */}
+      <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center text-amber-700">
+              <ShieldCheck className="w-6 h-6" />
+            </div>
+            <div>
+              <h4 className="font-bold text-slate-800 text-base">Segurança & Backup do Balcão</h4>
+              <p className="text-xs text-slate-500">
+                Baixe uma cópia dos seus produtos, vendas e despesas para garantir que nada se perca ao limpar o navegador.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <button
+              onClick={handleDownloadBackup}
+              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs transition-all cursor-pointer border border-slate-300"
+            >
+              <Download className="w-4 h-4 text-slate-600" />
+              Baixar Backup (.json)
+            </button>
+
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs transition-all cursor-pointer border border-slate-300"
+            >
+              <Upload className="w-4 h-4 text-slate-600" />
+              Restaurar Backup
+            </button>
+
+            <input
+              type="file"
+              ref={fileInputRef}
+              onChange={handleFileChange}
+              accept=".json"
+              className="hidden"
+            />
+          </div>
+        </div>
+
+        {backupMessage && (
+          <div className={`mt-4 p-3 rounded-xl flex items-center gap-2 text-sm font-semibold ${
+            backupMessage.type === 'success' 
+              ? 'bg-emerald-50 text-emerald-800 border border-emerald-200' 
+              : 'bg-rose-50 text-rose-800 border border-rose-200'
+          }`}>
+            {backupMessage.type === 'success' ? (
+              <Check className="w-4 h-4 text-emerald-600" />
+            ) : (
+              <AlertCircle className="w-4 h-4 text-rose-600" />
+            )}
+            {backupMessage.text}
           </div>
         )}
       </div>

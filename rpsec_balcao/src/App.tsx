@@ -81,6 +81,12 @@ export function App() {
 
   const totalCartItems = cart.reduce((sum, item) => sum + item.quantity, 0)
 
+  const handleRestoreData = (newProducts: Product[], newSales: Sale[], newExpenses: Expense[]) => {
+    setProducts(newProducts)
+    setSales(newSales)
+    setExpenses(newExpenses)
+  }
+
   return (
     <div className="min-h-screen bg-slate-100 flex flex-col">
       {/* Topo / Barra de Navegação Superior */}
@@ -188,7 +194,12 @@ export function App() {
         </div>
 
         <div className={activeTab === 'summary' ? 'block' : 'hidden'}>
-          <DailySummaryView sales={sales} expenses={expenses} />
+          <DailySummaryView 
+            sales={sales} 
+            expenses={expenses} 
+            products={products}
+            onRestoreData={handleRestoreData}
+          />
         </div>
 
         <div className={activeTab === 'products' ? 'block' : 'hidden'}>
