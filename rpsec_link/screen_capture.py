@@ -1,7 +1,7 @@
 """
 RPsec Link - Motor de Captura de Tela de Ultrabaixa Latência (Windows Win32 GDI / OpenCV).
 Ativa Per-Monitor DPI Awareness para capturar a resolução nativa real (1080p sem cortes).
-Renderiza o cursor ativo nativo do Windows com máxima fidelidade.
+Cursor remoto desativado por padrão para eliminar efeito de rastro/duplicação com o cursor local.
 """
 
 import ctypes
@@ -92,13 +92,13 @@ DI_NORMAL = 0x0003
 
 
 class ScreenCapturer:
-    """Capturador Win32 nativo 100% DPI-aware com suporte a cursor real do Windows."""
+    """Capturador Win32 nativo 100% DPI-aware de alta fidelidade."""
 
-    def __init__(self, draw_cursor: bool = True):
+    def __init__(self, draw_cursor: bool = False):
+        # draw_cursor = False evita o efeito de rastro fantasma no cliente
         self.draw_cursor = draw_cursor
         self._ensure_input_desktop()
 
-        # Obtém a resolução física real após DPI awareness (ex: 1920x1080)
         self.width = u32.GetSystemMetrics(0)
         self.height = u32.GetSystemMetrics(1)
 
@@ -127,24 +127,24 @@ class ScreenCapturer:
         except Exception:
             pass
 
-    def grab_frame_jpeg(self, quality: int = 60, scale: float = 1.0) -> bytes:
+    def grab_frame_jpeg(self, quality: int = 65, scale: float = 1.0) -> bytes:
         """
         Captura o desktop físico inteiro em resolução nativa sem cortes.
-        Desenha o cursor do mouse na posição real e comprime em JPEG.
+        Comprime em JPEG de alta performance via OpenCV.
         """
         self._ensure_input_desktop()
 
         # Copia da tela física
         gdi32.BitBlt(self.hdc_mem, 0, 0, self.width, self.height, self.hdc_screen, 0, 0, SRCCOPY)
 
-        # Desenha o cursor ativo do Windows
+        # Opcional: Desenha cursor remoto apenas se expressamente configurado
         if self.draw_cursor:
             ci = CURSORINFO()
             ci.cbSize = ctypes.sizeof(CURSORINFO)
             if u32.GetCursorInfo(ctypes.byref(ci)) and (ci.flags & 1):
                 u32.DrawIconEx(self.hdc_mem, ci.ptScreenPos.x, ci.ptScreenPos.y, ci.hCursor, 0, 0, 0, None, DI_NORMAL)
 
-        # Obtém os bits da imagem
+        # Extrai os bits de imagem
         gdi32.GetDIBits(self.hdc_mem, self.hbm, 0, self.height, self.buffer, ctypes.byref(self.bi), 0)
 
         # BGRA para BGR

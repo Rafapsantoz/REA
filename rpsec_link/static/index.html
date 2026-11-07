@@ -12,14 +12,14 @@
     :root {
       --bg-page: #000000;
       --bg-auth: radial-gradient(circle at 50% 25%, #1e293b 0%, #030712 85%);
-      --bg-card: rgba(17, 24, 39, 0.92);
+      --bg-card: rgba(17, 24, 39, 0.94);
       --border-card: rgba(255, 255, 255, 0.12);
       --text-primary: #f8fafc;
       --text-secondary: #94a3b8;
       --input-bg: #0b0f19;
       --input-border: #334155;
       --input-text: #f8fafc;
-      --toolbar-bg: rgba(15, 23, 42, 0.95);
+      --toolbar-bg: rgba(15, 23, 42, 0.96);
       --toolbar-border: rgba(255, 255, 255, 0.15);
       --btn-bg: #1e293b;
       --btn-border: #334155;
@@ -29,22 +29,22 @@
       --brand-blue: #0284c7;
       --brand-cyan: #38bdf8;
       --shadow-card: 0 25px 60px -15px rgba(0, 0, 0, 0.8);
-      --notch-bg: rgba(15, 23, 42, 0.85);
-      --notch-text: #38bdf8;
-      --notch-border: rgba(56, 189, 248, 0.35);
+      --pill-bg: rgba(15, 23, 42, 0.88);
+      --pill-border: rgba(56, 189, 248, 0.4);
+      --pill-text: #38bdf8;
     }
 
     body.theme-light {
       --bg-page: #f8fafc;
-      --bg-auth: radial-gradient(circle at 50% 25%, #e2e8f0 0%, #cbd5e1 85%);
-      --bg-card: rgba(255, 255, 255, 0.96);
+      --bg-auth: radial-gradient(circle at 50% 25%, #f1f5f9 0%, #e2e8f0 85%);
+      --bg-card: rgba(255, 255, 255, 0.98);
       --border-card: #cbd5e1;
       --text-primary: #0f172a;
       --text-secondary: #64748b;
       --input-bg: #ffffff;
       --input-border: #cbd5e1;
       --input-text: #0f172a;
-      --toolbar-bg: rgba(255, 255, 255, 0.96);
+      --toolbar-bg: rgba(255, 255, 255, 0.98);
       --toolbar-border: #e2e8f0;
       --btn-bg: #f1f5f9;
       --btn-border: #cbd5e1;
@@ -54,9 +54,9 @@
       --brand-blue: #0284c7;
       --brand-cyan: #0284c7;
       --shadow-card: 0 20px 40px -10px rgba(0, 0, 0, 0.15);
-      --notch-bg: rgba(255, 255, 255, 0.9);
-      --notch-text: #0284c7;
-      --notch-border: rgba(2, 132, 199, 0.3);
+      --pill-bg: rgba(255, 255, 255, 0.92);
+      --pill-border: rgba(2, 132, 199, 0.35);
+      --pill-text: #0284c7;
     }
 
     * {
@@ -97,7 +97,18 @@
       box-shadow: var(--shadow-card);
       text-align: center;
       position: relative;
+      transition: transform 0.2s;
     }
+    .auth-card.shake {
+      animation: shake 0.4s cubic-bezier(.36,.07,.19,.97) both;
+    }
+    @keyframes shake {
+      10%, 90% { transform: translate3d(-2px, 0, 0); }
+      20%, 80% { transform: translate3d(4px, 0, 0); }
+      30%, 50%, 70% { transform: translate3d(-6px, 0, 0); }
+      40%, 60% { transform: translate3d(6px, 0, 0); }
+    }
+
     .auth-theme-btn {
       position: absolute;
       top: 1.25rem;
@@ -121,7 +132,7 @@
       gap: 0.5rem;
       padding: 0.4rem 0.95rem;
       background: rgba(14, 165, 233, 0.15);
-      border: 1px solid var(--notch-border);
+      border: 1px solid var(--pill-border);
       color: var(--brand-cyan);
       border-radius: 9999px;
       font-size: 0.8rem;
@@ -139,8 +150,33 @@
     .auth-desc {
       font-size: 0.9rem;
       color: var(--text-secondary);
-      margin-bottom: 1.75rem;
+      margin-bottom: 1.5rem;
     }
+
+    /* Mensagem de Erro e Bloqueio */
+    #authMessage {
+      display: none;
+      padding: 0.75rem 1rem;
+      border-radius: 10px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      margin-bottom: 1.25rem;
+      text-align: center;
+      line-height: 1.4;
+    }
+    #authMessage.error {
+      display: block;
+      background: rgba(239, 68, 68, 0.15);
+      border: 1px solid rgba(239, 68, 68, 0.4);
+      color: #ef4444;
+    }
+    #authMessage.locked {
+      display: block;
+      background: rgba(245, 158, 11, 0.15);
+      border: 1px solid rgba(245, 158, 11, 0.4);
+      color: #f59e0b;
+    }
+
     .pin-input {
       width: 100%;
       padding: 1.1rem;
@@ -160,6 +196,11 @@
       border-color: var(--brand-blue);
       box-shadow: 0 0 0 4px rgba(2, 132, 199, 0.25);
     }
+    .pin-input:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
     .btn-connect {
       width: 100%;
       padding: 1rem;
@@ -177,8 +218,13 @@
       opacity: 0.95;
       transform: translateY(-1px);
     }
+    .btn-connect:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+    }
 
-    /* Container de Visão da Máquina */
+    /* Viewport da Máquina */
     #viewportContainer {
       width: 100vw;
       height: 100vh;
@@ -215,120 +261,106 @@
       max-height: none;
     }
 
-    /* Top Notch / Aba Retrátil Inteligente */
-    #toolbarZone {
+    /* WIDGET FLUTUANTE RECOLHÍVEL & ARRASTÁVEL (Não bloqueia botões — ▢ ✕) */
+    #floatingWidget {
       position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      height: 24px;
+      top: 8px;
+      left: 120px; /* Posicionado longe do topo direito! */
       z-index: 1000;
       display: flex;
-      justify-content: center;
-      pointer-events: auto;
+      flex-direction: column;
+      align-items: flex-start;
+      cursor: move;
     }
-    #toolbarTab {
-      width: 130px;
-      height: 20px;
-      background: var(--notch-bg);
-      backdrop-filter: blur(10px);
-      border: 1px solid var(--notch-border);
-      border-top: none;
-      border-radius: 0 0 10px 10px;
-      cursor: pointer;
+
+    /* Pílula Compacta Inicial */
+    #widgetPill {
+      background: var(--pill-bg);
+      backdrop-filter: blur(12px);
+      border: 1px solid var(--pill-border);
+      border-radius: 10px;
+      padding: 0.35rem 0.75rem;
       display: flex;
       align-items: center;
-      justify-content: center;
-      font-size: 0.65rem;
+      gap: 0.5rem;
+      font-size: 0.75rem;
       font-weight: 700;
-      color: var(--notch-text);
-      letter-spacing: 0.05em;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+      color: var(--pill-text);
+      cursor: pointer;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
       transition: all 0.2s;
     }
-    #toolbarZone:hover #toolbarTab {
+    #widgetPill:hover {
       background: var(--brand-blue);
       color: #ffffff;
       border-color: var(--brand-blue);
-      height: 22px;
     }
 
-    /* Barra Superior Deslizante */
-    #toolbar {
-      position: fixed;
-      top: 0;
-      left: 50%;
-      transform: translateX(-50%) translateY(-105%);
+    /* Painel Completo de Opções (Aparece ao Clicar na Pílula) */
+    #widgetPanel {
+      display: none;
+      margin-top: 6px;
       background: var(--toolbar-bg);
-      backdrop-filter: blur(18px);
+      backdrop-filter: blur(20px);
       border: 1px solid var(--toolbar-border);
-      border-top: none;
-      border-radius: 0 0 16px 16px;
-      padding: 0.5rem 1.25rem;
-      display: flex;
+      border-radius: 14px;
+      padding: 0.5rem 0.85rem;
+      box-shadow: 0 15px 35px -5px rgba(0, 0, 0, 0.5);
+      flex-wrap: wrap;
       align-items: center;
-      gap: 0.65rem;
-      z-index: 1001;
-      box-shadow: 0 15px 35px -5px rgba(0, 0, 0, 0.4);
-      transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+      gap: 0.5rem;
     }
-    #toolbarZone:hover ~ #toolbar,
-    #toolbar:hover,
-    #toolbar.pinned {
-      transform: translateX(-50%) translateY(0);
+    #widgetPanel.open {
+      display: flex;
     }
 
     .status-dot {
-      width: 10px;
-      height: 10px;
+      width: 9px;
+      height: 9px;
       border-radius: 50%;
       background: #10b981;
-      box-shadow: 0 0 10px #10b981;
+      box-shadow: 0 0 8px #10b981;
     }
     .status-dot.offline {
       background: #ef4444;
-      box-shadow: 0 0 10px #ef4444;
+      box-shadow: 0 0 8px #ef4444;
     }
     .stat-badge {
       font-family: 'JetBrains Mono', monospace;
-      font-size: 0.75rem;
+      font-size: 0.72rem;
       color: var(--text-secondary);
       white-space: nowrap;
     }
     .stat-badge strong {
       color: var(--text-primary);
     }
+
     .tb-btn {
       background: var(--btn-bg);
       color: var(--btn-text);
       border: 1px solid var(--btn-border);
-      padding: 0.4rem 0.7rem;
+      padding: 0.35rem 0.65rem;
       border-radius: 8px;
-      font-size: 0.75rem;
+      font-size: 0.72rem;
       font-weight: 700;
       cursor: pointer;
       transition: all 0.15s;
       display: inline-flex;
       align-items: center;
-      gap: 0.35rem;
+      gap: 0.3rem;
       white-space: nowrap;
     }
     .tb-btn:hover {
       background: var(--btn-hover);
       color: var(--btn-hover-text);
     }
-    .tb-btn.active {
-      background: var(--brand-blue);
-      color: #ffffff;
-      border-color: var(--brand-blue);
-    }
     .tb-select {
       background: var(--btn-bg);
       color: var(--btn-text);
       border: 1px solid var(--btn-border);
-      padding: 0.4rem 0.6rem;
+      padding: 0.35rem 0.55rem;
       border-radius: 8px;
-      font-size: 0.75rem;
+      font-size: 0.72rem;
       font-weight: 600;
       outline: none;
       cursor: pointer;
@@ -344,55 +376,60 @@
 </head>
 <body>
 
-  <!-- Tela de Login com PIN -->
+  <!-- Tela de Login com PIN e Proteção Anti-Força Bruta -->
   <div id="authOverlay">
-    <div class="auth-card">
+    <div id="authCard" class="auth-card">
       <button id="btnLoginTheme" class="auth-theme-btn" title="Alternar Tema Claro / Escuro">🌙</button>
       <div class="brand-badge">⚡ RPsecti Soluções</div>
       <h1 class="auth-title">RPsec Link</h1>
-      <p class="auth-desc">Conexão Direta ao Host Remoto</p>
+      <p class="auth-desc">Conexão Segura ao Host Remoto</p>
       
+      <div id="authMessage"></div>
+
       <input type="password" id="pinInput" class="pin-input" placeholder="PIN" maxlength="8" autofocus>
       <button id="btnConnect" class="btn-connect">Conectar à Máquina</button>
     </div>
   </div>
 
-  <!-- Zona Sensível de Ativação do Top Notch -->
-  <div id="toolbarZone">
-    <div id="toolbarTab">⚡ RPsec Link</div>
-  </div>
+  <!-- WIDGET FLUTUANTE RECOLHÍVEL & ARRASTÁVEL (Não obstrui o topo direito!) -->
+  <div id="floatingWidget">
+    <div id="widgetPill" title="Clique para abrir/fechar opções de conexão (Arraste para mover)">
+      <span class="status-dot" id="pillStatusDot"></span>
+      <span>⚡ RPsec Link</span>
+      <span id="pillArrow">▾</span>
+    </div>
 
-  <!-- Barra de Ferramentas Retrátil -->
-  <div id="toolbar">
-    <div id="statusDot" class="status-dot"></div>
-    <div class="stat-badge"><span id="fpsCount">--</span> FPS • <span id="pingCount">--</span>ms</div>
-    
-    <!-- Ajuste de Escala/Exibição -->
-    <select id="scaleSelect" class="tb-select" title="Modo de Exibição">
-      <option value="fit" selected>Ajustar à Janela (Fit)</option>
-      <option value="fill">Preencher 100% (Sem Bordas)</option>
-      <option value="original">Resolução 1:1 Nativa</option>
-    </select>
+    <!-- Painel Expansível de Controles -->
+    <div id="widgetPanel">
+      <div class="stat-badge"><span id="fpsCount">--</span> FPS • <span id="pingCount">--</span>ms</div>
+      
+      <!-- Modos de Exibição -->
+      <select id="scaleSelect" class="tb-select" title="Modo de Exibição">
+        <option value="fit" selected>Ajustar à Janela (Fit)</option>
+        <option value="fill">Preencher 100% (Sem Bordas)</option>
+        <option value="original">Resolução 1:1 Nativa</option>
+      </select>
 
-    <!-- Qualidade do Stream -->
-    <select id="qualitySelect" class="tb-select" title="Qualidade da Transmissão">
-      <option value="high">Alta (75% • 30 FPS)</option>
-      <option value="medium" selected>Média (65% • 25 FPS)</option>
-      <option value="fast">Rápida (45% • 15 FPS)</option>
-    </select>
+      <!-- Qualidade do Stream -->
+      <select id="qualitySelect" class="tb-select" title="Qualidade da Transmissão">
+        <option value="high">Alta (75% • 30 FPS)</option>
+        <option value="medium" selected>Média (65% • 25 FPS)</option>
+        <option value="fast">Rápida (45% • 15 FPS)</option>
+      </select>
 
-    <!-- Alternador de Tema Claro / Escuro -->
-    <button id="btnToggleTheme" class="tb-btn" title="Alternar Tema Claro / Escuro">🌙</button>
+      <!-- Alternador de Tema -->
+      <button id="btnToggleTheme" class="tb-btn" title="Alternar Tema Claro / Escuro">🌙</button>
 
-    <!-- Teclas Rápidas -->
-    <button id="btnWin" class="tb-btn" title="Pressionar Tecla Windows">⊞ Win</button>
-    <button id="btnAltTab" class="tb-btn" title="Alternar Janelas">Alt+Tab</button>
-    <button id="btnCtrlAltDel" class="tb-btn" title="Enviar Ctrl+Alt+Del">Ctrl+Alt+Del</button>
-    <button id="btnEsc" class="tb-btn" title="Pressionar Esc">Esc</button>
-    <button id="btnMobileKbd" class="tb-btn" title="Abrir Teclado no Tablet/Celular">⌨ Teclado</button>
-    <button id="btnFullscreen" class="tb-btn" title="Modo Tela Cheia Imersivo">⛶ Tela Cheia</button>
-    <button id="btnPinBar" class="tb-btn" title="Fixar/Ocultar Barra Superior">📌</button>
-    <button id="btnDisconnect" class="tb-btn" style="color: #f87171;" title="Encerrar Sessão">✕</button>
+      <!-- Atalhos de Sistema -->
+      <button id="btnWin" class="tb-btn" title="Pressionar Tecla Windows">⊞ Win</button>
+      <button id="btnAltTab" class="tb-btn" title="Alternar Janelas">Alt+Tab</button>
+      <button id="btnCtrlAltDel" class="tb-btn" title="Enviar Ctrl+Alt+Del">Ctrl+Alt+Del</button>
+      <button id="btnEsc" class="tb-btn" title="Pressionar Esc">Esc</button>
+      <button id="btnMobileKbd" class="tb-btn" title="Abrir Teclado no Tablet/Celular">⌨ Teclado</button>
+      <button id="btnFullscreen" class="tb-btn" title="Modo Tela Cheia Imersivo">⛶ Tela Cheia</button>
+      <button id="btnClosePanel" class="tb-btn" title="Recolher Barra">▲</button>
+      <button id="btnDisconnect" class="tb-btn" style="color: #ef4444;" title="Encerrar Sessão">✕</button>
+    </div>
   </div>
 
   <!-- Viewport da Máquina Remota -->
@@ -404,13 +441,21 @@
 
   <script>
     const authOverlay = document.getElementById('authOverlay');
+    const authCard = document.getElementById('authCard');
+    const authMessage = document.getElementById('authMessage');
     const pinInput = document.getElementById('pinInput');
     const btnConnect = document.getElementById('btnConnect');
     const btnLoginTheme = document.getElementById('btnLoginTheme');
     const btnToggleTheme = document.getElementById('btnToggleTheme');
-    const toolbar = document.getElementById('toolbar');
-    const btnPinBar = document.getElementById('btnPinBar');
-    const statusDot = document.getElementById('statusDot');
+    
+    // Widget flutuante
+    const floatingWidget = document.getElementById('floatingWidget');
+    const widgetPill = document.getElementById('widgetPill');
+    const widgetPanel = document.getElementById('widgetPanel');
+    const pillArrow = document.getElementById('pillArrow');
+    const btnClosePanel = document.getElementById('btnClosePanel');
+    const pillStatusDot = document.getElementById('pillStatusDot');
+
     const fpsCount = document.getElementById('fpsCount');
     const pingCount = document.getElementById('pingCount');
     const qualitySelect = document.getElementById('qualitySelect');
@@ -427,7 +472,7 @@
     let lastFpsUpdate = performance.now();
     let currentFps = 0;
     let lastMouseMove = 0;
-    let isPinned = false;
+    let lockoutTimer = null;
 
     // Gerenciamento de Tema (Escuro / Claro)
     let currentTheme = localStorage.getItem('rpsec_link_theme') || 'dark';
@@ -454,7 +499,40 @@
     btnLoginTheme.addEventListener('click', toggleTheme);
     btnToggleTheme.addEventListener('click', toggleTheme);
 
-    // Recupera PIN salvo no navegador
+    // Sistema de Abrir / Recolher o Widget Flutuante
+    widgetPill.addEventListener('click', () => {
+      widgetPanel.classList.toggle('open');
+      pillArrow.textContent = widgetPanel.classList.contains('open') ? '▲' : '▾';
+    });
+    btnClosePanel.addEventListener('click', () => {
+      widgetPanel.classList.remove('open');
+      pillArrow.textContent = '▾';
+    });
+
+    // Torna o Widget Flutuante Arrastável para qualquer canto
+    let isDragging = false;
+    let dragStartX = 0, dragStartY = 0;
+
+    widgetPill.addEventListener('mousedown', (e) => {
+      isDragging = true;
+      dragStartX = e.clientX - floatingWidget.offsetLeft;
+      dragStartY = e.clientY - floatingWidget.offsetTop;
+      e.stopPropagation();
+    });
+
+    window.addEventListener('mousemove', (e) => {
+      if (!isDragging) return;
+      const x = Math.max(10, Math.min(window.innerWidth - 150, e.clientX - dragStartX));
+      const y = Math.max(5, Math.min(window.innerHeight - 80, e.clientY - dragStartY));
+      floatingWidget.style.left = `${x}px`;
+      floatingWidget.style.top = `${y}px`;
+    });
+
+    window.addEventListener('mouseup', () => {
+      isDragging = false;
+    });
+
+    // Conexão com PIN e Tratamento de Erros / Bloqueio
     const savedPin = localStorage.getItem('rpsec_link_pin');
     if (savedPin) {
       pinInput.value = savedPin;
@@ -467,8 +545,15 @@
 
     function connect() {
       const pin = pinInput.value.trim();
-      if (!pin) return;
+      if (!pin) {
+        showError("Por favor, digite o PIN de acesso.");
+        return;
+      }
       localStorage.setItem('rpsec_link_pin', pin);
+
+      btnConnect.disabled = true;
+      btnConnect.textContent = "Conectando...";
+      authMessage.style.display = 'none';
 
       const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
       const wsUrl = `${protocol}//${location.host}/ws?pin=${encodeURIComponent(pin)}`;
@@ -477,15 +562,14 @@
       ws.binaryType = 'blob';
 
       ws.onopen = () => {
-        authOverlay.style.display = 'none';
-        statusDot.classList.remove('offline');
-        container.focus();
-        sendQualityConfig();
-        startPingLoop();
+        // Conexão autorizada
+        btnConnect.disabled = false;
+        btnConnect.textContent = "Conectar à Máquina";
       };
 
       ws.onmessage = async (event) => {
         if (event.data instanceof Blob) {
+          // Frame de imagem JPEG da máquina remota
           const bitmap = await createImageBitmap(event.data);
           if (canvas.width !== bitmap.width || canvas.height !== bitmap.height) {
             canvas.width = bitmap.width;
@@ -505,9 +589,29 @@
         } else {
           try {
             const data = JSON.parse(event.data);
+
+            if (data.type === 'auth_error') {
+              // Resposta de falha de autenticação ou bloqueio
+              btnConnect.disabled = false;
+              btnConnect.textContent = "Conectar à Máquina";
+
+              if (data.status === 'locked') {
+                triggerLockout(data.seconds);
+              } else {
+                showError(data.message || `PIN incorreto! Restam ${data.attempts_left} tentativas.`);
+              }
+              return;
+            }
+
             if (data.type === 'init') {
               remoteWidth = data.width;
               remoteHeight = data.height;
+              // Esconde tela de autenticação
+              authOverlay.style.display = 'none';
+              pillStatusDot.classList.remove('offline');
+              container.focus();
+              sendQualityConfig();
+              startPingLoop();
             } else if (data.type === 'pong') {
               const rtt = Math.round(performance.now() - data.ts);
               pingCount.textContent = rtt;
@@ -517,15 +621,52 @@
       };
 
       ws.onclose = () => {
-        statusDot.classList.add('offline');
+        pillStatusDot.classList.add('offline');
         fpsCount.textContent = '--';
         pingCount.textContent = '--';
-        authOverlay.style.display = 'flex';
+        btnConnect.disabled = false;
+        btnConnect.textContent = "Conectar à Máquina";
       };
 
       ws.onerror = () => {
         ws.close();
       };
+    }
+
+    function showError(msg) {
+      authMessage.className = "error";
+      authMessage.textContent = msg;
+      authMessage.style.display = "block";
+      authCard.classList.remove('shake');
+      void authCard.offsetWidth; // Trigger reflow
+      authCard.classList.add('shake');
+      pinInput.focus();
+      pinInput.select();
+    }
+
+    function triggerLockout(seconds) {
+      clearInterval(lockoutTimer);
+      pinInput.disabled = true;
+      btnConnect.disabled = true;
+      authMessage.className = "locked";
+
+      let remaining = seconds;
+      authMessage.textContent = `🔒 Bloqueado por excesso de tentativas. Tente novamente em ${remaining}s...`;
+
+      lockoutTimer = setInterval(() => {
+        remaining--;
+        if (remaining <= 0) {
+          clearInterval(lockoutTimer);
+          pinInput.disabled = false;
+          btnConnect.disabled = false;
+          authMessage.className = "error";
+          authMessage.textContent = "✓ Você já pode tentar novamente com o PIN correto.";
+          pinInput.focus();
+          pinInput.select();
+        } else {
+          authMessage.textContent = `🔒 Bloqueado por excesso de tentativas. Tente novamente em ${remaining}s...`;
+        }
+      }, 1000);
     }
 
     function startPingLoop() {
@@ -551,12 +692,6 @@
 
     scaleSelect.addEventListener('change', () => {
       canvas.className = `mode-${scaleSelect.value}`;
-    });
-
-    btnPinBar.addEventListener('click', () => {
-      isPinned = !isPinned;
-      toolbar.classList.toggle('pinned', isPinned);
-      btnPinBar.classList.toggle('active', isPinned);
     });
 
     function getNormalizedCoords(e) {
@@ -604,6 +739,7 @@
       ws.send(JSON.stringify({ type: 'wheel', delta: -Math.sign(e.deltaY) * 120 }));
     }, { passive: false });
 
+    // Envio Robusto de Teclado (Físico + Caracteres)
     window.addEventListener('keydown', (e) => {
       if (document.activeElement === pinInput) return;
       if (['Tab', 'Backspace', 'F5', 'Alt', 'Meta'].includes(e.key)) {
@@ -619,6 +755,7 @@
       ws.send(JSON.stringify({ type: 'key_up', key: e.key, code: e.code }));
     });
 
+    // Atalhos do Painel
     document.getElementById('btnWin').addEventListener('click', () => {
       if (ws && ws.readyState === WebSocket.OPEN) {
         ws.send(JSON.stringify({ type: 'shortcut', shortcut: 'win' }));
@@ -658,6 +795,7 @@
 
     document.getElementById('btnDisconnect').addEventListener('click', () => {
       if (ws) ws.close();
+      authOverlay.style.display = 'flex';
     });
   </script>
 </body>

@@ -1,6 +1,7 @@
 """
 RPsec Link - Servidor de Acesso Remoto Ultraleve (FastAPI + WebSockets + Win32).
 Executa na máquina Host e permite visualização e controle via qualquer navegador web.
+Inclui proteção ativa contra força bruta com congelamento exponencial após 3 erros de PIN.
 """
 
 import os
@@ -12,17 +13,16 @@ import secrets
 import asyncio
 import argparse
 from pathlib import Path
-from typing import Optional, Callable, Set
+from typing import Optional, Callable, Set, Dict, Any
 
 import uvicorn
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Query
 from fastapi.responses import HTMLResponse, JSONResponse, FileResponse
-from fastapi.staticfiles import StaticFiles
 
 from screen_capture import ScreenCapturer
 from input_controller import InputController
 
-app = FastAPI(title="RPsec Link Server", version="1.3.0")
+app = FastAPI(title="RPsec Link Server", version="1.4.0")
 
 BASE_DIR = Path(__file__).parent
 STATIC_DIR = BASE_DIR / "static"
@@ -46,10 +46,15 @@ ACTIVE_CLIENTS: Set[str] = set()
 CALLBACKS = {
     "on_connect": None,
     "on_disconnect": None,
+    "on_security_alert": None,
 }
 
-# Inicializa motores com DPI awareness ativo
-capturer = ScreenCapturer(draw_cursor=True)
+# Rastreamento de falhas de autenticação e bloqueio (Anti-Brute Force)
+# client_ip -> {"count": int, "locked_until": float, "level": int}
+FAILED_ATTEMPTS: Dict[str, Dict[str, Any]] = {}
+
+# Inicializa motores com DPI awareness ativo e sem duplicação de cursor
+capturer = ScreenCapturer(draw_cursor=False)
 input_ctrl = InputController(capturer.width, capturer.height)
 
 
@@ -92,15 +97,73 @@ async def get_status():
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket, pin: str = Query("")):
     """Canal bidirecional: Streaming de vídeo (Binário) + Input do Cliente (JSON)."""
-    if CONFIG["pin"] and pin != CONFIG["pin"]:
-        await websocket.close(code=4001, reason="PIN Incorreto")
-        print(f"[-] Tentativa de conexão rejeitada com PIN inválido: '{pin}'")
+    client_ip = websocket.client.host if websocket.client else "unknown"
+    now = time.time()
+
+    # 1. Verifica se o IP está bloqueado temporariamente por excesso de tentativas
+    sec_data = FAILED_ATTEMPTS.get(client_ip, {"count": 0, "locked_until": 0.0, "level": 0})
+    if sec_data["locked_until"] > now:
+        remaining_secs = int(sec_data["locked_until"] - now)
+        await websocket.accept()
+        await websocket.send_text(json.dumps({
+            "type": "auth_error",
+            "status": "locked",
+            "seconds": remaining_secs,
+            "message": f"Bloqueado por segurança. Aguarde {remaining_secs}s para tentar novamente."
+        }))
+        await websocket.close(code=4003, reason="IP Bloqueado")
+        print(f"[!] Conexão rejeitada: {client_ip} ainda bloqueado por mais {remaining_secs}s")
         return
 
+    # 2. Validação do PIN de Segurança
+    if CONFIG["pin"] and pin != CONFIG["pin"]:
+        sec_data["count"] += 1
+
+        if sec_data["count"] >= 3:
+            # 3 tentativas incorretas -> Aplica bloqueio exponencial (30s, 60s, 120s, ...)
+            sec_data["level"] += 1
+            freeze_duration = 30 * (2 ** (sec_data["level"] - 1))
+            sec_data["locked_until"] = now + freeze_duration
+            sec_data["count"] = 0
+            FAILED_ATTEMPTS[client_ip] = sec_data
+
+            await websocket.accept()
+            await websocket.send_text(json.dumps({
+                "type": "auth_error",
+                "status": "locked",
+                "seconds": freeze_duration,
+                "message": f"Muitas tentativas incorretas. Acesso congelado por {freeze_duration} segundos."
+            }))
+            await websocket.close(code=4003, reason="IP Congelado")
+
+            print(f"[ALERTA DE SEGURANÇA] {client_ip} congelado por {freeze_duration}s (Nível {sec_data['level']})")
+            if CALLBACKS["on_security_alert"]:
+                try:
+                    CALLBACKS["on_security_alert"](client_ip, freeze_duration)
+                except Exception:
+                    pass
+            return
+        else:
+            # Erro simples (1 ou 2 tentativas)
+            attempts_left = 3 - sec_data["count"]
+            FAILED_ATTEMPTS[client_ip] = sec_data
+
+            await websocket.accept()
+            await websocket.send_text(json.dumps({
+                "type": "auth_error",
+                "status": "wrong_pin",
+                "attempts_left": attempts_left,
+                "message": f"PIN incorreto! Restam {attempts_left} tentativa(s) antes do bloqueio."
+            }))
+            await websocket.close(code=4001, reason="PIN Incorreto")
+            print(f"[-] Tentativa incorreta de {client_ip} ({sec_data['count']}/3)")
+            return
+
+    # 3. PIN Correto -> Reseta falhas e aceita conexão
+    FAILED_ATTEMPTS.pop(client_ip, None)
     await websocket.accept()
-    client_ip = websocket.client.host
     ACTIVE_CLIENTS.add(client_ip)
-    print(f"[+] Cliente conectado com sucesso de {client_ip}")
+    print(f"[+] Cliente autorizado conectado com sucesso: {client_ip}")
 
     if CALLBACKS["on_connect"]:
         try:
