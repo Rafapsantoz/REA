@@ -8,6 +8,14 @@ node_modules/
 dist/
 build/
 
+# Bancos de Dados Locais e Caches de Teste
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3
+.pytest_cache/
+
 # Cache Python
 __pycache__/
 *.py[cod]
@@ -15,8 +23,6 @@ __pycache__/
 *.pyc
 
 # Artefatos de Build do PyInstaller
-build/
-dist/
 *.spec
 *.manifest
 *.exe

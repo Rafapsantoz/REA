@@ -1,0 +1,214 @@
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Brand */
+    --brand: 258 82% 56%;
+    --brand-foreground: 0 0% 100%;
+    --brand-from: 262 84% 58%;
+    --brand-to: 232 82% 54%;
+    --gradient-brand: linear-gradient(135deg, hsl(var(--brand-from)), hsl(var(--brand-to)));
+    --gradient-brand-soft: linear-gradient(
+      135deg,
+      hsl(var(--brand-from) / 0.12),
+      hsl(var(--brand-to) / 0.06)
+    );
+
+    /* Surfaces */
+    --background: 258 30% 99%;
+    --foreground: 258 24% 12%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 258 24% 12%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 258 24% 12%;
+
+    /* Primary */
+    --primary: 258 82% 56%;
+    --primary-hover: 258 82% 49%;
+    --primary-active: 258 82% 43%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 258 32% 96%;
+    --secondary-foreground: 258 30% 22%;
+
+    --muted: 258 24% 96%;
+    --muted-foreground: 258 12% 42%;
+
+    --accent: 258 40% 95%;
+    --accent-foreground: 258 32% 22%;
+
+    --destructive: 0 72% 48%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 258 22% 90%;
+    --input: 258 22% 90%;
+    --ring: 258 82% 56%;
+
+    --radius: 0.625rem;
+
+    /* Sidebar */
+    --sidebar-background: 258 28% 98%;
+    --sidebar-foreground: 258 24% 18%;
+    --sidebar-primary: 258 82% 56%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 258 38% 94%;
+    --sidebar-accent-foreground: 258 32% 20%;
+    --sidebar-border: 258 22% 91%;
+    --sidebar-ring: 258 82% 56%;
+
+    /* Kanban lanes */
+    --lane-pending: 226 45% 46%;
+    --lane-pending-foreground: 226 55% 28%;
+    --lane-pending-soft: 226 48% 95%;
+
+    --lane-progress: 262 83% 58%;
+    --lane-progress-foreground: 262 70% 30%;
+    --lane-progress-soft: 262 70% 96%;
+
+    --lane-done: 158 62% 38%;
+    --lane-done-foreground: 158 70% 24%;
+    --lane-done-soft: 158 55% 95%;
+
+    --lane-overdue: 28 88% 48%;
+    --lane-overdue-foreground: 24 80% 30%;
+    --lane-overdue-soft: 36 90% 95%;
+    --lane-overdue-emphasis: 20 85% 42%;
+    --lane-overdue-emphasis-foreground: 30 100% 98%;
+
+    /* Category dots */
+    --cat-work: 214 84% 48%;
+    --cat-personal: 334 76% 52%;
+    --cat-financial: 172 72% 34%;
+    --cat-other: 258 12% 52%;
+
+    /* Shadows */
+    --shadow-color: 258 43% 16%;
+    --shadow-card: 0 1px 2px hsl(var(--shadow-color) / 0.06),
+      0 1px 3px hsl(var(--shadow-color) / 0.08);
+    --shadow-elevated: 0 6px 16px -4px hsl(var(--shadow-color) / 0.14),
+      0 2px 6px -2px hsl(var(--shadow-color) / 0.1);
+    --shadow-drag: 0 16px 32px -8px hsl(var(--shadow-color) / 0.24),
+      0 6px 12px -6px hsl(var(--shadow-color) / 0.16);
+
+    /* Motion */
+    --duration-fast: 120ms;
+    --duration-base: 180ms;
+    --duration-slow: 240ms;
+    --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+    --ease-emphasized: cubic-bezier(0.05, 0.7, 0.1, 1);
+  }
+
+  .dark {
+    --brand-from: 262 85% 62%;
+    --brand-to: 230 80% 52%;
+
+    --background: 258 25% 8%;
+    --foreground: 258 20% 96%;
+
+    --card: 258 22% 12%;
+    --card-foreground: 258 20% 96%;
+
+    --popover: 258 22% 13%;
+    --popover-foreground: 258 20% 96%;
+
+    --primary: 258 85% 60%;
+    --primary-hover: 258 85% 54%;
+    --primary-active: 258 85% 48%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 258 24% 18%;
+    --secondary-foreground: 258 20% 94%;
+
+    --muted: 258 22% 16%;
+    --muted-foreground: 258 14% 66%;
+
+    --accent: 258 26% 20%;
+    --accent-foreground: 258 20% 96%;
+
+    --destructive: 0 72% 52%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 258 20% 20%;
+    --input: 258 20% 24%;
+    --ring: 258 85% 64%;
+
+    --sidebar-background: 258 24% 10%;
+    --sidebar-foreground: 258 20% 90%;
+    --sidebar-primary: 258 85% 60%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 258 25% 18%;
+    --sidebar-accent-foreground: 258 20% 96%;
+    --sidebar-border: 258 22% 18%;
+    --sidebar-ring: 258 85% 64%;
+
+    --lane-pending: 226 60% 68%;
+    --lane-pending-foreground: 226 70% 84%;
+    --lane-pending-soft: 226 40% 16%;
+
+    --lane-progress: 262 85% 72%;
+    --lane-progress-foreground: 262 85% 86%;
+    --lane-progress-soft: 262 40% 18%;
+
+    --lane-done: 158 55% 55%;
+    --lane-done-foreground: 158 60% 80%;
+    --lane-done-soft: 158 35% 14%;
+
+    --lane-overdue: 32 85% 60%;
+    --lane-overdue-foreground: 36 85% 80%;
+    --lane-overdue-soft: 28 45% 16%;
+    --lane-overdue-emphasis: 24 85% 58%;
+    --lane-overdue-emphasis-foreground: 26 60% 12%;
+
+    --cat-work: 214 90% 68%;
+    --cat-personal: 334 85% 70%;
+    --cat-financial: 172 60% 52%;
+    --cat-other: 258 14% 62%;
+
+    --shadow-color: 258 60% 2%;
+    --shadow-card: 0 1px 2px hsl(var(--shadow-color) / 0.55),
+      0 1px 3px hsl(var(--shadow-color) / 0.4);
+    --shadow-elevated: 0 6px 18px -4px hsl(var(--shadow-color) / 0.65),
+      0 2px 6px -2px hsl(var(--shadow-color) / 0.5);
+    --shadow-drag: 0 18px 36px -8px hsl(var(--shadow-color) / 0.75),
+      0 6px 14px -6px hsl(var(--shadow-color) / 0.6);
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  ::selection {
+    @apply bg-primary/20;
+  }
+}
+
+html,
+body,
+#root {
+  width: 100%;
+  height: 100%;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

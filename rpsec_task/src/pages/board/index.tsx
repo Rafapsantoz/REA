@@ -1,0 +1,311 @@
+import { useMemo, useState } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { Inbox } from "lucide-react";
+
+import { SidebarPanel, type CategoryActionResult } from "@/components/app-sidebar";
+import { DemandDialog } from "@/components/demand-dialog";
+import { KanbanBoard } from "@/components/kanban/kanban-board";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Button } from "@/components/ui/button";
+import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
+import { Skeleton } from "@/components/ui/skeleton";
+import { toast } from "@/components/ui/sonner";
+import { useAuth } from "@/hooks/use-auth";
+import { useCategories, useCreateCategory, useDeleteCategory } from "@/hooks/use-categories";
+import {
+  useCreateDemand,
+  useDeleteDemand,
+  useDemands,
+  useMoveDemand,
+  useUpdateDemand,
+  type DemandInput,
+} from "@/hooks/use-demands";
+import { filterDemands } from "@/lib/demands";
+import { VIEWS } from "@/types/doapp";
+import type { ListDoapp, TaskStatus, ViewKey } from "@/types/doapp";
+
+import { BoardHeader } from "./BoardHeader";
+
+interface DialogState {
+  open: boolean;
+  demand: ListDoapp | null;
+  status?: TaskStatus;
+}
+
+const CLOSED_DIALOG: DialogState = { open: false, demand: null };
+
+function BoardSkeleton() {
+  return (
+    <div className="flex h-full gap-4 overflow-hidden">
+      {[0, 1, 2, 3].map((column) => (
+        <div
+          key={column}
+          className="flex h-full w-[288px] shrink-0 flex-col gap-2 rounded-lg border border-border bg-muted/40 p-3"
+        >
+          <Skeleton className="h-4 w-24" />
+          <Skeleton className="h-20 w-full" />
+          <Skeleton className="h-20 w-full" />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function EmptyBoard({ onCreate }: { onCreate: () => void }) {
+  return (
+    <div className="flex flex-col items-center justify-center gap-4 rounded-xl border border-dashed border-border px-6 py-16 text-center">
+      <Inbox className="size-10 text-muted-foreground/40" />
+      <div className="flex flex-col gap-2">
+        <h2 className="text-lg font-semibold tracking-[-0.01em] text-foreground">
+          Your board is empty
+        </h2>
+        <p className="max-w-[42ch] text-sm leading-relaxed text-muted-foreground">
+          Add your first demand and it lands in Pending. The deadline decides when it
+          shows up in Daily, Weekly, Monthly, or Long-term, and the Overdue lane fills
+          itself.
+        </p>
+      </div>
+      <Button type="button" onClick={onCreate}>
+        Add a demand
+      </Button>
+    </div>
+  );
+}
+
+const Board = () => {
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  const view = useMemo<ViewKey>(() => {
+    const requested = searchParams.get("view");
+    return VIEWS.some((option) => option.value === requested)
+      ? (requested as ViewKey)
+      : "all";
+  }, [searchParams]);
+
+  const activeCategoryId = useMemo<number | "all">(() => {
+    const requested = searchParams.get("category");
+    const parsed = Number(requested);
+    return requested && Number.isFinite(parsed) ? parsed : "all";
+  }, [searchParams]);
+
+  const search = searchParams.get("q") ?? "";
+
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [dialog, setDialog] = useState<DialogState>(CLOSED_DIALOG);
+  const [pendingDelete, setPendingDelete] = useState<ListDoapp | null>(null);
+
+  const { demands, isPending } = useDemands(user?.id ?? null);
+  const { categories } = useCategories();
+  const { createDemand } = useCreateDemand(user?.id ?? null);
+  const { updateDemand } = useUpdateDemand();
+  const { moveDemand } = useMoveDemand();
+  const { deleteDemand } = useDeleteDemand();
+  const { createCategory } = useCreateCategory();
+  const { deleteCategory } = useDeleteCategory();
+
+  const now = new Date();
+
+  const counts = useMemo(() => {
+    const views: Record<ViewKey, number> = {
+      all: demands.length,
+      daily: 0,
+      weekly: 0,
+      monthly: 0,
+      long_term: 0,
+    };
+    const byCategory: Record<number, number> = {};
+
+    demands.forEach((demand) => {
+      views[demand.horizon] += 1;
+      byCategory[demand.category_id] = (byCategory[demand.category_id] ?? 0) + 1;
+    });
+
+    return { views, categories: byCategory };
+  }, [demands]);
+
+  const visibleDemands = useMemo(
+    () =>
+      filterDemands(demands, {
+        view,
+        categoryId: activeCategoryId,
+        search,
+      }),
+    [demands, view, activeCategoryId, search],
+  );
+
+  const activeCategory =
+    activeCategoryId === "all"
+      ? null
+      : categories.find((category) => category.id === activeCategoryId) ?? null;
+
+  const viewLabel =
+    VIEWS.find((option) => option.value === view)?.label ?? "All demands";
+
+  const updateParams = (changes: Record<string, string | null>) => {
+    const next = new URLSearchParams(searchParams);
+    Object.entries(changes).forEach(([key, value]) => {
+      if (value === null || value === "") next.delete(key);
+      else next.set(key, value);
+    });
+    setSearchParams(next, { replace: true });
+  };
+
+  const openCreate = (status?: TaskStatus) =>
+    setDialog({ open: true, demand: null, status });
+
+  const handleDialogSubmit = async (input: DemandInput) => {
+    if (dialog.demand) {
+      await updateDemand({ id: dialog.demand.id, input });
+      toast.success("Demand updated");
+      return;
+    }
+
+    await createDemand(input);
+    toast.success("Demand added");
+  };
+
+  const handleMove = (demand: ListDoapp, status: TaskStatus) => {
+    void moveDemand({ id: demand.id, status });
+  };
+
+  const requestDelete = (demand: ListDoapp) => {
+    setDialog(CLOSED_DIALOG);
+    setPendingDelete(demand);
+  };
+
+  const confirmDelete = async () => {
+    if (!pendingDelete) return;
+    await deleteDemand(pendingDelete.id);
+    setPendingDelete(null);
+    toast.success("Demand deleted");
+  };
+
+  const handleCreateCategory = async (name: string): Promise<CategoryActionResult> => {
+    const result = await createCategory(name);
+    if (result.ok) toast.success(`"${name.trim()}" added`);
+    else if (result.error) toast.error(result.error);
+    return result;
+  };
+
+  const handleDeleteCategory = async (id: number): Promise<CategoryActionResult> => {
+    const result = await deleteCategory(id);
+    if (!result.ok && result.error) toast.error(result.error);
+    else if (result.ok) {
+      if (activeCategoryId === id) updateParams({ category: null });
+      toast.success("Category deleted");
+    }
+    return result;
+  };
+
+  const sidebarProps = {
+    categories,
+    counts,
+    activeView: view,
+    activeCategoryId,
+    userName: user?.name ?? "",
+    onSelectView: (nextView: ViewKey) =>
+      updateParams({ view: nextView === "all" ? null : nextView }),
+    onSelectCategory: (categoryId: number | "all") =>
+      updateParams({ category: categoryId === "all" ? null : String(categoryId) }),
+    onCreateCategory: handleCreateCategory,
+    onDeleteCategory: handleDeleteCategory,
+    onLogout: () => {
+      logout();
+      navigate("/login", { replace: true });
+    },
+  };
+
+  return (
+    <div className="flex h-dvh w-full overflow-hidden bg-background">
+      <aside className="hidden w-[264px] shrink-0 border-r border-sidebar-border md:block">
+        <SidebarPanel {...sidebarProps} />
+      </aside>
+
+      <Sheet open={mobileNavOpen} onOpenChange={setMobileNavOpen}>
+        <SheetContent side="left" className="w-[280px] border-sidebar-border bg-sidebar p-0">
+          <SheetTitle className="sr-only">Board navigation</SheetTitle>
+          <SidebarPanel {...sidebarProps} onNavigate={() => setMobileNavOpen(false)} />
+        </SheetContent>
+      </Sheet>
+
+      <main className="flex min-w-0 flex-1 flex-col">
+        <BoardHeader
+          title={viewLabel}
+          category={activeCategory}
+          search={search}
+          onSearchChange={(value) => updateParams({ q: value })}
+          onClearCategory={() => updateParams({ category: null })}
+          onCreate={() => openCreate()}
+          onOpenNav={() => setMobileNavOpen(true)}
+        />
+
+        <div className="min-h-0 flex-1 px-4 py-4 md:px-6 md:py-6">
+          {isPending ? (
+            <BoardSkeleton />
+          ) : demands.length === 0 ? (
+            <EmptyBoard onCreate={() => openCreate()} />
+          ) : (
+            <KanbanBoard
+              demands={visibleDemands}
+              categories={categories}
+              now={now}
+              onQuickAdd={openCreate}
+              onEdit={(demand) => setDialog({ open: true, demand })}
+              onMove={handleMove}
+              onDelete={requestDelete}
+            />
+          )}
+        </div>
+      </main>
+
+      <DemandDialog
+        open={dialog.open}
+        onOpenChange={(open) => setDialog(open ? dialog : CLOSED_DIALOG)}
+        demand={dialog.demand}
+        defaultStatus={dialog.status}
+        categories={categories}
+        onSubmit={handleDialogSubmit}
+        onDelete={requestDelete}
+      />
+
+      <AlertDialog
+        open={pendingDelete !== null}
+        onOpenChange={(open) => {
+          if (!open) setPendingDelete(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this demand?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {pendingDelete?.description} will be removed from your board. This cannot
+              be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Keep it</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => void confirmDelete()}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
+  );
+};
+
+export default Board;

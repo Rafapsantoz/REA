@@ -29,6 +29,8 @@ flowchart LR
 | **RPsec Link** | 🟢 Open-Source / 🔴 Paid | **Acesso Remoto Ultraleve (Web Browser)**<br/>• *Isca/Open:* Acesso local direto sem limites de tempo ou pop-ups<br/>• *Paid:* Painel central multi-máquinas e acesso desatendido | [`rpsec_link/`](rpsec_link/) | 🟢 MVP Operacional |
 | **RPsec DDTank Bot (Sky City)** | 🔴 Paid / 🟡 Demo | **Licença Paga + Trial Gratuito (Isca)**<br/>• *Isca/Demo:* Teste grátis de 24h ou modo 1 quadrante<br/>• *Paid:* Licença HWID completa para 4 instâncias com aceleração | [`rpsec_ddtank/`](rpsec_ddtank/) | 🟡 MVP Operacional |
 | **RPsec Balcão (SalgadoFácil)** | 🔴 Paid / 🟡 Demo | **SaaS Freemium (Isca Local)**<br/>• *Isca/Demo:* Versão local 100% gratuita para teste no balcão<br/>• *Paid:* Assinatura Cloud (R$ 29,90/mês) com backup e multi-telas | [`rpsec_balcao/`](rpsec_balcao/) | 🟡 Em Estruturação |
+| **RPsec Financeiro (Financial Organizer)** | 🔴 Paid / 🟡 Demo | **Controle Familiar & Conciliação com IA**<br/>• *Isca/Demo:* Versão local gratuita com rateio familiar manual<br/>• *Paid:* Leitura inteligente de faturas em PDF via Gemini AI | [`rpsec_financeiro/`](rpsec_financeiro/) | 🟢 MVP Operacional |
+| **RPsec Task (Momentum)** | 🟢 Open-Source / 🟡 Demo | **Organizador de Demandas & Kanban**<br/>• *Isca/Open:* Gestão visual de tarefas com 4 horizontes temporais<br/>• *Paid/Cloud:* Sincronização multi-dispositivos e automações | [`rpsec_task/`](rpsec_task/) | 🟢 MVP Operacional |
 
 ---
 
@@ -48,6 +50,16 @@ flowchart LR
 - **A Isca:** Acesso remoto direto via navegador para profissionais de TI, técnicos e gamers que estão fartos dos limites e pop-ups do TeamViewer/AnyDesk.
 - **A Conversão:** Venda de licença comercial corporativa para empresas de suporte com painel de múltiplos computadores e acesso desatendido por senha mestra.
 - **Canal de Venda:** Comunidades de suporte técnico, fóruns de TI e clientes diretos da RPsecti.
+
+### 4. Isca do RPsec Financeiro (Finanças Familiares & Cartões)
+- **A Isca:** Versão local gratuita para divisão de contas e controle de cartão de crédito familiar (Rafael, Mãe, Irmã) sem limite de lançamentos.
+- **A Conversão:** Assinatura do módulo inteligente de IA que lê PDFs de qualquer fatura bancária em segundos com o Gemini, acabando com a digitação manual de compras.
+- **Canal de Venda:** Pessoas físicas, famílias com cartões compartilhados e autônomos.
+
+### 5. Isca do RPsec Task (Produtividade & Gestão)
+- **A Isca:** Organizador visual de tarefas superior ao Trello, rodando direto no navegador com visão Kanban e 4 horizontes temporais (diário a longo prazo).
+- **A Conversão:** Versão cloud com times colaborativos e backup automático em nuvem.
+- **Canal de Venda:** Profissionais autônomos, desenvolvedores e pequenas equipes.
 
 ---
 
