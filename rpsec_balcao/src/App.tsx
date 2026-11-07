@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import type { Product, Sale, Expense } from './types'
+import type { Product, Sale, Expense, CartItem } from './types'
 import {
   loadProducts,
   saveProducts,
@@ -7,6 +7,8 @@ import {
   saveSale,
   loadExpenses,
   saveExpense,
+  loadActiveCart,
+  saveActiveCart,
 } from './storage'
 import { PDVView } from './components/PDVView'
 import { ExpensesView } from './components/ExpensesView'
@@ -28,6 +30,7 @@ export function App() {
   const [products, setProducts] = useState<Product[]>([])
   const [sales, setSales] = useState<Sale[]>([])
   const [expenses, setExpenses] = useState<Expense[]>([])
+  const [cart, setCart] = useState<CartItem[]>(() => loadActiveCart())
   const [currentTime, setCurrentTime] = useState<string>('')
 
   useEffect(() => {
@@ -48,9 +51,16 @@ export function App() {
     return () => clearInterval(interval)
   }, [])
 
+  // Persiste o carrinho ativo automaticamente sempre que houver alteração
+  useEffect(() => {
+    saveActiveCart(cart)
+  }, [cart])
+
   const handleCompleteSale = (sale: Sale) => {
     const updated = saveSale(sale)
     setSales(updated)
+    setCart([])
+    saveActiveCart([])
   }
 
   const handleAddExpense = (expense: Expense) => {
@@ -68,6 +78,8 @@ export function App() {
     setProducts(updatedProds)
     saveProducts(updatedProds)
   }
+
+  const totalCartItems = cart.reduce((sum, item) => sum + item.quantity, 0)
 
   return (
     <div className="min-h-screen bg-slate-100 flex flex-col">
@@ -94,7 +106,7 @@ export function App() {
           <nav className="flex items-center gap-1.5 bg-slate-800/80 p-1 rounded-xl border border-slate-700/60">
             <button
               onClick={() => setActiveTab('pdv')}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg font-bold text-sm transition-all cursor-pointer ${
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg font-bold text-sm transition-all cursor-pointer relative ${
                 activeTab === 'pdv'
                   ? 'bg-amber-500 text-slate-950 shadow-sm'
                   : 'text-slate-300 hover:text-white hover:bg-slate-700/50'
@@ -102,6 +114,13 @@ export function App() {
             >
               <ShoppingBag className="w-4 h-4" />
               Caixa / Vender
+              {totalCartItems > 0 && (
+                <span className={`px-2 py-0.5 rounded-full text-xs font-black ml-1 ${
+                  activeTab === 'pdv' ? 'bg-slate-950 text-white' : 'bg-amber-500 text-slate-950'
+                }`}>
+                  {totalCartItems}
+                </span>
+              )}
             </button>
 
             <button
@@ -149,27 +168,32 @@ export function App() {
         </div>
       </header>
 
-      {/* Conteúdo Principal */}
+      {/* Conteúdo Principal com Preservação de Estado entre Abas */}
       <main className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6">
-        {activeTab === 'pdv' && (
-          <PDVView products={products} onCompleteSale={handleCompleteSale} />
-        )}
+        <div className={activeTab === 'pdv' ? 'block' : 'hidden'}>
+          <PDVView
+            products={products}
+            cart={cart}
+            setCart={setCart}
+            onCompleteSale={handleCompleteSale}
+          />
+        </div>
 
-        {activeTab === 'expenses' && (
+        <div className={activeTab === 'expenses' ? 'block' : 'hidden'}>
           <ExpensesView
             expenses={expenses}
             onAddExpense={handleAddExpense}
             onDeleteExpense={handleDeleteExpense}
           />
-        )}
+        </div>
 
-        {activeTab === 'summary' && (
+        <div className={activeTab === 'summary' ? 'block' : 'hidden'}>
           <DailySummaryView sales={sales} expenses={expenses} />
-        )}
+        </div>
 
-        {activeTab === 'products' && (
+        <div className={activeTab === 'products' ? 'block' : 'hidden'}>
           <ProductsView products={products} onUpdateProducts={handleUpdateProducts} />
-        )}
+        </div>
       </main>
     </div>
   )

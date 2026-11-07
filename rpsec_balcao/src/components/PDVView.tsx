@@ -16,11 +16,12 @@ import {
 
 interface PDVViewProps {
   products: Product[]
+  cart: CartItem[]
+  setCart: React.Dispatch<React.SetStateAction<CartItem[]>>
   onCompleteSale: (sale: Sale) => void
 }
 
-export const PDVView: React.FC<PDVViewProps> = ({ products, onCompleteSale }) => {
-  const [cart, setCart] = useState<CartItem[]>([])
+export const PDVView: React.FC<PDVViewProps> = ({ products, cart, setCart, onCompleteSale }) => {
   const [selectedCategory, setSelectedCategory] = useState<string>('todos')
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('pix')
   const [cashGiven, setCashGiven] = useState<string>('')
