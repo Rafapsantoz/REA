@@ -1,9 +1,12 @@
-# Ambientes Virtuais Python
+# Ambientes Virtuais Python & Node
 .venv/
 venv/
 env/
 ENV/
 *.env
+node_modules/
+dist/
+build/
 
 # Cache Python
 __pycache__/
@@ -24,6 +27,8 @@ recordings/
 *.tmp
 *.mp4
 *.wav
+rpsec_ddtank/data/raw/
+rpsec_ddtank/data/frames/
 
 # Logs e arquivos de sistema
 *.log
