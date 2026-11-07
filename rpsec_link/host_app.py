@@ -1,7 +1,7 @@
 """
 RPsec Link - Interface Gráfica do Host (Desktop Agent).
 Proporciona uma experiência idêntica ao AnyDesk Host / TeamViewer Host,
-com identidade visual RPsecti, ícone personalizado e sem janelas de CMD visíveis.
+com suporte a Tema Claro e Escuro, geração de PIN aleatório e identidade visual oficial RPsecti.
 """
 
 import os
@@ -28,6 +28,7 @@ import customtkinter as ctk
 import uvicorn
 import server
 
+# Tema inicial padrão escuro
 ctk.set_appearance_mode("dark")
 ctk.set_default_color_theme("blue")
 
@@ -40,7 +41,7 @@ class HostApp(ctk.CTk):
         super().__init__()
 
         self.title("RPsec Link — Host Agent")
-        self.geometry("490x610")
+        self.geometry("500x640")
         self.resizable(False, False)
 
         # Aplica o ícone oficial da RPsecti na janela
@@ -50,7 +51,7 @@ class HostApp(ctk.CTk):
             except Exception:
                 pass
 
-        # Configurações de rede
+        # Configurações de rede e PIN aleatório inicial
         self.port = server.CONFIG["port"]
         self.pin = server.CONFIG["pin"]
         self.ips = server.get_network_ips()
@@ -77,29 +78,41 @@ class HostApp(ctk.CTk):
         self.server_thread.start()
 
     def _build_ui(self):
-        # 1. Cabeçalho com Identidade Visual RPsecti
+        # 1. Cabeçalho Superior com Marca e Controle de Tema
         header_frame = ctk.CTkFrame(self, fg_color="transparent")
-        header_frame.pack(fill="x", padx=24, pady=(22, 8))
-
-        brand_row = ctk.CTkFrame(header_frame, fg_color="transparent")
-        brand_row.pack(side="left")
+        header_frame.pack(fill="x", padx=24, pady=(20, 4))
 
         title_label = ctk.CTkLabel(
-            brand_row,
+            header_frame,
             text="⚡ RPsec Link",
             font=ctk.CTkFont(size=22, weight="bold"),
-            text_color="#f8fafc"
+            text_color=("#0f172a", "#f8fafc")
         )
         title_label.pack(side="left")
 
+        # Controles do lado direito (Tema + Badge Online)
+        right_header = ctk.CTkFrame(header_frame, fg_color="transparent")
+        right_header.pack(side="right")
+
+        # Seletor de Tema (Escuro / Claro)
+        self.theme_selector = ctk.CTkSegmentedButton(
+            right_header,
+            values=["🌙 Escuro", "☀️ Claro"],
+            command=self._on_theme_change,
+            height=28,
+            font=ctk.CTkFont(size=11, weight="bold")
+        )
+        self.theme_selector.set("🌙 Escuro")
+        self.theme_selector.pack(side="left", padx=(0, 10))
+
         self.badge_status = ctk.CTkLabel(
-            header_frame,
+            right_header,
             text="● ONLINE",
             font=ctk.CTkFont(size=11, weight="bold"),
             text_color="#10b981",
-            fg_color="#064e3b",
+            fg_color=("#dcfce7", "#064e3b"),
             corner_radius=12,
-            padx=12,
+            padx=10,
             pady=4
         )
         self.badge_status.pack(side="right")
@@ -108,19 +121,25 @@ class HostApp(ctk.CTk):
             self,
             text="Agente Host Oficial • RPsecti Soluções Inteligentes",
             font=ctk.CTkFont(size=12),
-            text_color="#64748b"
+            text_color=("#64748b", "#94a3b8")
         )
-        subtitle.pack(anchor="w", padx=24, pady=(0, 16))
+        subtitle.pack(anchor="w", padx=24, pady=(0, 14))
 
         # 2. CARD 1: Endereço desta Máquina
-        card_ip = ctk.CTkFrame(self, fg_color="#1e293b", corner_radius=14, border_width=1, border_color="#334155")
+        card_ip = ctk.CTkFrame(
+            self,
+            fg_color=("#f8fafc", "#1e293b"),
+            corner_radius=14,
+            border_width=1,
+            border_color=("#e2e8f0", "#334155")
+        )
         card_ip.pack(fill="x", padx=24, pady=8)
 
         lbl_ip_title = ctk.CTkLabel(
             card_ip,
             text="ENDEREÇO DESTA MÁQUINA (ID DE ACESSO)",
             font=ctk.CTkFont(size=11, weight="bold"),
-            text_color="#94a3b8"
+            text_color=("#64748b", "#94a3b8")
         )
         lbl_ip_title.pack(anchor="w", padx=16, pady=(14, 4))
 
@@ -128,7 +147,7 @@ class HostApp(ctk.CTk):
             card_ip,
             text=self.connection_url,
             font=ctk.CTkFont(family="Consolas", size=18, weight="bold"),
-            text_color="#38bdf8"
+            text_color=("#0284c7", "#38bdf8")
         )
         self.lbl_ip_val.pack(anchor="w", padx=16, pady=(0, 12))
 
@@ -139,8 +158,9 @@ class HostApp(ctk.CTk):
             btn_row,
             text="📋 Copiar Link",
             font=ctk.CTkFont(size=12, weight="bold"),
-            fg_color="#334155",
-            hover_color="#475569",
+            fg_color=("#e2e8f0", "#334155"),
+            text_color=("#0f172a", "#f8fafc"),
+            hover_color=("#cbd5e1", "#475569"),
             height=36,
             command=self._copy_link
         )
@@ -152,20 +172,27 @@ class HostApp(ctk.CTk):
             font=ctk.CTkFont(size=12, weight="bold"),
             fg_color="#0284c7",
             hover_color="#0369a1",
+            text_color="#ffffff",
             height=36,
             command=lambda: webbrowser.open(self.connection_url)
         )
         btn_open.pack(side="right", expand=True, fill="x", padx=(6, 0))
 
-        # 3. CARD 2: PIN de Acesso
-        card_pin = ctk.CTkFrame(self, fg_color="#1e293b", corner_radius=14, border_width=1, border_color="#334155")
+        # 3. CARD 2: PIN de Acesso (Gerado Aleatoriamente com Botão de Regenerar)
+        card_pin = ctk.CTkFrame(
+            self,
+            fg_color=("#f8fafc", "#1e293b"),
+            corner_radius=14,
+            border_width=1,
+            border_color=("#e2e8f0", "#334155")
+        )
         card_pin.pack(fill="x", padx=24, pady=8)
 
         lbl_pin_title = ctk.CTkLabel(
             card_pin,
-            text="SENHA / PIN DE ACESSO",
+            text="SENHA / PIN DE ACESSO (GERADO ALEATORIAMENTE)",
             font=ctk.CTkFont(size=11, weight="bold"),
-            text_color="#94a3b8"
+            text_color=("#64748b", "#94a3b8")
         )
         lbl_pin_title.pack(anchor="w", padx=16, pady=(14, 4))
 
@@ -174,33 +201,59 @@ class HostApp(ctk.CTk):
 
         self.entry_pin = ctk.CTkEntry(
             pin_row,
-            font=ctk.CTkFont(family="Consolas", size=16, weight="bold"),
+            font=ctk.CTkFont(family="Consolas", size=17, weight="bold"),
             height=36,
-            justify="center"
+            justify="center",
+            fg_color=("#ffffff", "#0b0f19"),
+            text_color=("#0f172a", "#f8fafc"),
+            border_color=("#cbd5e1", "#334155")
         )
         self.entry_pin.insert(0, self.pin)
         self.entry_pin.pack(side="left", expand=True, fill="x", padx=(0, 8))
 
+        # Botão para Gerar Novo PIN Aleatório
+        btn_gen_pin = ctk.CTkButton(
+            pin_row,
+            text="🎲 Novo PIN",
+            width=100,
+            height=36,
+            font=ctk.CTkFont(size=12, weight="bold"),
+            fg_color=("#e2e8f0", "#334155"),
+            text_color=("#0f172a", "#f8fafc"),
+            hover_color=("#cbd5e1", "#475569"),
+            command=self._generate_new_pin
+        )
+        btn_gen_pin.pack(side="left", padx=(0, 6))
+
+        # Botão para Salvar PIN manual
         btn_save_pin = ctk.CTkButton(
             pin_row,
-            text="Salvar PIN",
-            width=90,
+            text="Salvar",
+            width=80,
             height=36,
-            fg_color="#334155",
-            hover_color="#475569",
+            font=ctk.CTkFont(size=12, weight="bold"),
+            fg_color="#0284c7",
+            hover_color="#0369a1",
+            text_color="#ffffff",
             command=self._update_pin
         )
         btn_save_pin.pack(side="right")
 
         # 4. CARD 3: Status da Sessão
-        card_session = ctk.CTkFrame(self, fg_color="#0f172a", corner_radius=14, border_width=1, border_color="#1e293b")
+        card_session = ctk.CTkFrame(
+            self,
+            fg_color=("#f1f5f9", "#0f172a"),
+            corner_radius=14,
+            border_width=1,
+            border_color=("#e2e8f0", "#1e293b")
+        )
         card_session.pack(fill="x", padx=24, pady=8)
 
         lbl_sess_title = ctk.CTkLabel(
             card_session,
             text="STATUS DA SESSÃO REMOTA",
             font=ctk.CTkFont(size=11, weight="bold"),
-            text_color="#64748b"
+            text_color=("#64748b", "#94a3b8")
         )
         lbl_sess_title.pack(anchor="w", padx=16, pady=(14, 4))
 
@@ -208,15 +261,15 @@ class HostApp(ctk.CTk):
             card_session,
             text="🟢 Pronto para conexões — Aguardando...",
             font=ctk.CTkFont(size=13, weight="bold"),
-            text_color="#94a3b8"
+            text_color=("#334155", "#cbd5e1")
         )
         self.lbl_session_status.pack(anchor="w", padx=16, pady=(0, 4))
 
         self.lbl_res_info = ctk.CTkLabel(
             card_session,
-            text=f"Resolução Nativa Real: {server.capturer.width}x{server.capturer.height} (DPI 100%)",
+            text=f"Resolução Nativa Real: {server.capturer.width}x{server.capturer.height} (1080p Nativo)",
             font=ctk.CTkFont(size=11),
-            text_color="#64748b"
+            text_color=("#64748b", "#94a3b8")
         )
         self.lbl_res_info.pack(anchor="w", padx=16, pady=(0, 14))
 
@@ -225,12 +278,27 @@ class HostApp(ctk.CTk):
             self,
             text="Minimizar para Segundo Plano",
             fg_color="transparent",
-            text_color="#64748b",
-            hover_color="#1e293b",
+            text_color=("#64748b", "#94a3b8"),
+            hover_color=("#e2e8f0", "#1e293b"),
             height=30,
             command=self.iconify
         )
         btn_min.pack(pady=(12, 0))
+
+    def _on_theme_change(self, mode: str):
+        """Alterna entre Tema Escuro e Tema Claro."""
+        if "Claro" in mode:
+            ctk.set_appearance_mode("light")
+        else:
+            ctk.set_appearance_mode("dark")
+
+    def _generate_new_pin(self):
+        """Gera um novo PIN numérico aleatório e atualiza no servidor."""
+        new_pin = server.generate_random_pin()
+        server.CONFIG["pin"] = new_pin
+        self.pin = new_pin
+        self.entry_pin.delete(0, "end")
+        self.entry_pin.insert(0, new_pin)
 
     def _copy_link(self):
         self.clipboard_clear()
@@ -253,16 +321,24 @@ class HostApp(ctk.CTk):
 
     def _update_session_ui(self, connected: bool, client_ip: str, total: int):
         if total > 0:
-            self.badge_status.configure(text=f"● SESSÃO ATIVA ({total})", text_color="#38bdf8", fg_color="#0c4a6e")
+            self.badge_status.configure(
+                text=f"● SESSÃO ATIVA ({total})",
+                text_color="#0284c7",
+                fg_color=("#bae6fd", "#0c4a6e")
+            )
             self.lbl_session_status.configure(
                 text=f"🔵 Conectado com sucesso de {client_ip}",
-                text_color="#38bdf8"
+                text_color="#0284c7"
             )
         else:
-            self.badge_status.configure(text="● ONLINE", text_color="#10b981", fg_color="#064e3b")
+            self.badge_status.configure(
+                text="● ONLINE",
+                text_color="#10b981",
+                fg_color=("#dcfce7", "#064e3b")
+            )
             self.lbl_session_status.configure(
                 text="🟢 Pronto para conexões — Aguardando...",
-                text_color="#94a3b8"
+                text_color=("#334155", "#cbd5e1")
             )
 
 

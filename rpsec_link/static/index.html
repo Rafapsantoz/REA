@@ -9,6 +9,56 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
   <style>
+    :root {
+      --bg-page: #000000;
+      --bg-auth: radial-gradient(circle at 50% 25%, #1e293b 0%, #030712 85%);
+      --bg-card: rgba(17, 24, 39, 0.92);
+      --border-card: rgba(255, 255, 255, 0.12);
+      --text-primary: #f8fafc;
+      --text-secondary: #94a3b8;
+      --input-bg: #0b0f19;
+      --input-border: #334155;
+      --input-text: #f8fafc;
+      --toolbar-bg: rgba(15, 23, 42, 0.95);
+      --toolbar-border: rgba(255, 255, 255, 0.15);
+      --btn-bg: #1e293b;
+      --btn-border: #334155;
+      --btn-text: #cbd5e1;
+      --btn-hover: #334155;
+      --btn-hover-text: #ffffff;
+      --brand-blue: #0284c7;
+      --brand-cyan: #38bdf8;
+      --shadow-card: 0 25px 60px -15px rgba(0, 0, 0, 0.8);
+      --notch-bg: rgba(15, 23, 42, 0.85);
+      --notch-text: #38bdf8;
+      --notch-border: rgba(56, 189, 248, 0.35);
+    }
+
+    body.theme-light {
+      --bg-page: #f8fafc;
+      --bg-auth: radial-gradient(circle at 50% 25%, #e2e8f0 0%, #cbd5e1 85%);
+      --bg-card: rgba(255, 255, 255, 0.96);
+      --border-card: #cbd5e1;
+      --text-primary: #0f172a;
+      --text-secondary: #64748b;
+      --input-bg: #ffffff;
+      --input-border: #cbd5e1;
+      --input-text: #0f172a;
+      --toolbar-bg: rgba(255, 255, 255, 0.96);
+      --toolbar-border: #e2e8f0;
+      --btn-bg: #f1f5f9;
+      --btn-border: #cbd5e1;
+      --btn-text: #334155;
+      --btn-hover: #e2e8f0;
+      --btn-hover-text: #0f172a;
+      --brand-blue: #0284c7;
+      --brand-cyan: #0284c7;
+      --shadow-card: 0 20px 40px -10px rgba(0, 0, 0, 0.15);
+      --notch-bg: rgba(255, 255, 255, 0.9);
+      --notch-text: #0284c7;
+      --notch-border: rgba(2, 132, 199, 0.3);
+    }
+
     * {
       box-sizing: border-box;
       margin: 0;
@@ -20,31 +70,50 @@
       width: 100%;
       height: 100%;
       overflow: hidden;
-      background-color: #000000;
-      color: #f1f5f9;
+      background-color: var(--bg-page);
+      color: var(--text-primary);
       font-family: 'Plus Jakarta Sans', -apple-system, sans-serif;
+      transition: background-color 0.2s, color 0.2s;
     }
 
     /* Tela de Autenticação / PIN */
     #authOverlay {
       position: fixed;
       inset: 0;
-      background: radial-gradient(circle at 50% 25%, #1e293b 0%, #030712 85%);
+      background: var(--bg-auth);
       display: flex;
       align-items: center;
       justify-content: center;
       z-index: 2000;
     }
     .auth-card {
-      background: rgba(17, 24, 39, 0.9);
+      background: var(--bg-card);
       backdrop-filter: blur(20px);
-      border: 1px solid rgba(255, 255, 255, 0.12);
+      border: 1px solid var(--border-card);
       border-radius: 24px;
       padding: 2.75rem 2.25rem;
       width: 100%;
       max-width: 430px;
-      box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.8);
+      box-shadow: var(--shadow-card);
       text-align: center;
+      position: relative;
+    }
+    .auth-theme-btn {
+      position: absolute;
+      top: 1.25rem;
+      right: 1.25rem;
+      background: var(--btn-bg);
+      border: 1px solid var(--btn-border);
+      color: var(--btn-text);
+      padding: 0.35rem 0.65rem;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 0.85rem;
+      transition: all 0.15s;
+    }
+    .auth-theme-btn:hover {
+      background: var(--btn-hover);
+      color: var(--btn-hover-text);
     }
     .brand-badge {
       display: inline-flex;
@@ -52,8 +121,8 @@
       gap: 0.5rem;
       padding: 0.4rem 0.95rem;
       background: rgba(14, 165, 233, 0.15);
-      border: 1px solid rgba(14, 165, 233, 0.35);
-      color: #38bdf8;
+      border: 1px solid var(--notch-border);
+      color: var(--brand-cyan);
       border-radius: 9999px;
       font-size: 0.8rem;
       font-weight: 700;
@@ -64,21 +133,21 @@
     .auth-title {
       font-size: 1.85rem;
       font-weight: 800;
-      color: #ffffff;
+      color: var(--text-primary);
       margin-bottom: 0.5rem;
     }
     .auth-desc {
       font-size: 0.9rem;
-      color: #94a3b8;
+      color: var(--text-secondary);
       margin-bottom: 1.75rem;
     }
     .pin-input {
       width: 100%;
       padding: 1.1rem;
-      background: #0b0f19;
-      border: 2px solid #334155;
+      background: var(--input-bg);
+      border: 2px solid var(--input-border);
       border-radius: 14px;
-      color: #f8fafc;
+      color: var(--input-text);
       font-family: 'JetBrains Mono', monospace;
       font-size: 1.75rem;
       text-align: center;
@@ -88,8 +157,8 @@
       margin-bottom: 1.25rem;
     }
     .pin-input:focus {
-      border-color: #38bdf8;
-      box-shadow: 0 0 0 4px rgba(56, 189, 248, 0.25);
+      border-color: var(--brand-blue);
+      box-shadow: 0 0 0 4px rgba(2, 132, 199, 0.25);
     }
     .btn-connect {
       width: 100%;
@@ -117,7 +186,7 @@
       align-items: center;
       justify-content: center;
       position: relative;
-      background: #000000;
+      background: var(--bg-page);
       overflow: hidden;
       outline: none;
     }
@@ -129,7 +198,6 @@
       image-rendering: crisp-edges;
       transition: width 0.15s, height 0.15s;
     }
-    /* Modos de visualização */
     #remoteCanvas.mode-fit {
       max-width: 100vw;
       max-height: 100vh;
@@ -162,9 +230,9 @@
     #toolbarTab {
       width: 130px;
       height: 20px;
-      background: rgba(15, 23, 42, 0.85);
+      background: var(--notch-bg);
       backdrop-filter: blur(10px);
-      border: 1px solid rgba(56, 189, 248, 0.35);
+      border: 1px solid var(--notch-border);
       border-top: none;
       border-radius: 0 0 10px 10px;
       cursor: pointer;
@@ -173,15 +241,15 @@
       justify-content: center;
       font-size: 0.65rem;
       font-weight: 700;
-      color: #38bdf8;
+      color: var(--notch-text);
       letter-spacing: 0.05em;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
       transition: all 0.2s;
     }
     #toolbarZone:hover #toolbarTab {
-      background: #0284c7;
+      background: var(--brand-blue);
       color: #ffffff;
-      border-color: #38bdf8;
+      border-color: var(--brand-blue);
       height: 22px;
     }
 
@@ -191,20 +259,19 @@
       top: 0;
       left: 50%;
       transform: translateX(-50%) translateY(-105%);
-      background: rgba(15, 23, 42, 0.95);
+      background: var(--toolbar-bg);
       backdrop-filter: blur(18px);
-      border: 1px solid rgba(255, 255, 255, 0.15);
+      border: 1px solid var(--toolbar-border);
       border-top: none;
       border-radius: 0 0 16px 16px;
       padding: 0.5rem 1.25rem;
       display: flex;
       align-items: center;
-      gap: 0.75rem;
+      gap: 0.65rem;
       z-index: 1001;
-      box-shadow: 0 15px 35px -5px rgba(0, 0, 0, 0.65);
+      box-shadow: 0 15px 35px -5px rgba(0, 0, 0, 0.4);
       transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
     }
-    /* Abre ao passar o mouse na aba ou na própria barra, ou se fixada */
     #toolbarZone:hover ~ #toolbar,
     #toolbar:hover,
     #toolbar.pinned {
@@ -225,17 +292,17 @@
     .stat-badge {
       font-family: 'JetBrains Mono', monospace;
       font-size: 0.75rem;
-      color: #94a3b8;
+      color: var(--text-secondary);
       white-space: nowrap;
     }
     .stat-badge strong {
-      color: #f8fafc;
+      color: var(--text-primary);
     }
     .tb-btn {
-      background: #1e293b;
-      color: #cbd5e1;
-      border: 1px solid #334155;
-      padding: 0.4rem 0.75rem;
+      background: var(--btn-bg);
+      color: var(--btn-text);
+      border: 1px solid var(--btn-border);
+      padding: 0.4rem 0.7rem;
       border-radius: 8px;
       font-size: 0.75rem;
       font-weight: 700;
@@ -247,19 +314,18 @@
       white-space: nowrap;
     }
     .tb-btn:hover {
-      background: #334155;
-      color: #ffffff;
-      border-color: #475569;
+      background: var(--btn-hover);
+      color: var(--btn-hover-text);
     }
     .tb-btn.active {
-      background: #0284c7;
+      background: var(--brand-blue);
       color: #ffffff;
-      border-color: #38bdf8;
+      border-color: var(--brand-blue);
     }
     .tb-select {
-      background: #1e293b;
-      color: #cbd5e1;
-      border: 1px solid #334155;
+      background: var(--btn-bg);
+      color: var(--btn-text);
+      border: 1px solid var(--btn-border);
       padding: 0.4rem 0.6rem;
       border-radius: 8px;
       font-size: 0.75rem;
@@ -281,11 +347,12 @@
   <!-- Tela de Login com PIN -->
   <div id="authOverlay">
     <div class="auth-card">
+      <button id="btnLoginTheme" class="auth-theme-btn" title="Alternar Tema Claro / Escuro">🌙</button>
       <div class="brand-badge">⚡ RPsecti Soluções</div>
       <h1 class="auth-title">RPsec Link</h1>
       <p class="auth-desc">Conexão Direta ao Host Remoto</p>
       
-      <input type="password" id="pinInput" class="pin-input" placeholder="••••" maxlength="8" autofocus>
+      <input type="password" id="pinInput" class="pin-input" placeholder="PIN" maxlength="8" autofocus>
       <button id="btnConnect" class="btn-connect">Conectar à Máquina</button>
     </div>
   </div>
@@ -314,6 +381,9 @@
       <option value="fast">Rápida (45% • 15 FPS)</option>
     </select>
 
+    <!-- Alternador de Tema Claro / Escuro -->
+    <button id="btnToggleTheme" class="tb-btn" title="Alternar Tema Claro / Escuro">🌙</button>
+
     <!-- Teclas Rápidas -->
     <button id="btnWin" class="tb-btn" title="Pressionar Tecla Windows">⊞ Win</button>
     <button id="btnAltTab" class="tb-btn" title="Alternar Janelas">Alt+Tab</button>
@@ -336,6 +406,8 @@
     const authOverlay = document.getElementById('authOverlay');
     const pinInput = document.getElementById('pinInput');
     const btnConnect = document.getElementById('btnConnect');
+    const btnLoginTheme = document.getElementById('btnLoginTheme');
+    const btnToggleTheme = document.getElementById('btnToggleTheme');
     const toolbar = document.getElementById('toolbar');
     const btnPinBar = document.getElementById('btnPinBar');
     const statusDot = document.getElementById('statusDot');
@@ -356,6 +428,31 @@
     let currentFps = 0;
     let lastMouseMove = 0;
     let isPinned = false;
+
+    // Gerenciamento de Tema (Escuro / Claro)
+    let currentTheme = localStorage.getItem('rpsec_link_theme') || 'dark';
+    applyTheme(currentTheme);
+
+    function applyTheme(theme) {
+      currentTheme = theme;
+      localStorage.setItem('rpsec_link_theme', theme);
+      if (theme === 'light') {
+        document.body.classList.add('theme-light');
+        btnLoginTheme.textContent = '☀️';
+        btnToggleTheme.textContent = '☀️';
+      } else {
+        document.body.classList.remove('theme-light');
+        btnLoginTheme.textContent = '🌙';
+        btnToggleTheme.textContent = '🌙';
+      }
+    }
+
+    function toggleTheme() {
+      applyTheme(currentTheme === 'dark' ? 'light' : 'dark');
+    }
+
+    btnLoginTheme.addEventListener('click', toggleTheme);
+    btnToggleTheme.addEventListener('click', toggleTheme);
 
     // Recupera PIN salvo no navegador
     const savedPin = localStorage.getItem('rpsec_link_pin');

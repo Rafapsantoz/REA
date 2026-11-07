@@ -8,6 +8,7 @@ import sys
 import json
 import time
 import socket
+import secrets
 import asyncio
 import argparse
 from pathlib import Path
@@ -21,14 +22,22 @@ from fastapi.staticfiles import StaticFiles
 from screen_capture import ScreenCapturer
 from input_controller import InputController
 
-app = FastAPI(title="RPsec Link Server", version="1.2.0")
+app = FastAPI(title="RPsec Link Server", version="1.3.0")
 
 BASE_DIR = Path(__file__).parent
 STATIC_DIR = BASE_DIR / "static"
 ASSETS_DIR = BASE_DIR / "assets"
 
+
+def generate_random_pin(digits: int = 4) -> str:
+    """Gera um PIN numérico aleatório seguro entre 1000 e 9999."""
+    lower = 10 ** (digits - 1)
+    upper = (10 ** digits) - 1
+    return str(secrets.randbelow(upper - lower + 1) + lower)
+
+
 CONFIG = {
-    "pin": "1234",
+    "pin": generate_random_pin(),
     "port": 8765,
     "host": "0.0.0.0",
 }
@@ -205,23 +214,26 @@ def get_network_ips():
 def main():
     parser = argparse.ArgumentParser(description="RPsec Link - Servidor Remoto")
     parser.add_argument("--port", type=int, default=8765, help="Porta HTTP/WebSocket (padrão: 8765)")
-    parser.add_argument("--pin", type=str, default="1234", help="PIN de acesso (padrão: 1234)")
+    parser.add_argument("--pin", type=str, default=None, help="PIN de acesso (padrão: gerado aleatoriamente)")
     parser.add_argument("--host", type=str, default="0.0.0.0", help="Interface de rede (padrão: 0.0.0.0)")
     args = parser.parse_args()
 
     CONFIG["port"] = args.port
-    CONFIG["pin"] = args.pin
     CONFIG["host"] = args.host
+    if args.pin:
+        CONFIG["pin"] = args.pin
+    else:
+        CONFIG["pin"] = generate_random_pin()
 
     ips = get_network_ips()
     print("=" * 64)
     print("   ⚡ RPsec Link — Servidor de Acesso Remoto Ultraleve")
     print("=" * 64)
-    print(f"  • Resolução Nativa: {capturer.width}x{capturer.height}")
-    print(f"  • PIN de Segurança: {args.pin}")
-    print(f"  • Acesso Local    : http://localhost:{args.port}")
+    print(f"  • Resolução Nativa : {capturer.width}x{capturer.height}")
+    print(f"  • PIN de Segurança : {CONFIG['pin']} (Aleatório)")
+    print(f"  • Acesso Local     : http://localhost:{args.port}")
     for ip in ips:
-        print(f"  • Acesso na Rede  : http://{ip}:{args.port}")
+        print(f"  • Acesso na Rede   : http://{ip}:{args.port}")
     print("=" * 64 + "\n")
 
     uvicorn.run(app, host=args.host, port=args.port, log_level="warning")
