@@ -285,6 +285,19 @@ class HostApp(ctk.CTk):
         )
         self.lbl_res_info.pack(anchor="w", padx=16, pady=(0, 14))
 
+        # Botão de Desconexão Imediata (Exibido apenas com sessão ativa)
+        self.btn_disconnect_client = ctk.CTkButton(
+            self.card_session,
+            text="🔴 Desconectar Sessão Ativa",
+            font=ctk.CTkFont(size=12, weight="bold"),
+            fg_color="#ef4444",
+            hover_color="#dc2626",
+            text_color="#ffffff",
+            height=36,
+            command=self._disconnect_active_session
+        )
+        # Inicialmente oculto até haver cliente conectado
+
         # 6. Rodapé: Minimizar
         btn_min = ctk.CTkButton(
             self,
@@ -337,6 +350,12 @@ class HostApp(ctk.CTk):
     def _on_security_alert(self, client_ip: str, freeze_seconds: int):
         self.after(0, lambda: self._update_security_alert_ui(client_ip, freeze_seconds))
 
+    def _disconnect_active_session(self):
+        """Encerra a sessão remota ativa instantaneamente a pedido do Host."""
+        self.btn_disconnect_client.configure(text="Desconectando...", state="disabled")
+        server.trigger_disconnect_all()
+        self.after(600, lambda: self.btn_disconnect_client.configure(text="🔴 Desconectar Sessão Ativa", state="normal"))
+
     def _update_session_ui(self, connected: bool, client_ip: str, total: int):
         if total > 0:
             self.badge_status.configure(
@@ -348,6 +367,8 @@ class HostApp(ctk.CTk):
                 text=f"🔵 Conectado com sucesso de {client_ip}",
                 text_color="#0284c7"
             )
+            self.lbl_res_info.pack_configure(pady=(0, 8))
+            self.btn_disconnect_client.pack(fill="x", padx=16, pady=(0, 14))
         else:
             self.badge_status.configure(
                 text="● ONLINE",
@@ -358,6 +379,8 @@ class HostApp(ctk.CTk):
                 text="🟢 Pronto para conexões — Aguardando...",
                 text_color=("#334155", "#cbd5e1")
             )
+            self.btn_disconnect_client.pack_forget()
+            self.lbl_res_info.pack_configure(pady=(0, 14))
 
     def _update_security_alert_ui(self, client_ip: str, freeze_secs: int):
         self.lbl_session_status.configure(

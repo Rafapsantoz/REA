@@ -170,6 +170,18 @@
       border: 1px solid rgba(239, 68, 68, 0.4);
       color: #ef4444;
     }
+    #authMessage.info {
+      display: block;
+      background: rgba(2, 132, 199, 0.15);
+      border: 1px solid rgba(2, 132, 199, 0.4);
+      color: var(--brand-cyan);
+    }
+    #authMessage.success {
+      display: block;
+      background: rgba(16, 185, 129, 0.15);
+      border: 1px solid rgba(16, 185, 129, 0.4);
+      color: #10b981;
+    }
     #authMessage.locked {
       display: block;
       background: rgba(245, 158, 11, 0.15);
@@ -354,6 +366,17 @@
       background: var(--btn-hover);
       color: var(--btn-hover-text);
     }
+    .tb-btn-danger {
+      background: rgba(239, 68, 68, 0.18) !important;
+      color: #ef4444 !important;
+      border-color: rgba(239, 68, 68, 0.45) !important;
+      font-weight: 700 !important;
+    }
+    .tb-btn-danger:hover {
+      background: #ef4444 !important;
+      color: #ffffff !important;
+      border-color: #dc2626 !important;
+    }
     .tb-select {
       background: var(--btn-bg);
       color: var(--btn-text);
@@ -428,7 +451,7 @@
       <button id="btnMobileKbd" class="tb-btn" title="Abrir Teclado no Tablet/Celular">⌨ Teclado</button>
       <button id="btnFullscreen" class="tb-btn" title="Modo Tela Cheia Imersivo">⛶ Tela Cheia</button>
       <button id="btnClosePanel" class="tb-btn" title="Recolher Barra">▲</button>
-      <button id="btnDisconnect" class="tb-btn" style="color: #ef4444;" title="Encerrar Sessão">✕</button>
+      <button id="btnDisconnect" class="tb-btn tb-btn-danger" title="Encerrar Sessão Remota">🔴 Desconectar</button>
     </div>
   </div>
 
@@ -543,10 +566,50 @@
     });
     btnConnect.addEventListener('click', connect);
 
+    let pendingBlob = null;
+    let isRendering = false;
+
+    async function renderFrame() {
+      if (!pendingBlob) {
+        isRendering = false;
+        return;
+      }
+      isRendering = true;
+      const blobToRender = pendingBlob;
+      pendingBlob = null; // Descarta quadros defasados acumulados na fila
+
+      try {
+        const bitmap = await createImageBitmap(blobToRender);
+        if (canvas.width !== bitmap.width || canvas.height !== bitmap.height) {
+          canvas.width = bitmap.width;
+          canvas.height = bitmap.height;
+        }
+        ctx.drawImage(bitmap, 0, 0);
+        bitmap.close();
+
+        frameCount++;
+        const now = performance.now();
+        if (now - lastFpsUpdate >= 1000) {
+          currentFps = Math.round((frameCount * 1000) / (now - lastFpsUpdate));
+          fpsCount.textContent = currentFps;
+          frameCount = 0;
+          lastFpsUpdate = now;
+        }
+      } catch (err) {
+        // Frame descartado/corrompido
+      } finally {
+        if (pendingBlob) {
+          requestAnimationFrame(renderFrame);
+        } else {
+          isRendering = false;
+        }
+      }
+    }
+
     function connect() {
       const pin = pinInput.value.trim();
       if (!pin) {
-        showError("Por favor, digite o PIN de acesso.");
+        showNotice("Por favor, digite o PIN de acesso.", "error");
         return;
       }
       localStorage.setItem('rpsec_link_pin', pin);
@@ -569,37 +632,30 @@
 
       ws.onmessage = async (event) => {
         if (event.data instanceof Blob) {
-          // Frame de imagem JPEG da máquina remota
-          const bitmap = await createImageBitmap(event.data);
-          if (canvas.width !== bitmap.width || canvas.height !== bitmap.height) {
-            canvas.width = bitmap.width;
-            canvas.height = bitmap.height;
-          }
-          ctx.drawImage(bitmap, 0, 0);
-          bitmap.close();
-
-          frameCount++;
-          const now = performance.now();
-          if (now - lastFpsUpdate >= 1000) {
-            currentFps = Math.round((frameCount * 1000) / (now - lastFpsUpdate));
-            fpsCount.textContent = currentFps;
-            frameCount = 0;
-            lastFpsUpdate = now;
+          // Frame de imagem JPEG da máquina remota com renderização sem acúmulo de fila
+          pendingBlob = event.data;
+          if (!isRendering) {
+            renderFrame();
           }
         } else {
           try {
             const data = JSON.parse(event.data);
 
             if (data.type === 'auth_error') {
-              // Resposta de falha de autenticação ou bloqueio
               btnConnect.disabled = false;
               btnConnect.textContent = "Conectar à Máquina";
 
               if (data.status === 'locked') {
                 triggerLockout(data.seconds);
               } else {
-                showError(data.message || `PIN incorreto! Restam ${data.attempts_left} tentativas.`);
+                showNotice(data.message || `PIN incorreto! Restam ${data.attempts_left} tentativas.`, "error");
               }
+              return;
+            }
+
+            if (data.type === 'server_disconnect') {
+              showNotice(data.message || "A sessão remota foi encerrada pelo Host.", "info");
+              if (ws) ws.close();
               return;
             }
 
@@ -633,15 +689,20 @@
       };
     }
 
-    function showError(msg) {
-      authMessage.className = "error";
+    function showNotice(msg, type = "error") {
+      authMessage.className = type;
       authMessage.textContent = msg;
       authMessage.style.display = "block";
-      authCard.classList.remove('shake');
-      void authCard.offsetWidth; // Trigger reflow
-      authCard.classList.add('shake');
+      authOverlay.style.display = "flex";
+      if (type === "error") {
+        authCard.classList.remove('shake');
+        void authCard.offsetWidth; // Trigger reflow
+        authCard.classList.add('shake');
+      }
       pinInput.focus();
-      pinInput.select();
+      if (type === "error") {
+        pinInput.select();
+      }
     }
 
     function triggerLockout(seconds) {
@@ -793,10 +854,22 @@
       }
     });
 
-    document.getElementById('btnDisconnect').addEventListener('click', () => {
-      if (ws) ws.close();
-      authOverlay.style.display = 'flex';
-    });
+    function disconnectSession() {
+      if (ws) {
+        try {
+          if (ws.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify({ type: 'client_disconnect' }));
+          }
+          ws.close(1000, "Desconectado pelo usuário");
+        } catch (e) {}
+      }
+      pillStatusDot.classList.add('offline');
+      fpsCount.textContent = '--';
+      pingCount.textContent = '--';
+      showNotice("✓ Sessão remota encerrada com sucesso.", "success");
+    }
+
+    document.getElementById('btnDisconnect').addEventListener('click', disconnectSession);
   </script>
 </body>
 </html>

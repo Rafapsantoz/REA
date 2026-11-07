@@ -1,7 +1,7 @@
 """
 RPsec Link - Servidor de Acesso Remoto Ultraleve (FastAPI + WebSockets + Win32).
 Executa na máquina Host e permite visualização e controle via qualquer navegador web.
-Inclui proteção ativa contra força bruta com congelamento exponencial após 3 erros de PIN.
+Inclui otimização de conexão com Dirty Frame Detection e controle de desconexão remota.
 """
 
 import os
@@ -22,7 +22,7 @@ from fastapi.responses import HTMLResponse, JSONResponse, FileResponse
 from screen_capture import ScreenCapturer
 from input_controller import InputController
 
-app = FastAPI(title="RPsec Link Server", version="1.4.0")
+app = FastAPI(title="RPsec Link Server", version="1.5.0")
 
 BASE_DIR = Path(__file__).parent
 STATIC_DIR = BASE_DIR / "static"
@@ -43,6 +43,9 @@ CONFIG = {
 }
 
 ACTIVE_CLIENTS: Set[str] = set()
+ACTIVE_WEBSOCKETS: Set[WebSocket] = set()
+SERVER_LOOP: Optional[asyncio.AbstractEventLoop] = None
+
 CALLBACKS = {
     "on_connect": None,
     "on_disconnect": None,
@@ -50,12 +53,37 @@ CALLBACKS = {
 }
 
 # Rastreamento de falhas de autenticação e bloqueio (Anti-Brute Force)
-# client_ip -> {"count": int, "locked_until": float, "level": int}
 FAILED_ATTEMPTS: Dict[str, Dict[str, Any]] = {}
 
 # Inicializa motores com DPI awareness ativo e sem duplicação de cursor
 capturer = ScreenCapturer(draw_cursor=False)
 input_ctrl = InputController(capturer.width, capturer.height)
+
+
+async def disconnect_all_clients():
+    """Encerra todas as conexões WebSocket ativas imediatamente."""
+    for ws in list(ACTIVE_WEBSOCKETS):
+        try:
+            await ws.send_text(json.dumps({
+                "type": "server_disconnect",
+                "message": "A sessão foi encerrada pelo Host."
+            }))
+            await ws.close(code=1000, reason="Host encerrou a sessão")
+        except Exception:
+            pass
+    ACTIVE_WEBSOCKETS.clear()
+    ACTIVE_CLIENTS.clear()
+    if CALLBACKS.get("on_disconnect"):
+        try:
+            CALLBACKS["on_disconnect"]("Desconectado", 0)
+        except Exception:
+            pass
+
+
+def trigger_disconnect_all():
+    """Dispara a desconexão a partir de threads síncronas (como a GUI do Host)."""
+    if SERVER_LOOP and SERVER_LOOP.is_running():
+        asyncio.run_coroutine_threadsafe(disconnect_all_clients(), SERVER_LOOP)
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -96,11 +124,14 @@ async def get_status():
 
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket, pin: str = Query("")):
-    """Canal bidirecional: Streaming de vídeo (Binário) + Input do Cliente (JSON)."""
+    """Canal bidirecional otimizado: Transmissão adaptativa com Dirty Frame Detection."""
+    global SERVER_LOOP
+    SERVER_LOOP = asyncio.get_running_loop()
+
     client_ip = websocket.client.host if websocket.client else "unknown"
     now = time.time()
 
-    # 1. Verifica se o IP está bloqueado temporariamente por excesso de tentativas
+    # 1. Verifica se o IP está bloqueado temporariamente
     sec_data = FAILED_ATTEMPTS.get(client_ip, {"count": 0, "locked_until": 0.0, "level": 0})
     if sec_data["locked_until"] > now:
         remaining_secs = int(sec_data["locked_until"] - now)
@@ -112,7 +143,6 @@ async def websocket_endpoint(websocket: WebSocket, pin: str = Query("")):
             "message": f"Bloqueado por segurança. Aguarde {remaining_secs}s para tentar novamente."
         }))
         await websocket.close(code=4003, reason="IP Bloqueado")
-        print(f"[!] Conexão rejeitada: {client_ip} ainda bloqueado por mais {remaining_secs}s")
         return
 
     # 2. Validação do PIN de Segurança
@@ -120,7 +150,6 @@ async def websocket_endpoint(websocket: WebSocket, pin: str = Query("")):
         sec_data["count"] += 1
 
         if sec_data["count"] >= 3:
-            # 3 tentativas incorretas -> Aplica bloqueio exponencial (30s, 60s, 120s, ...)
             sec_data["level"] += 1
             freeze_duration = 30 * (2 ** (sec_data["level"] - 1))
             sec_data["locked_until"] = now + freeze_duration
@@ -144,7 +173,6 @@ async def websocket_endpoint(websocket: WebSocket, pin: str = Query("")):
                     pass
             return
         else:
-            # Erro simples (1 ou 2 tentativas)
             attempts_left = 3 - sec_data["count"]
             FAILED_ATTEMPTS[client_ip] = sec_data
 
@@ -159,10 +187,11 @@ async def websocket_endpoint(websocket: WebSocket, pin: str = Query("")):
             print(f"[-] Tentativa incorreta de {client_ip} ({sec_data['count']}/3)")
             return
 
-    # 3. PIN Correto -> Reseta falhas e aceita conexão
+    # 3. Autenticado com sucesso
     FAILED_ATTEMPTS.pop(client_ip, None)
     await websocket.accept()
     ACTIVE_CLIENTS.add(client_ip)
+    ACTIVE_WEBSOCKETS.add(websocket)
     print(f"[+] Cliente autorizado conectado com sucesso: {client_ip}")
 
     if CALLBACKS["on_connect"]:
@@ -186,20 +215,30 @@ async def websocket_endpoint(websocket: WebSocket, pin: str = Query("")):
     }
 
     async def stream_frames():
+        last_keyframe = time.perf_counter()
         try:
             while session_state["running"]:
                 t_start = time.perf_counter()
 
-                frame_bytes = capturer.grab_frame_jpeg(
-                    quality=session_state["quality"],
-                    scale=session_state["scale"]
+                # Força um frame a cada 1.5 segundos mesmo se a tela estiver parada
+                force_sync = (t_start - last_keyframe) >= 1.5
+
+                # Executa captura e compressão em thread separada para NUNCA bloquear inputs de mouse e teclado
+                frame_bytes = await asyncio.to_thread(
+                    capturer.grab_frame_jpeg,
+                    session_state["quality"],
+                    session_state["scale"],
+                    force_sync
                 )
 
-                await websocket.send_bytes(frame_bytes)
+                if frame_bytes is not None:
+                    last_keyframe = t_start
+                    await websocket.send_bytes(frame_bytes)
 
+                # Controle de taxa com sono mínimo adaptativo
                 target_interval = 1.0 / session_state["fps"]
                 elapsed = time.perf_counter() - t_start
-                sleep_time = max(0.005, target_interval - elapsed)
+                sleep_time = max(0.002, target_interval - elapsed)
                 await asyncio.sleep(sleep_time)
         except Exception:
             session_state["running"] = False
@@ -240,6 +279,10 @@ async def websocket_endpoint(websocket: WebSocket, pin: str = Query("")):
                 elif mtype == "ping":
                     await websocket.send_text(json.dumps({"type": "pong", "ts": msg.get("ts")}))
 
+                elif mtype == "client_disconnect":
+                    session_state["running"] = False
+                    break
+
         except (WebSocketDisconnect, Exception):
             session_state["running"] = False
 
@@ -254,6 +297,7 @@ async def websocket_endpoint(websocket: WebSocket, pin: str = Query("")):
     for task in pending:
         task.cancel()
 
+    ACTIVE_WEBSOCKETS.discard(websocket)
     ACTIVE_CLIENTS.discard(client_ip)
     print(f"[-] Cliente desconectado de {client_ip}")
 
