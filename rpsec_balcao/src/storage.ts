@@ -1,4 +1,4 @@
-import { Product, Sale, Expense } from './types'
+import type { Product, Sale, Expense } from './types'
 
 const STORAGE_KEYS = {
   PRODUCTS: 'rpsec_balcao_products',

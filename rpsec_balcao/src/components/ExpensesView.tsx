@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { Expense, ExpenseCategory } from '../types'
+import type { Expense, ExpenseCategory } from '../types'
 import { formatCurrency } from '../storage'
 import { ArrowDownCircle, Plus, Trash2, Receipt } from 'lucide-react'
 

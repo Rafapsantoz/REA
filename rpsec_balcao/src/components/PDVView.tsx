@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { Product, PaymentMethod, CartItem, Sale } from '../types'
+import type { Product, PaymentMethod, CartItem, Sale } from '../types'
 import { formatCurrency } from '../storage'
 import { 
   Plus, 

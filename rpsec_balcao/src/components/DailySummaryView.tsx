@@ -1,5 +1,5 @@
 import React from 'react'
-import { Sale, Expense } from '../types'
+import type { Sale, Expense } from '../types'
 import { formatCurrency } from '../storage'
 import { 
   TrendingUp, 

@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { Product, ProductCategory } from '../types'
+import type { Product, ProductCategory } from '../types'
 import { formatCurrency } from '../storage'
 import { PackagePlus, Edit2, Check, X, Tag } from 'lucide-react'
 
