@@ -1,10 +1,13 @@
-import type { Product, Sale, Expense, CartItem } from './types'
+import type { Product, Sale, Expense, CartItem, Ingredient, Recipe, ImportedInvoice } from './types'
 
 const STORAGE_KEYS = {
   PRODUCTS: 'rpsec_balcao_products',
   SALES: 'rpsec_balcao_sales',
   EXPENSES: 'rpsec_balcao_expenses',
   ACTIVE_CART: 'rpsec_balcao_active_cart',
+  INGREDIENTS: 'rpsec_balcao_ingredients',
+  RECIPES: 'rpsec_balcao_recipes',
+  INVOICES: 'rpsec_balcao_invoices',
 }
 
 export const INITIAL_PRODUCTS: Product[] = [
@@ -20,6 +23,58 @@ export const INITIAL_PRODUCTS: Product[] = [
   { id: '10', name: 'Café Expresso / Coado', price: 3.50, category: 'bebidas', active: true, color: 'bg-amber-200 border-amber-400 text-amber-950' },
   { id: '11', name: 'Brigadeiro Tradicional', price: 4.00, category: 'doces', active: true, color: 'bg-pink-100 border-pink-300 text-pink-900' },
   { id: '12', name: 'Bolo no Pote', price: 10.00, category: 'doces', active: true, color: 'bg-rose-100 border-rose-300 text-rose-900' },
+]
+
+export const INITIAL_INGREDIENTS: Ingredient[] = [
+  { id: 'ing_1', name: 'Farinha de Trigo Especial', unit: 'kg', unitCost: 4.50, category: 'Massas' },
+  { id: 'ing_2', name: 'Peito de Frango (desfiado/cru)', unit: 'kg', unitCost: 18.00, category: 'Carnes' },
+  { id: 'ing_3', name: 'Óleo de Soja para Fritura', unit: 'l', unitCost: 6.50, category: 'Gorduras' },
+  { id: 'ing_4', name: 'Margarina / Manteiga', unit: 'kg', unitCost: 14.00, category: 'Gorduras' },
+  { id: 'ing_5', name: 'Requeijão Cremoso (Catupiry)', unit: 'kg', unitCost: 22.00, category: 'Laticínios' },
+  { id: 'ing_6', name: 'Carne Moída Bovina (Acém/Patinho)', unit: 'kg', unitCost: 28.00, category: 'Carnes' },
+  { id: 'ing_7', name: 'Trigo para Kibe', unit: 'kg', unitCost: 11.00, category: 'Massas' },
+  { id: 'ing_8', name: 'Queijo Mussarela', unit: 'kg', unitCost: 36.00, category: 'Laticínios' },
+  { id: 'ing_9', name: 'Salsicha Hot Dog', unit: 'kg', unitCost: 10.00, category: 'Carnes' },
+  { id: 'ing_10', name: 'Palmito em Pedaços', unit: 'kg', unitCost: 24.00, category: 'Vegetais' },
+]
+
+export const INITIAL_RECIPES: Recipe[] = [
+  {
+    id: 'rec_1',
+    productId: '1', // Coxinha de Frango
+    yieldQuantity: 50,
+    additionalCostPerBatch: 5.00, // Gás, tempero verde, água
+    ingredients: [
+      { ingredientId: 'ing_1', quantity: 2, unit: 'kg' },
+      { ingredientId: 'ing_2', quantity: 1.5, unit: 'kg' },
+      { ingredientId: 'ing_4', quantity: 200, unit: 'g' },
+      { ingredientId: 'ing_3', quantity: 500, unit: 'ml' },
+    ],
+  },
+  {
+    id: 'rec_2',
+    productId: '2', // Kibe c/ Catupiry
+    yieldQuantity: 40,
+    additionalCostPerBatch: 5.00,
+    ingredients: [
+      { ingredientId: 'ing_7', quantity: 1, unit: 'kg' },
+      { ingredientId: 'ing_6', quantity: 1.5, unit: 'kg' },
+      { ingredientId: 'ing_5', quantity: 400, unit: 'g' },
+      { ingredientId: 'ing_3', quantity: 500, unit: 'ml' },
+    ],
+  },
+  {
+    id: 'rec_3',
+    productId: '3', // Enroladinho de Salsicha
+    yieldQuantity: 40,
+    additionalCostPerBatch: 4.00,
+    ingredients: [
+      { ingredientId: 'ing_1', quantity: 1.5, unit: 'kg' },
+      { ingredientId: 'ing_9', quantity: 1.8, unit: 'kg' },
+      { ingredientId: 'ing_4', quantity: 150, unit: 'g' },
+      { ingredientId: 'ing_3', quantity: 400, unit: 'ml' },
+    ],
+  },
 ]
 
 export function loadProducts(): Product[] {
@@ -85,6 +140,83 @@ export function loadActiveCart(): CartItem[] {
 
 export function saveActiveCart(cart: CartItem[]): void {
   localStorage.setItem(STORAGE_KEYS.ACTIVE_CART, JSON.stringify(cart))
+}
+
+export function loadIngredients(): Ingredient[] {
+  const data = localStorage.getItem(STORAGE_KEYS.INGREDIENTS)
+  if (!data) {
+    saveIngredients(INITIAL_INGREDIENTS)
+    return INITIAL_INGREDIENTS
+  }
+  try {
+    return JSON.parse(data)
+  } catch {
+    return INITIAL_INGREDIENTS
+  }
+}
+
+export function saveIngredients(ingredients: Ingredient[]): void {
+  localStorage.setItem(STORAGE_KEYS.INGREDIENTS, JSON.stringify(ingredients))
+}
+
+export function loadRecipes(): Recipe[] {
+  const data = localStorage.getItem(STORAGE_KEYS.RECIPES)
+  if (!data) {
+    saveRecipes(INITIAL_RECIPES)
+    return INITIAL_RECIPES
+  }
+  try {
+    return JSON.parse(data)
+  } catch {
+    return INITIAL_RECIPES
+  }
+}
+
+export function saveRecipes(recipes: Recipe[]): void {
+  localStorage.setItem(STORAGE_KEYS.RECIPES, JSON.stringify(recipes))
+}
+
+export function loadInvoices(): ImportedInvoice[] {
+  const data = localStorage.getItem(STORAGE_KEYS.INVOICES)
+  if (!data) return []
+  try {
+    return JSON.parse(data)
+  } catch {
+    return []
+  }
+}
+
+export function saveInvoice(invoice: ImportedInvoice): ImportedInvoice[] {
+  const current = loadInvoices()
+  const updated = [invoice, ...current]
+  localStorage.setItem(STORAGE_KEYS.INVOICES, JSON.stringify(updated))
+  return updated
+}
+
+// Funções de Cálculo de Custo e Lucro
+export function calculateBatchCost(recipe: Recipe, ingredients: Ingredient[]): number {
+  const ingMap = new Map(ingredients.map(i => [i.id, i]))
+  let total = recipe.additionalCostPerBatch || 0
+
+  for (const item of recipe.ingredients) {
+    const ing = ingMap.get(item.ingredientId)
+    if (!ing) continue
+
+    let factor = 1
+    if (item.unit === 'g' && ing.unit === 'kg') factor = 0.001
+    else if (item.unit === 'kg' && ing.unit === 'g') factor = 1000
+    else if (item.unit === 'ml' && ing.unit === 'l') factor = 0.001
+    else if (item.unit === 'l' && ing.unit === 'ml') factor = 1000
+
+    total += item.quantity * factor * ing.unitCost
+  }
+
+  return total
+}
+
+export function calculateUnitCost(recipe: Recipe, ingredients: Ingredient[]): number {
+  if (!recipe.yieldQuantity || recipe.yieldQuantity <= 0) return 0
+  return calculateBatchCost(recipe, ingredients) / recipe.yieldQuantity
 }
 
 export function formatCurrency(value: number): string {

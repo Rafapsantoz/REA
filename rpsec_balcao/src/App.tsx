@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import type { Product, Sale, Expense, CartItem } from './types'
+import type { Product, Sale, Expense, CartItem, Ingredient, Recipe, ImportedInvoice } from './types'
 import {
   loadProducts,
   saveProducts,
@@ -9,21 +9,26 @@ import {
   saveExpense,
   loadActiveCart,
   saveActiveCart,
+  loadIngredients,
+  loadRecipes,
+  loadInvoices,
 } from './storage'
 import { PDVView } from './components/PDVView'
 import { ExpensesView } from './components/ExpensesView'
 import { DailySummaryView } from './components/DailySummaryView'
 import { ProductsView } from './components/ProductsView'
+import { ProductionCostView } from './components/ProductionCostView'
 import { 
   ShoppingBag, 
   ArrowDownCircle, 
   BarChart3, 
   Tags, 
   Store,
-  Clock
+  Clock,
+  ChefHat
 } from 'lucide-react'
 
-type TabType = 'pdv' | 'expenses' | 'summary' | 'products'
+type TabType = 'pdv' | 'expenses' | 'summary' | 'products' | 'costs'
 
 export function App() {
   const [activeTab, setActiveTab] = useState<TabType>('pdv')
@@ -31,6 +36,9 @@ export function App() {
   const [sales, setSales] = useState<Sale[]>([])
   const [expenses, setExpenses] = useState<Expense[]>([])
   const [cart, setCart] = useState<CartItem[]>(() => loadActiveCart())
+  const [ingredients, setIngredients] = useState<Ingredient[]>(() => loadIngredients())
+  const [recipes, setRecipes] = useState<Recipe[]>(() => loadRecipes())
+  const [invoices, setInvoices] = useState<ImportedInvoice[]>(() => loadInvoices())
   const [currentTime, setCurrentTime] = useState<string>('')
 
   useEffect(() => {
@@ -101,7 +109,7 @@ export function App() {
               <div className="flex items-center gap-2">
                 <h1 className="font-black text-xl tracking-tight text-white">RPsec Balcão</h1>
                 <span className="bg-amber-500/20 text-amber-300 text-[10px] font-bold px-2 py-0.5 rounded-full border border-amber-500/40">
-                  MVP Alfa
+                  Fase 2: Produção & Custos
                 </span>
               </div>
               <p className="text-xs text-slate-400">Gestão Fácil para Salgaderia</p>
@@ -109,10 +117,10 @@ export function App() {
           </div>
 
           {/* Abas Principais (Botões Grandes) */}
-          <nav className="flex items-center gap-1.5 bg-slate-800/80 p-1 rounded-xl border border-slate-700/60">
+          <nav className="flex items-center gap-1.5 bg-slate-800/80 p-1 rounded-xl border border-slate-700/60 flex-wrap">
             <button
               onClick={() => setActiveTab('pdv')}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg font-bold text-sm transition-all cursor-pointer relative ${
+              className={`flex items-center gap-2 px-3.5 py-2 rounded-lg font-bold text-sm transition-all cursor-pointer relative ${
                 activeTab === 'pdv'
                   ? 'bg-amber-500 text-slate-950 shadow-sm'
                   : 'text-slate-300 hover:text-white hover:bg-slate-700/50'
@@ -131,7 +139,7 @@ export function App() {
 
             <button
               onClick={() => setActiveTab('expenses')}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg font-bold text-sm transition-all cursor-pointer ${
+              className={`flex items-center gap-2 px-3.5 py-2 rounded-lg font-bold text-sm transition-all cursor-pointer ${
                 activeTab === 'expenses'
                   ? 'bg-rose-500 text-white shadow-sm'
                   : 'text-slate-300 hover:text-white hover:bg-slate-700/50'
@@ -143,7 +151,7 @@ export function App() {
 
             <button
               onClick={() => setActiveTab('summary')}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg font-bold text-sm transition-all cursor-pointer ${
+              className={`flex items-center gap-2 px-3.5 py-2 rounded-lg font-bold text-sm transition-all cursor-pointer ${
                 activeTab === 'summary'
                   ? 'bg-emerald-500 text-slate-950 shadow-sm'
                   : 'text-slate-300 hover:text-white hover:bg-slate-700/50'
@@ -154,8 +162,20 @@ export function App() {
             </button>
 
             <button
+              onClick={() => setActiveTab('costs')}
+              className={`flex items-center gap-2 px-3.5 py-2 rounded-lg font-bold text-sm transition-all cursor-pointer ${
+                activeTab === 'costs'
+                  ? 'bg-amber-600 text-white shadow-sm'
+                  : 'text-slate-300 hover:text-white hover:bg-slate-700/50'
+              }`}
+            >
+              <ChefHat className="w-4 h-4 text-amber-300" />
+              Custos & Produção
+            </button>
+
+            <button
               onClick={() => setActiveTab('products')}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg font-bold text-sm transition-all cursor-pointer ${
+              className={`flex items-center gap-2 px-3.5 py-2 rounded-lg font-bold text-sm transition-all cursor-pointer ${
                 activeTab === 'products'
                   ? 'bg-slate-100 text-slate-900 shadow-sm'
                   : 'text-slate-300 hover:text-white hover:bg-slate-700/50'
@@ -199,6 +219,18 @@ export function App() {
             expenses={expenses} 
             products={products}
             onRestoreData={handleRestoreData}
+          />
+        </div>
+
+        <div className={activeTab === 'costs' ? 'block' : 'hidden'}>
+          <ProductionCostView
+            products={products}
+            ingredients={ingredients}
+            setIngredients={setIngredients}
+            recipes={recipes}
+            setRecipes={setRecipes}
+            invoices={invoices}
+            setInvoices={setInvoices}
           />
         </div>
 
