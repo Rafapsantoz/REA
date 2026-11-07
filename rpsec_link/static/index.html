@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>RPsec Link — Acesso Remoto Ultraleve</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+    body {
+      background-color: #0b0f17;
+      color: #f1f5f9;
+      font-family: 'Plus Jakarta Sans', -apple-system, sans-serif;
+      overflow: hidden;
+      width: 100vw;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Modal / Login Screen */
+    #authOverlay {
+      position: fixed;
+      inset: 0;
+      background: radial-gradient(circle at 50% 20%, #1e293b 0%, #0b0f17 80%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+    .auth-card {
+      background: rgba(30, 41, 59, 0.7);
+      backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 20px;
+      padding: 2.5rem;
+      width: 100%;
+      max-width: 420px;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+      text-align: center;
+    }
+    .brand-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.35rem 0.85rem;
+      background: rgba(14, 165, 233, 0.15);
+      border: 1px solid rgba(14, 165, 233, 0.3);
+      color: #38bdf8;
+      border-radius: 9999px;
+      font-size: 0.8rem;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      margin-bottom: 1.25rem;
+    }
+    .auth-title {
+      font-size: 1.75rem;
+      font-weight: 800;
+      color: #ffffff;
+      margin-bottom: 0.5rem;
+    }
+    .auth-desc {
+      font-size: 0.9rem;
+      color: #94a3b8;
+      margin-bottom: 1.75rem;
+    }
+    .pin-input {
+      width: 100%;
+      padding: 1rem;
+      background: #0f172a;
+      border: 2px solid #334155;
+      border-radius: 12px;
+      color: #f8fafc;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 1.5rem;
+      text-align: center;
+      letter-spacing: 0.3em;
+      outline: none;
+      transition: all 0.2s;
+      margin-bottom: 1.25rem;
+    }
+    .pin-input:focus {
+      border-color: #38bdf8;
+      box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.2);
+    }
+    .btn-connect {
+      width: 100%;
+      padding: 1rem;
+      background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+      color: #ffffff;
+      border: none;
+      border-radius: 12px;
+      font-size: 1rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: transform 0.15s, opacity 0.15s;
+    }
+    .btn-connect:hover {
+      opacity: 0.95;
+      transform: translateY(-1px);
+    }
+    .btn-connect:active {
+      transform: translateY(0);
+    }
+
+    /* Top Toolbar */
+    #toolbar {
+      position: absolute;
+      top: 10px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(15, 23, 42, 0.85);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 14px;
+      padding: 0.4rem 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      z-index: 100;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.4);
+      transition: opacity 0.3s ease;
+    }
+    #toolbar.hidden {
+      opacity: 0.1;
+    }
+    #toolbar.hidden:hover {
+      opacity: 1;
+    }
+    .status-dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      background: #10b981;
+      box-shadow: 0 0 8px #10b981;
+    }
+    .status-dot.offline {
+      background: #ef4444;
+      box-shadow: 0 0 8px #ef4444;
+    }
+    .stat-badge {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.75rem;
+      color: #94a3b8;
+    }
+    .stat-badge strong {
+      color: #f8fafc;
+    }
+    .tb-btn {
+      background: #1e293b;
+      color: #cbd5e1;
+      border: 1px solid #334155;
+      padding: 0.35rem 0.65rem;
+      border-radius: 8px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
+    }
+    .tb-btn:hover {
+      background: #334155;
+      color: #ffffff;
+    }
+    .tb-select {
+      background: #1e293b;
+      color: #cbd5e1;
+      border: 1px solid #334155;
+      padding: 0.35rem 0.5rem;
+      border-radius: 8px;
+      font-size: 0.75rem;
+      outline: none;
+      cursor: pointer;
+    }
+
+    /* Screen Viewport */
+    #viewportContainer {
+      flex: 1;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      background: #000000;
+      outline: none;
+    }
+    #remoteCanvas {
+      max-width: 100vw;
+      max-height: 100vh;
+      object-fit: contain;
+      cursor: crosshair;
+      image-rendering: auto;
+      outline: none;
+    }
+
+    /* Mobile Text Input Trap */
+    #mobileKeyTrap {
+      position: absolute;
+      opacity: 0;
+      pointer-events: none;
+      left: -9999px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Login / PIN Screen -->
+  <div id="authOverlay">
+    <div class="auth-card">
+      <div class="brand-badge">⚡ RPsecti Soluções</div>
+      <h1 class="auth-title">RPsec Link</h1>
+      <p class="auth-desc">Acesso Remoto Ultraleve de Alta Performance</p>
+      
+      <input type="password" id="pinInput" class="pin-input" placeholder="PIN" maxlength="8" autofocus>
+      <button id="btnConnect" class="btn-connect">Conectar à Máquina</button>
+    </div>
+  </div>
+
+  <!-- Top Floating Controls -->
+  <div id="toolbar">
+    <div id="statusDot" class="status-dot"></div>
+    <div class="stat-badge"><span id="fpsCount">--</span> FPS • <span id="pingCount">--</span>ms</div>
+    
+    <select id="qualitySelect" class="tb-select">
+      <option value="high">Alta (75% • 30 FPS)</option>
+      <option value="medium" selected>Média (60% • 22 FPS)</option>
+      <option value="fast">Rápida (45% • 15 FPS)</option>
+    </select>
+
+    <button id="btnWin" class="tb-btn" title="Pressionar Tecla Windows">⊞ Win</button>
+    <button id="btnAltTab" class="tb-btn" title="Alternar Janelas">Alt+Tab</button>
+    <button id="btnEsc" class="tb-btn" title="Pressionar Esc">Esc</button>
+    <button id="btnMobileKbd" class="tb-btn" title="Abrir Teclado no Tablet/Celular">⌨ Teclado</button>
+    <button id="btnFullscreen" class="tb-btn" title="Tela Cheia">⛶ Tela Cheia</button>
+    <button id="btnDisconnect" class="tb-btn" style="color: #f87171;" title="Encerrar Sessão">✕</button>
+  </div>
+
+  <!-- Screen Viewport -->
+  <div id="viewportContainer" tabindex="0">
+    <canvas id="remoteCanvas"></canvas>
+  </div>
+
+  <input type="text" id="mobileKeyTrap">
+
+  <script>
+    const authOverlay = document.getElementById('authOverlay');
+    const pinInput = document.getElementById('pinInput');
+    const btnConnect = document.getElementById('btnConnect');
+    const toolbar = document.getElementById('toolbar');
+    const statusDot = document.getElementById('statusDot');
+    const fpsCount = document.getElementById('fpsCount');
+    const pingCount = document.getElementById('pingCount');
+    const qualitySelect = document.getElementById('qualitySelect');
+    const container = document.getElementById('viewportContainer');
+    const canvas = document.getElementById('remoteCanvas');
+    const ctx = canvas.getContext('2d');
+    const mobileKeyTrap = document.getElementById('mobileKeyTrap');
+
+    let ws = null;
+    let remoteWidth = 1920;
+    let remoteHeight = 1080;
+    let frameCount = 0;
+    let lastFpsUpdate = performance.now();
+    let currentFps = 0;
+    let lastMouseMove = 0;
+
+    // Recupera PIN salvo no navegador
+    const savedPin = localStorage.getItem('rpsec_link_pin');
+    if (savedPin) {
+      pinInput.value = savedPin;
+    }
+
+    pinInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') connect();
+    });
+    btnConnect.addEventListener('click', connect);
+
+    function connect() {
+      const pin = pinInput.value.trim();
+      if (!pin) return;
+      localStorage.setItem('rpsec_link_pin', pin);
+
+      const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const wsUrl = `${protocol}//${location.host}/ws?pin=${encodeURIComponent(pin)}`;
+
+      ws = new WebSocket(wsUrl);
+      ws.binaryType = 'blob';
+
+      ws.onopen = () => {
+        authOverlay.style.display = 'none';
+        statusDot.classList.remove('offline');
+        container.focus();
+        sendQualityConfig();
+        startPingLoop();
+      };
+
+      ws.onmessage = async (event) => {
+        if (event.data instanceof Blob) {
+          // Frame de imagem JPEG
+          const bitmap = await createImageBitmap(event.data);
+          if (canvas.width !== bitmap.width || canvas.height !== bitmap.height) {
+            canvas.width = bitmap.width;
+            canvas.height = bitmap.height;
+          }
+          ctx.drawImage(bitmap, 0, 0);
+          bitmap.close();
+
+          frameCount++;
+          const now = performance.now();
+          if (now - lastFpsUpdate >= 1000) {
+            currentFps = Math.round((frameCount * 1000) / (now - lastFpsUpdate));
+            fpsCount.textContent = currentFps;
+            frameCount = 0;
+            lastFpsUpdate = now;
+          }
+        } else {
+          // Mensagem de controle JSON
+          try {
+            const data = JSON.parse(event.data);
+            if (data.type === 'init') {
+              remoteWidth = data.width;
+              remoteHeight = data.height;
+            } else if (data.type === 'pong') {
+              const rtt = Math.round(performance.now() - data.ts);
+              pingCount.textContent = rtt;
+            }
+          } catch (e) {}
+        }
+      };
+
+      ws.onclose = () => {
+        statusDot.classList.add('offline');
+        fpsCount.textContent = '--';
+        pingCount.textContent = '--';
+        authOverlay.style.display = 'flex';
+      };
+
+      ws.onerror = () => {
+        ws.close();
+      };
+    }
+
+    // Ping para medir latência RTT em tempo real
+    function startPingLoop() {
+      setInterval(() => {
+        if (ws && ws.readyState === WebSocket.OPEN) {
+          ws.send(JSON.stringify({ type: 'ping', ts: performance.now() }));
+        }
+      }, 2000);
+    }
+
+    // Configuração de qualidade e FPS
+    function sendQualityConfig() {
+      if (!ws || ws.readyState !== WebSocket.OPEN) return;
+      const val = qualitySelect.value;
+      let quality = 60, scale = 1.0, fps = 22;
+      if (val === 'high') {
+        quality = 75; scale = 1.0; fps = 30;
+      } else if (val === 'fast') {
+        quality = 45; scale = 0.8; fps = 15;
+      }
+      ws.send(JSON.stringify({ type: 'quality', quality, scale, fps }));
+    }
+    qualitySelect.addEventListener('change', sendQualityConfig);
+
+    // Converte posição do mouse no Canvas em coordenadas normalizadas (0.0 a 1.0)
+    function getNormalizedCoords(e) {
+      const rect = canvas.getBoundingClientRect();
+      const x = (e.clientX - rect.left) / rect.width;
+      const y = (e.clientY - rect.top) / rect.height;
+      return {
+        x: Math.max(0, Math.min(1, x)),
+        y: Math.max(0, Math.min(1, y))
+      };
+    }
+
+    // Eventos do Mouse
+    canvas.addEventListener('mousemove', (e) => {
+      const now = performance.now();
+      if (now - lastMouseMove < 16) return; // Limita a ~60 eventos por segundo
+      lastMouseMove = now;
+
+      if (!ws || ws.readyState !== WebSocket.OPEN) return;
+      const { x, y } = getNormalizedCoords(e);
+      ws.send(JSON.stringify({ type: 'mouse_move', x, y }));
+    });
+
+    canvas.addEventListener('mousedown', (e) => {
+      if (!ws || ws.readyState !== WebSocket.OPEN) return;
+      container.focus();
+      const { x, y } = getNormalizedCoords(e);
+      const button = e.button === 2 ? 'right' : (e.button === 1 ? 'middle' : 'left');
+      ws.send(JSON.stringify({ type: 'mouse_down', button, x, y }));
+    });
+
+    canvas.addEventListener('mouseup', (e) => {
+      if (!ws || ws.readyState !== WebSocket.OPEN) return;
+      const { x, y } = getNormalizedCoords(e);
+      const button = e.button === 2 ? 'right' : (e.button === 1 ? 'middle' : 'left');
+      ws.send(JSON.stringify({ type: 'mouse_up', button, x, y }));
+    });
+
+    canvas.addEventListener('contextmenu', (e) => {
+      e.preventDefault(); // Impede o menu de contexto do navegador
+    });
+
+    canvas.addEventListener('wheel', (e) => {
+      e.preventDefault();
+      if (!ws || ws.readyState !== WebSocket.OPEN) return;
+      ws.send(JSON.stringify({ type: 'wheel', delta: -Math.sign(e.deltaY) * 120 }));
+    }, { passive: false });
+
+    // Eventos do Teclado
+    window.addEventListener('keydown', (e) => {
+      if (document.activeElement === pinInput) return;
+      // Impede teclas especiais de afetarem o navegador (ex: F5, Backspace, Tab)
+      if (['Tab', 'Backspace', 'F5', 'Alt', 'Meta'].includes(e.key)) {
+        e.preventDefault();
+      }
+      if (!ws || ws.readyState !== WebSocket.OPEN) return;
+      ws.send(JSON.stringify({ type: 'key_down', key: e.key, code: e.code }));
+    });
+
+    window.addEventListener('keyup', (e) => {
+      if (document.activeElement === pinInput) return;
+      if (!ws || ws.readyState !== WebSocket.OPEN) return;
+      ws.send(JSON.stringify({ type: 'key_up', key: e.key, code: e.code }));
+    });
+
+    // Atalhos Rápidos da Barra Superior
+    document.getElementById('btnWin').addEventListener('click', () => {
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({ type: 'shortcut', shortcut: 'win' }));
+      }
+    });
+
+    document.getElementById('btnAltTab').addEventListener('click', () => {
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({ type: 'shortcut', shortcut: 'alt+tab' }));
+      }
+    });
+
+    document.getElementById('btnEsc').addEventListener('click', () => {
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({ type: 'key_down', key: 'Escape', code: 'Escape' }));
+        setTimeout(() => ws.send(JSON.stringify({ type: 'key_up', key: 'Escape', code: 'Escape' })), 50);
+      }
+    });
+
+    document.getElementById('btnMobileKbd').addEventListener('click', () => {
+      mobileKeyTrap.focus();
+    });
+
+    document.getElementById('btnFullscreen').addEventListener('click', () => {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(() => {});
+      } else {
+        document.exitFullscreen().catch(() => {});
+      }
+    });
+
+    document.getElementById('btnDisconnect').addEventListener('click', () => {
+      if (ws) ws.close();
+    });
+  </script>
+</body>
+</html>

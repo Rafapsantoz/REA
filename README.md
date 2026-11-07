@@ -26,6 +26,7 @@ flowchart LR
 | Produto | Categoria | Modelo de Acesso / Isca Comercial | Diretório | Status |
 | :--- | :---: | :--- | :--- | :---: |
 | **RPsec Recorder** | 🟢 Open-Source | **100% Gratuito & Livre**<br/>• Isca de autoridade institucional<br/>• Gravador ultra-leve (< 40MB) para criadores e devs | [`gravador_windows/`](gravador_windows/) | 🟢 Concluído |
+| **RPsec Link** | 🟢 Open-Source / 🔴 Paid | **Acesso Remoto Ultraleve (Web Browser)**<br/>• *Isca/Open:* Acesso local direto sem limites de tempo ou pop-ups<br/>• *Paid:* Painel central multi-máquinas e acesso desatendido | [`rpsec_link/`](rpsec_link/) | 🟢 MVP Operacional |
 | **RPsec DDTank Bot (Sky City)** | 🔴 Paid / 🟡 Demo | **Licença Paga + Trial Gratuito (Isca)**<br/>• *Isca/Demo:* Teste grátis de 24h ou modo 1 quadrante<br/>• *Paid:* Licença HWID completa para 4 instâncias com aceleração | [`rpsec_ddtank/`](rpsec_ddtank/) | 🟡 MVP Operacional |
 | **RPsec Balcão (SalgadoFácil)** | 🔴 Paid / 🟡 Demo | **SaaS Freemium (Isca Local)**<br/>• *Isca/Demo:* Versão local 100% gratuita para teste no balcão<br/>• *Paid:* Assinatura Cloud (R$ 29,90/mês) com backup e multi-telas | [`rpsec_balcao/`](rpsec_balcao/) | 🟡 Em Estruturação |
 
@@ -42,6 +43,11 @@ flowchart LR
 - **A Isca:** O comerciante pode utilizar o app web localmente de forma gratuita, cadastrando seus produtos e operando as vendas do dia sem pagar nada.
 - **A Conversão:** Ao perceber o controle imediato do caixa e a eliminação de furos financeiros, o comerciante assina a versão Cloud para sincronizar no celular e salvar backups automáticos.
 - **Canal de Venda:** Venda consultiva direta em pequenos estabelecimentos e indicação de balcão a balcão.
+
+### 3. Isca do RPsec Link (Suporte & Acesso Remoto)
+- **A Isca:** Acesso remoto direto via navegador para profissionais de TI, técnicos e gamers que estão fartos dos limites e pop-ups do TeamViewer/AnyDesk.
+- **A Conversão:** Venda de licença comercial corporativa para empresas de suporte com painel de múltiplos computadores e acesso desatendido por senha mestra.
+- **Canal de Venda:** Comunidades de suporte técnico, fóruns de TI e clientes diretos da RPsecti.
 
 ---
 

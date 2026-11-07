@@ -1,9 +1,10 @@
-import type { Product, Sale, Expense } from './types'
+import type { Product, Sale, Expense, CartItem } from './types'
 
 const STORAGE_KEYS = {
   PRODUCTS: 'rpsec_balcao_products',
   SALES: 'rpsec_balcao_sales',
   EXPENSES: 'rpsec_balcao_expenses',
+  ACTIVE_CART: 'rpsec_balcao_active_cart',
 }
 
 export const INITIAL_PRODUCTS: Product[] = [
@@ -70,6 +71,20 @@ export function saveExpense(expense: Expense): Expense[] {
   const updated = [expense, ...current]
   localStorage.setItem(STORAGE_KEYS.EXPENSES, JSON.stringify(updated))
   return updated
+}
+
+export function loadActiveCart(): CartItem[] {
+  const data = localStorage.getItem(STORAGE_KEYS.ACTIVE_CART)
+  if (!data) return []
+  try {
+    return JSON.parse(data)
+  } catch {
+    return []
+  }
+}
+
+export function saveActiveCart(cart: CartItem[]): void {
+  localStorage.setItem(STORAGE_KEYS.ACTIVE_CART, JSON.stringify(cart))
 }
 
 export function formatCurrency(value: number): string {
