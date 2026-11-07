@@ -11,38 +11,45 @@ import socket
 import asyncio
 import argparse
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Callable, Set
 
 import uvicorn
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Query
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
-# Importa os módulos Win32 do RPsec Link
 from screen_capture import ScreenCapturer
 from input_controller import InputController
 
-app = FastAPI(title="RPsec Link Server", version="1.0.0")
+app = FastAPI(title="RPsec Link Server", version="1.1.0")
 
 STATIC_DIR = Path(__file__).parent / "static"
 INDEX_HTML = (STATIC_DIR / "index.html").read_text(encoding="utf-8")
 
-# Configuração global
 CONFIG = {
     "pin": "1234",
     "port": 8765,
     "host": "0.0.0.0",
 }
 
+# Controle de conexões ativas e callbacks para a GUI do Host
+ACTIVE_CLIENTS: Set[str] = set()
+CALLBACKS = {
+    "on_connect": None,
+    "on_disconnect": None,
+}
+
 # Inicializa motores
-capturer = ScreenCapturer()
+capturer = ScreenCapturer(draw_cursor=True)
 input_ctrl = InputController(capturer.width, capturer.height)
 
 
 @app.get("/", response_class=HTMLResponse)
 async def serve_index():
     """Entrega a aplicação cliente web zero-instalação."""
-    return HTMLResponse(INDEX_HTML)
+    # Sempre recarrega do arquivo em tempo de desenvolvimento para refletir edições
+    content = (STATIC_DIR / "index.html").read_text(encoding="utf-8")
+    return HTMLResponse(content)
 
 
 @app.get("/status")
@@ -52,6 +59,7 @@ async def get_status():
         "status": "online",
         "resolution": f"{capturer.width}x{capturer.height}",
         "pin_configured": bool(CONFIG["pin"]),
+        "clients_connected": len(ACTIVE_CLIENTS),
     }
 
 
@@ -65,7 +73,15 @@ async def websocket_endpoint(websocket: WebSocket, pin: str = Query("")):
         return
 
     await websocket.accept()
-    print(f"[+] Cliente conectado com sucesso de {websocket.client.host}")
+    client_ip = websocket.client.host
+    ACTIVE_CLIENTS.add(client_ip)
+    print(f"[+] Cliente conectado com sucesso de {client_ip}")
+
+    if CALLBACKS["on_connect"]:
+        try:
+            CALLBACKS["on_connect"](client_ip, len(ACTIVE_CLIENTS))
+        except Exception:
+            pass
 
     # Envia dimensões da tela do host
     await websocket.send_text(json.dumps({
@@ -74,7 +90,6 @@ async def websocket_endpoint(websocket: WebSocket, pin: str = Query("")):
         "height": capturer.height
     }))
 
-    # Estado da sessão
     session_state = {
         "quality": 60,
         "scale": 1.0,
@@ -82,30 +97,25 @@ async def websocket_endpoint(websocket: WebSocket, pin: str = Query("")):
         "running": True
     }
 
-    # Task de Streaming de Vídeo
     async def stream_frames():
         try:
             while session_state["running"]:
                 t_start = time.perf_counter()
 
-                # Captura e comprime tela via Win32 + OpenCV
                 frame_bytes = capturer.grab_frame_jpeg(
                     quality=session_state["quality"],
                     scale=session_state["scale"]
                 )
 
-                # Transmite frame binário
                 await websocket.send_bytes(frame_bytes)
 
-                # Controle de taxa de quadros (FPS)
                 target_interval = 1.0 / session_state["fps"]
                 elapsed = time.perf_counter() - t_start
                 sleep_time = max(0.005, target_interval - elapsed)
                 await asyncio.sleep(sleep_time)
-        except Exception as e:
+        except Exception:
             session_state["running"] = False
 
-    # Task de Recepção de Comandos do Cliente
     async def receive_events():
         try:
             while session_state["running"]:
@@ -145,7 +155,6 @@ async def websocket_endpoint(websocket: WebSocket, pin: str = Query("")):
         except (WebSocketDisconnect, Exception):
             session_state["running"] = False
 
-    # Executa ambas as tarefas concorrentemente
     stream_task = asyncio.create_task(stream_frames())
     receive_task = asyncio.create_task(receive_events())
 
@@ -157,30 +166,24 @@ async def websocket_endpoint(websocket: WebSocket, pin: str = Query("")):
     for task in pending:
         task.cancel()
 
-    print(f"[-] Cliente desconectado de {websocket.client.host}")
+    ACTIVE_CLIENTS.discard(client_ip)
+    print(f"[-] Cliente desconectado de {client_ip}")
+
+    if CALLBACKS["on_disconnect"]:
+        try:
+            CALLBACKS["on_disconnect"](client_ip, len(ACTIVE_CLIENTS))
+        except Exception:
+            pass
 
 
-def print_banner(host: str, port: int, pin: str):
-    """Exibe URLs e instruções de acesso de forma amigável no terminal."""
+def get_network_ips():
+    """Retorna a lista de IPs locais da máquina."""
     hostname = socket.gethostname()
     try:
         ips = socket.gethostbyname_ex(hostname)[2]
+        return [ip for ip in ips if not ip.startswith("127.")]
     except Exception:
-        ips = ["127.0.0.1"]
-
-    print("=" * 64)
-    print("   ⚡ RPsec Link — Servidor de Acesso Remoto Ultraleve")
-    print("=" * 64)
-    print(f"  • Resolução da Tela: {capturer.width}x{capturer.height}")
-    print(f"  • PIN de Segurança : {pin}")
-    print("  • Links para conectar no seu navegador:")
-    print(f"      - Localhost : http://localhost:{port}")
-    for ip in ips:
-        if not ip.startswith("127."):
-            print(f"      - Na sua Rede: http://{ip}:{port}")
-    print("=" * 64)
-    print("  Pressione Ctrl+C para encerrar o servidor a qualquer momento.")
-    print("=" * 64 + "\n")
+        return ["127.0.0.1"]
 
 
 def main():
@@ -194,7 +197,16 @@ def main():
     CONFIG["pin"] = args.pin
     CONFIG["host"] = args.host
 
-    print_banner(args.host, args.port, args.pin)
+    ips = get_network_ips()
+    print("=" * 64)
+    print("   ⚡ RPsec Link — Servidor de Acesso Remoto Ultraleve")
+    print("=" * 64)
+    print(f"  • Resolução: {capturer.width}x{capturer.height}")
+    print(f"  • PIN de Segurança: {args.pin}")
+    print(f"  • Acesso Local    : http://localhost:{args.port}")
+    for ip in ips:
+        print(f"  • Acesso na Rede  : http://{ip}:{args.port}")
+    print("=" * 64 + "\n")
 
     uvicorn.run(app, host=args.host, port=args.port, log_level="warning")
 

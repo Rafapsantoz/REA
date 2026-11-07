@@ -1,6 +1,7 @@
 """
 RPsec Link - Motor de Captura de Tela de Ultrabaixa Latência (Windows Win32 GDI / OpenCV).
 Projetado para desempenho em tempo real (> 25 FPS) e baixíssimo consumo de memória (< 35MB).
+Renderiza o cursor do mouse ativo nativo do Windows sobre a captura para máxima fidelidade.
 """
 
 import ctypes
@@ -28,6 +29,23 @@ u32.OpenInputDesktop.restype = P
 u32.OpenInputDesktop.argtypes = [U, I, U]
 u32.SetThreadDesktop.restype = I
 u32.SetThreadDesktop.argtypes = [P]
+
+class POINT(ctypes.Structure):
+    _fields_ = [('x', ctypes.c_long), ('y', ctypes.c_long)]
+
+class CURSORINFO(ctypes.Structure):
+    _fields_ = [
+        ('cbSize', wintypes.DWORD),
+        ('flags', wintypes.DWORD),
+        ('hCursor', P),
+        ('ptScreenPos', POINT),
+    ]
+
+u32.GetCursorInfo.restype = wintypes.BOOL
+u32.GetCursorInfo.argtypes = [ctypes.c_void_p]
+
+u32.DrawIconEx.restype = wintypes.BOOL
+u32.DrawIconEx.argtypes = [P, I, I, P, I, I, U, P, U]
 
 gdi32.CreateCompatibleDC.restype = P
 gdi32.CreateCompatibleDC.argtypes = [P]
@@ -61,12 +79,14 @@ gdi32.GetDIBits.restype = I
 gdi32.GetDIBits.argtypes = [P, P, wintypes.UINT, wintypes.UINT, P, ctypes.c_void_p, wintypes.UINT]
 
 SRCCOPY = 0x00CC0020
+DI_NORMAL = 0x0003
 
 
 class ScreenCapturer:
     """Capturador Win32 com cache de HDC e Bitmaps para minimizar overhead por frame."""
 
-    def __init__(self):
+    def __init__(self, draw_cursor: bool = True):
+        self.draw_cursor = draw_cursor
         self._ensure_input_desktop()
         self.width = u32.GetSystemMetrics(0)
         self.height = u32.GetSystemMetrics(1)
@@ -99,13 +119,22 @@ class ScreenCapturer:
 
     def grab_frame_jpeg(self, quality: int = 60, scale: float = 1.0) -> bytes:
         """
-        Captura a tela inteira e retorna bytes comprimidos em JPEG.
+        Captura a tela inteira, sobrepõe o cursor real e retorna bytes JPEG.
         Duração média: ~15-25ms.
         """
         self._ensure_input_desktop()
 
         # Copia da tela física para o buffer de memória
         gdi32.BitBlt(self.hdc_mem, 0, 0, self.width, self.height, self.hdc_screen, 0, 0, SRCCOPY)
+
+        # Desenha o cursor ativo do Windows na posição exata
+        if self.draw_cursor:
+            ci = CURSORINFO()
+            ci.cbSize = ctypes.sizeof(CURSORINFO)
+            if u32.GetCursorInfo(ctypes.byref(ci)) and (ci.flags & 1):
+                u32.DrawIconEx(self.hdc_mem, ci.ptScreenPos.x, ci.ptScreenPos.y, ci.hCursor, 0, 0, 0, None, DI_NORMAL)
+
+        # Extrai os bits de pixel
         gdi32.GetDIBits(self.hdc_mem, self.hbm, 0, self.height, self.buffer, ctypes.byref(self.bi), 0)
 
         # Converte para array NumPy BGRA -> BGR

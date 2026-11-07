@@ -1,19 +1,20 @@
 @echo off
-title RPsec Link - Acesso Remoto Ultraleve
+title RPsec Link — Host Agent
 chcp 65001 >nul
 cls
 
 echo ========================================================
-echo    ⚡ RPsec Solucoes Inteligentes - RPsec Link
+echo    ⚡ RPsec Solucoes Inteligentes - RPsec Link Host
 echo ========================================================
 echo.
-echo Iniciando servidor de acesso remoto...
+echo Iniciando Agente Host com Interface Grafica...
 echo.
 
-python server.py --port 8765 --pin 1234
+python host_app.py
 
 if %ERRORLEVEL% NEQ 0 (
     echo.
-    echo [ERRO] O servidor foi encerrado inesperadamente.
+    echo Tentando iniciar em modo terminal...
+    python server.py --port 8765 --pin 1234
     pause
 )
