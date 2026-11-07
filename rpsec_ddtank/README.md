@@ -21,35 +21,48 @@ Automação inteligente de alta performance para a instância **Sky City (Castel
 
 ---
 
-## 🚀 Como Executar
+## 🚀 Como Executar na Máquina de Jogo
 
-### 1. Testes de Calibração Isolados
-No terminal, com o ambiente virtual ativado:
-
-* **Testar apenas os cliques de Pronto nas 3 fakes:**
-  ```powershell
-  ..\gravador_windows\.venv\Scripts\python main.py --test-ready
-  ```
-
-* **Testar a sequência de suicídio das fakes (caminhada para a esquerda):**
-  ```powershell
-  ..\gravador_windows\.venv\Scripts\python main.py --test-suicide
-  ```
-
-* **Verificar o estado da tela via Visão Computacional:**
-  ```powershell
-  ..\gravador_windows\.venv\Scripts\python main.py --test-vision
-  ```
-
-### 2. Executar a Partida Completa
-```powershell
-..\gravador_windows\.venv\Scripts\python main.py --run
-```
-*(O bot fará uma contagem regressiva de 5 segundos para você posicionar as janelas).*
+### 1. Instalação Inicial (1 Clique)
+Basta dar dois cliques no arquivo:
+* 🟢 **`instalar.bat`** (cria o `.venv` local e instala `mss`, `numpy` e `pillow` automaticamente).
 
 ---
 
-## 🧪 Bateria de Testes
+### 2. Execução Rápida via Atalhos (.BAT)
+Você pode executar diretamente via scripts prontos:
+* 🏹 **`iniciar_bot.bat`**: Inicia a partida completa de Sky City (com contagem regressiva de 5 segundos).
+* 💀 **`testar_suicidio.bat`**: Testa apenas a rotina de suicídio das 3 fakes (andar para a esquerda no abismo).
+* 🟡 **`testar_pronto.bat`**: Testa apenas os cliques no botão Pronto das 3 fakes no Lobby.
+
+---
+
+### 3. Execução via Terminal (PowerShell / CMD)
+Se preferir rodar via linha de comando dentro da pasta `rpsec_ddtank`:
+
+* **Iniciar partida completa:**
+  ```powershell
+  .venv\Scripts\python main.py --run
+  ```
+
+* **Testar suicídio das 3 fakes:**
+  ```powershell
+  .venv\Scripts\python main.py --test-suicide
+  ```
+
+* **Testar cliques de Pronto:**
+  ```powershell
+  .venv\Scripts\python main.py --test-ready
+  ```
+
+* **Diagnóstico de Visão Computacional:**
+  ```powershell
+  .venv\Scripts\python main.py --test-vision
+  ```
+
+---
+
+## 🧪 Bateria de Testes Automatizados
 ```powershell
-..\gravador_windows\.venv\Scripts\python tests/test_bot_core.py
+.venv\Scripts\python tests/test_bot_core.py
 ```
