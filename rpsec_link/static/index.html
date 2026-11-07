@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>RPsec Link — Host Remoto</title>
+  <link rel="icon" type="image/png" href="/static/icon.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
@@ -35,7 +36,7 @@
       z-index: 2000;
     }
     .auth-card {
-      background: rgba(17, 24, 39, 0.85);
+      background: rgba(17, 24, 39, 0.9);
       backdrop-filter: blur(20px);
       border: 1px solid rgba(255, 255, 255, 0.12);
       border-radius: 24px;
@@ -124,6 +125,8 @@
       display: block;
       cursor: default;
       outline: none;
+      image-rendering: -webkit-optimize-contrast;
+      image-rendering: crisp-edges;
       transition: width 0.15s, height 0.15s;
     }
     /* Modos de visualização */
@@ -144,38 +147,52 @@
       max-height: none;
     }
 
-    /* Top Notch / Gaveta Retrátil Inteligente */
+    /* Top Notch / Aba Retrátil Inteligente */
     #toolbarZone {
       position: fixed;
       top: 0;
       left: 0;
       right: 0;
-      height: 20px;
+      height: 24px;
       z-index: 1000;
       display: flex;
       justify-content: center;
+      pointer-events: auto;
     }
     #toolbarTab {
-      width: 60px;
-      height: 8px;
-      background: rgba(56, 189, 248, 0.4);
-      border-radius: 0 0 8px 8px;
+      width: 130px;
+      height: 20px;
+      background: rgba(15, 23, 42, 0.85);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(56, 189, 248, 0.35);
+      border-top: none;
+      border-radius: 0 0 10px 10px;
       cursor: pointer;
-      transition: background 0.2s, height 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.65rem;
+      font-weight: 700;
+      color: #38bdf8;
+      letter-spacing: 0.05em;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+      transition: all 0.2s;
     }
-    #toolbarZone:hover #toolbarTab,
-    #toolbarContainer:hover #toolbarTab {
-      background: #38bdf8;
-      height: 10px;
+    #toolbarZone:hover #toolbarTab {
+      background: #0284c7;
+      color: #ffffff;
+      border-color: #38bdf8;
+      height: 22px;
     }
 
+    /* Barra Superior Deslizante */
     #toolbar {
       position: fixed;
       top: 0;
       left: 50%;
       transform: translateX(-50%) translateY(-105%);
-      background: rgba(15, 23, 42, 0.94);
-      backdrop-filter: blur(16px);
+      background: rgba(15, 23, 42, 0.95);
+      backdrop-filter: blur(18px);
       border: 1px solid rgba(255, 255, 255, 0.15);
       border-top: none;
       border-radius: 0 0 16px 16px;
@@ -184,10 +201,10 @@
       align-items: center;
       gap: 0.75rem;
       z-index: 1001;
-      box-shadow: 0 15px 35px -5px rgba(0, 0, 0, 0.6);
+      box-shadow: 0 15px 35px -5px rgba(0, 0, 0, 0.65);
       transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
     }
-    /* Revela a barra quando o mouse se aproxima do topo ou quando fixada */
+    /* Abre ao passar o mouse na aba ou na própria barra, ou se fixada */
     #toolbarZone:hover ~ #toolbar,
     #toolbar:hover,
     #toolbar.pinned {
@@ -251,7 +268,6 @@
       cursor: pointer;
     }
 
-    /* Input escondido para acionar teclado virtual em tablets/celulares */
     #mobileKeyTrap {
       position: absolute;
       opacity: 0;
@@ -276,10 +292,10 @@
 
   <!-- Zona Sensível de Ativação do Top Notch -->
   <div id="toolbarZone">
-    <div id="toolbarTab" title="Passe o mouse para abrir controles"></div>
+    <div id="toolbarTab">⚡ RPsec Link</div>
   </div>
 
-  <!-- Barra de Ferramentas Retrátil (Desliza para baixo ao aproximar) -->
+  <!-- Barra de Ferramentas Retrátil -->
   <div id="toolbar">
     <div id="statusDot" class="status-dot"></div>
     <div class="stat-badge"><span id="fpsCount">--</span> FPS • <span id="pingCount">--</span>ms</div>
@@ -288,19 +304,20 @@
     <select id="scaleSelect" class="tb-select" title="Modo de Exibição">
       <option value="fit" selected>Ajustar à Janela (Fit)</option>
       <option value="fill">Preencher 100% (Sem Bordas)</option>
-      <option value="original">Resolução 1:1</option>
+      <option value="original">Resolução 1:1 Nativa</option>
     </select>
 
     <!-- Qualidade do Stream -->
     <select id="qualitySelect" class="tb-select" title="Qualidade da Transmissão">
       <option value="high">Alta (75% • 30 FPS)</option>
-      <option value="medium" selected>Média (60% • 22 FPS)</option>
+      <option value="medium" selected>Média (65% • 25 FPS)</option>
       <option value="fast">Rápida (45% • 15 FPS)</option>
     </select>
 
     <!-- Teclas Rápidas -->
     <button id="btnWin" class="tb-btn" title="Pressionar Tecla Windows">⊞ Win</button>
     <button id="btnAltTab" class="tb-btn" title="Alternar Janelas">Alt+Tab</button>
+    <button id="btnCtrlAltDel" class="tb-btn" title="Enviar Ctrl+Alt+Del">Ctrl+Alt+Del</button>
     <button id="btnEsc" class="tb-btn" title="Pressionar Esc">Esc</button>
     <button id="btnMobileKbd" class="tb-btn" title="Abrir Teclado no Tablet/Celular">⌨ Teclado</button>
     <button id="btnFullscreen" class="tb-btn" title="Modo Tela Cheia Imersivo">⛶ Tela Cheia</button>
@@ -425,7 +442,7 @@
     function sendQualityConfig() {
       if (!ws || ws.readyState !== WebSocket.OPEN) return;
       const val = qualitySelect.value;
-      let quality = 60, scale = 1.0, fps = 22;
+      let quality = 65, scale = 1.0, fps = 25;
       if (val === 'high') {
         quality = 75; scale = 1.0; fps = 30;
       } else if (val === 'fast') {
@@ -435,19 +452,16 @@
     }
     qualitySelect.addEventListener('change', sendQualityConfig);
 
-    // Modos de Exibição
     scaleSelect.addEventListener('change', () => {
       canvas.className = `mode-${scaleSelect.value}`;
     });
 
-    // Fixar ou Retrair a Barra Superior
     btnPinBar.addEventListener('click', () => {
       isPinned = !isPinned;
       toolbar.classList.toggle('pinned', isPinned);
       btnPinBar.classList.toggle('active', isPinned);
     });
 
-    // Converte posição do mouse no Canvas em coordenadas normalizadas (0.0 a 1.0)
     function getNormalizedCoords(e) {
       const rect = canvas.getBoundingClientRect();
       const x = (e.clientX - rect.left) / rect.width;
@@ -458,7 +472,6 @@
       };
     }
 
-    // Eventos do Mouse
     canvas.addEventListener('mousemove', (e) => {
       const now = performance.now();
       if (now - lastMouseMove < 16) return;
@@ -494,7 +507,6 @@
       ws.send(JSON.stringify({ type: 'wheel', delta: -Math.sign(e.deltaY) * 120 }));
     }, { passive: false });
 
-    // Eventos do Teclado
     window.addEventListener('keydown', (e) => {
       if (document.activeElement === pinInput) return;
       if (['Tab', 'Backspace', 'F5', 'Alt', 'Meta'].includes(e.key)) {
@@ -510,7 +522,6 @@
       ws.send(JSON.stringify({ type: 'key_up', key: e.key, code: e.code }));
     });
 
-    // Atalhos Rápidos
     document.getElementById('btnWin').addEventListener('click', () => {
       if (ws && ws.readyState === WebSocket.OPEN) {
         ws.send(JSON.stringify({ type: 'shortcut', shortcut: 'win' }));
@@ -520,6 +531,12 @@
     document.getElementById('btnAltTab').addEventListener('click', () => {
       if (ws && ws.readyState === WebSocket.OPEN) {
         ws.send(JSON.stringify({ type: 'shortcut', shortcut: 'alt+tab' }));
+      }
+    });
+
+    document.getElementById('btnCtrlAltDel').addEventListener('click', () => {
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({ type: 'shortcut', shortcut: 'ctrl+alt+del' }));
       }
     });
 
@@ -534,7 +551,6 @@
       mobileKeyTrap.focus();
     });
 
-    // Tela Cheia Nativa (F11 / Imersão Total)
     document.getElementById('btnFullscreen').addEventListener('click', () => {
       if (!document.fullscreenElement) {
         document.documentElement.requestFullscreen().catch(() => {});

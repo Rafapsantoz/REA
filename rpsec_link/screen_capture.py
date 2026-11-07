@@ -1,7 +1,7 @@
 """
 RPsec Link - Motor de Captura de Tela de Ultrabaixa Latência (Windows Win32 GDI / OpenCV).
-Projetado para desempenho em tempo real (> 25 FPS) e baixíssimo consumo de memória (< 35MB).
-Renderiza o cursor do mouse ativo nativo do Windows sobre a captura para máxima fidelidade.
+Ativa Per-Monitor DPI Awareness para capturar a resolução nativa real (1080p sem cortes).
+Renderiza o cursor ativo nativo do Windows com máxima fidelidade.
 """
 
 import ctypes
@@ -10,6 +10,15 @@ import time
 from typing import Tuple, Optional
 import cv2
 import numpy as np
+
+# 1. Ativa DPI Awareness antes de qualquer chamada GDI/User32
+try:
+    ctypes.windll.shcore.SetProcessDpiAwareness(2)  # PROCESS_PER_MONITOR_DPI_AWARE
+except Exception:
+    try:
+        ctypes.windll.user32.SetProcessDPIAware()
+    except Exception:
+        pass
 
 # Win32 APIs
 u32 = ctypes.windll.user32
@@ -83,11 +92,13 @@ DI_NORMAL = 0x0003
 
 
 class ScreenCapturer:
-    """Capturador Win32 com cache de HDC e Bitmaps para minimizar overhead por frame."""
+    """Capturador Win32 nativo 100% DPI-aware com suporte a cursor real do Windows."""
 
     def __init__(self, draw_cursor: bool = True):
         self.draw_cursor = draw_cursor
         self._ensure_input_desktop()
+
+        # Obtém a resolução física real após DPI awareness (ex: 1920x1080)
         self.width = u32.GetSystemMetrics(0)
         self.height = u32.GetSystemMetrics(1)
 
@@ -105,11 +116,10 @@ class ScreenCapturer:
         self.bi.biBitCount = 32
         self.bi.biCompression = 0
 
-        # Buffer reutilizável de memória contígua
         self.buffer = (ctypes.c_char * (self.width * self.height * 4))()
 
     def _ensure_input_desktop(self):
-        """Conecta o thread à sessão de desktop ativa do usuário."""
+        """Garante que a thread tenha acesso ao desktop gráfico ativo."""
         try:
             hdesk = u32.OpenInputDesktop(0, False, 0x01FF)
             if hdesk:
@@ -119,25 +129,25 @@ class ScreenCapturer:
 
     def grab_frame_jpeg(self, quality: int = 60, scale: float = 1.0) -> bytes:
         """
-        Captura a tela inteira, sobrepõe o cursor real e retorna bytes JPEG.
-        Duração média: ~15-25ms.
+        Captura o desktop físico inteiro em resolução nativa sem cortes.
+        Desenha o cursor do mouse na posição real e comprime em JPEG.
         """
         self._ensure_input_desktop()
 
-        # Copia da tela física para o buffer de memória
+        # Copia da tela física
         gdi32.BitBlt(self.hdc_mem, 0, 0, self.width, self.height, self.hdc_screen, 0, 0, SRCCOPY)
 
-        # Desenha o cursor ativo do Windows na posição exata
+        # Desenha o cursor ativo do Windows
         if self.draw_cursor:
             ci = CURSORINFO()
             ci.cbSize = ctypes.sizeof(CURSORINFO)
             if u32.GetCursorInfo(ctypes.byref(ci)) and (ci.flags & 1):
                 u32.DrawIconEx(self.hdc_mem, ci.ptScreenPos.x, ci.ptScreenPos.y, ci.hCursor, 0, 0, 0, None, DI_NORMAL)
 
-        # Extrai os bits de pixel
+        # Obtém os bits da imagem
         gdi32.GetDIBits(self.hdc_mem, self.hbm, 0, self.height, self.buffer, ctypes.byref(self.bi), 0)
 
-        # Converte para array NumPy BGRA -> BGR
+        # BGRA para BGR
         arr = np.frombuffer(self.buffer, dtype=np.uint8).reshape((self.height, self.width, 4))[:, :, :3]
 
         if scale < 0.99:
@@ -145,12 +155,10 @@ class ScreenCapturer:
             new_h = int(self.height * scale)
             arr = cv2.resize(arr, (new_w, new_h), interpolation=cv2.INTER_LINEAR)
 
-        # Compressão JPEG ultrarrápida via OpenCV (C++)
         _, encoded = cv2.imencode('.jpg', arr, [cv2.IMWRITE_JPEG_QUALITY, quality])
         return encoded.tobytes()
 
     def close(self):
-        """Libera todos os handles de GDI do Windows."""
         try:
             gdi32.SelectObject(self.hdc_mem, self.old_bm)
             gdi32.DeleteObject(self.hbm)

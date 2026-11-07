@@ -1,20 +1,38 @@
 """
 RPsec Link - Interface Gráfica do Host (Desktop Agent).
 Proporciona uma experiência idêntica ao AnyDesk Host / TeamViewer Host,
-com exibição clara de IP, PIN, status da sessão em tempo real e controles de 1 clique.
+com identidade visual RPsecti, ícone personalizado e sem janelas de CMD visíveis.
 """
 
+import os
 import sys
 import socket
 import threading
 import webbrowser
+import ctypes
+from pathlib import Path
+
+# 1. Oculta imediatamente a janela preta do CMD se foi aberto via BAT
+hwnd_console = ctypes.windll.kernel32.GetConsoleWindow()
+if hwnd_console:
+    ctypes.windll.user32.ShowWindow(hwnd_console, 0)  # SW_HIDE = 0
+
+# 2. Registra AppUserModelID para a barra de tarefas do Windows exibir o ícone correto
+try:
+    myappid = "rpsecti.rpseclink.host.1"
+    ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
+except Exception:
+    pass
+
 import customtkinter as ctk
 import uvicorn
-
 import server
 
 ctk.set_appearance_mode("dark")
 ctk.set_default_color_theme("blue")
+
+BASE_DIR = Path(__file__).parent
+ICON_ICO = BASE_DIR / "assets" / "icon.ico"
 
 
 class HostApp(ctk.CTk):
@@ -22,28 +40,32 @@ class HostApp(ctk.CTk):
         super().__init__()
 
         self.title("RPsec Link — Host Agent")
-        self.geometry("480x580")
+        self.geometry("490x610")
         self.resizable(False, False)
 
-        # Detecta IP principal da máquina
+        # Aplica o ícone oficial da RPsecti na janela
+        if ICON_ICO.exists():
+            try:
+                self.iconbitmap(str(ICON_ICO))
+            except Exception:
+                pass
+
+        # Configurações de rede
         self.port = server.CONFIG["port"]
         self.pin = server.CONFIG["pin"]
         self.ips = server.get_network_ips()
         self.primary_ip = self.ips[0] if self.ips else "127.0.0.1"
         self.connection_url = f"http://{self.primary_ip}:{self.port}"
 
-        # Configura callbacks do servidor para atualizar a GUI em tempo real
+        # Callbacks do servidor
         server.CALLBACKS["on_connect"] = self._on_client_connect
         server.CALLBACKS["on_disconnect"] = self._on_client_disconnect
 
-        # Inicializa thread do servidor Uvicorn
-        self.server_thread = None
         self._start_server_thread()
-
         self._build_ui()
 
     def _start_server_thread(self):
-        """Inicia o servidor FastAPI em segundo plano."""
+        """Inicia o servidor Uvicorn em background thread daemon."""
         config = uvicorn.Config(
             server.app,
             host=server.CONFIG["host"],
@@ -55,12 +77,15 @@ class HostApp(ctk.CTk):
         self.server_thread.start()
 
     def _build_ui(self):
-        # Cabeçalho Superior
+        # 1. Cabeçalho com Identidade Visual RPsecti
         header_frame = ctk.CTkFrame(self, fg_color="transparent")
-        header_frame.pack(fill="x", padx=24, pady=(20, 10))
+        header_frame.pack(fill="x", padx=24, pady=(22, 8))
+
+        brand_row = ctk.CTkFrame(header_frame, fg_color="transparent")
+        brand_row.pack(side="left")
 
         title_label = ctk.CTkLabel(
-            header_frame,
+            brand_row,
             text="⚡ RPsec Link",
             font=ctk.CTkFont(size=22, weight="bold"),
             text_color="#f8fafc"
@@ -70,7 +95,7 @@ class HostApp(ctk.CTk):
         self.badge_status = ctk.CTkLabel(
             header_frame,
             text="● ONLINE",
-            font=ctk.CTkFont(size=12, weight="bold"),
+            font=ctk.CTkFont(size=11, weight="bold"),
             text_color="#10b981",
             fg_color="#064e3b",
             corner_radius=12,
@@ -81,21 +106,21 @@ class HostApp(ctk.CTk):
 
         subtitle = ctk.CTkLabel(
             self,
-            text="Agente Host de Acesso Remoto Ultraleve",
+            text="Agente Host Oficial • RPsecti Soluções Inteligentes",
             font=ctk.CTkFont(size=12),
-            text_color="#94a3b8"
+            text_color="#64748b"
         )
         subtitle.pack(anchor="w", padx=24, pady=(0, 16))
 
-        # CARD 1: Endereço de Conexão da Máquina
-        card_ip = ctk.CTkFrame(self, fg_color="#1e293b", corner_radius=14)
+        # 2. CARD 1: Endereço desta Máquina
+        card_ip = ctk.CTkFrame(self, fg_color="#1e293b", corner_radius=14, border_width=1, border_color="#334155")
         card_ip.pack(fill="x", padx=24, pady=8)
 
         lbl_ip_title = ctk.CTkLabel(
             card_ip,
             text="ENDEREÇO DESTA MÁQUINA (ID DE ACESSO)",
             font=ctk.CTkFont(size=11, weight="bold"),
-            text_color="#64748b"
+            text_color="#94a3b8"
         )
         lbl_ip_title.pack(anchor="w", padx=16, pady=(14, 4))
 
@@ -110,16 +135,16 @@ class HostApp(ctk.CTk):
         btn_row = ctk.CTkFrame(card_ip, fg_color="transparent")
         btn_row.pack(fill="x", padx=16, pady=(0, 14))
 
-        btn_copy = ctk.CTkButton(
+        self.btn_copy = ctk.CTkButton(
             btn_row,
             text="📋 Copiar Link",
             font=ctk.CTkFont(size=12, weight="bold"),
             fg_color="#334155",
             hover_color="#475569",
-            height=34,
+            height=36,
             command=self._copy_link
         )
-        btn_copy.pack(side="left", expand=True, fill="x", padx=(0, 6))
+        self.btn_copy.pack(side="left", expand=True, fill="x", padx=(0, 6))
 
         btn_open = ctk.CTkButton(
             btn_row,
@@ -127,20 +152,20 @@ class HostApp(ctk.CTk):
             font=ctk.CTkFont(size=12, weight="bold"),
             fg_color="#0284c7",
             hover_color="#0369a1",
-            height=34,
+            height=36,
             command=lambda: webbrowser.open(self.connection_url)
         )
         btn_open.pack(side="right", expand=True, fill="x", padx=(6, 0))
 
-        # CARD 2: PIN de Segurança
-        card_pin = ctk.CTkFrame(self, fg_color="#1e293b", corner_radius=14)
+        # 3. CARD 2: PIN de Acesso
+        card_pin = ctk.CTkFrame(self, fg_color="#1e293b", corner_radius=14, border_width=1, border_color="#334155")
         card_pin.pack(fill="x", padx=24, pady=8)
 
         lbl_pin_title = ctk.CTkLabel(
             card_pin,
             text="SENHA / PIN DE ACESSO",
             font=ctk.CTkFont(size=11, weight="bold"),
-            text_color="#64748b"
+            text_color="#94a3b8"
         )
         lbl_pin_title.pack(anchor="w", padx=16, pady=(14, 4))
 
@@ -167,13 +192,13 @@ class HostApp(ctk.CTk):
         )
         btn_save_pin.pack(side="right")
 
-        # CARD 3: Status da Sessão Remota
-        card_session = ctk.CTkFrame(self, fg_color="#0f172a", corner_radius=14, border_width=1, border_color="#334155")
+        # 4. CARD 3: Status da Sessão
+        card_session = ctk.CTkFrame(self, fg_color="#0f172a", corner_radius=14, border_width=1, border_color="#1e293b")
         card_session.pack(fill="x", padx=24, pady=8)
 
         lbl_sess_title = ctk.CTkLabel(
             card_session,
-            text="STATUS DA SESSÃO",
+            text="STATUS DA SESSÃO REMOTA",
             font=ctk.CTkFont(size=11, weight="bold"),
             text_color="#64748b"
         )
@@ -181,33 +206,38 @@ class HostApp(ctk.CTk):
 
         self.lbl_session_status = ctk.CTkLabel(
             card_session,
-            text="🟢 Aguardando conexão remota...",
-            font=ctk.CTkFont(size=14, weight="bold"),
-            text_color="#cbd5e1"
+            text="🟢 Pronto para conexões — Aguardando...",
+            font=ctk.CTkFont(size=13, weight="bold"),
+            text_color="#94a3b8"
         )
         self.lbl_session_status.pack(anchor="w", padx=16, pady=(0, 4))
 
         self.lbl_res_info = ctk.CTkLabel(
             card_session,
-            text=f"Resolução da Tela: {server.capturer.width}x{server.capturer.height} | Latência Estimada: < 25ms",
+            text=f"Resolução Nativa Real: {server.capturer.width}x{server.capturer.height} (DPI 100%)",
             font=ctk.CTkFont(size=11),
             text_color="#64748b"
         )
         self.lbl_res_info.pack(anchor="w", padx=16, pady=(0, 14))
 
-        # Rodapé com Dica
-        lbl_footer = ctk.CTkLabel(
+        # 5. Botão de Minimizar
+        btn_min = ctk.CTkButton(
             self,
-            text="Basta acessar o link acima em qualquer computador, celular ou tablet.",
-            font=ctk.CTkFont(size=11),
-            text_color="#64748b"
+            text="Minimizar para Segundo Plano",
+            fg_color="transparent",
+            text_color="#64748b",
+            hover_color="#1e293b",
+            height=30,
+            command=self.iconify
         )
-        lbl_footer.pack(pady=(12, 0))
+        btn_min.pack(pady=(12, 0))
 
     def _copy_link(self):
         self.clipboard_clear()
         self.clipboard_append(self.connection_url)
         self.update()
+        self.btn_copy.configure(text="✓ Copiado!")
+        self.after(2000, lambda: self.btn_copy.configure(text="📋 Copiar Link"))
 
     def _update_pin(self):
         new_pin = self.entry_pin.get().strip()
@@ -231,8 +261,8 @@ class HostApp(ctk.CTk):
         else:
             self.badge_status.configure(text="● ONLINE", text_color="#10b981", fg_color="#064e3b")
             self.lbl_session_status.configure(
-                text="🟢 Aguardando conexão remota...",
-                text_color="#cbd5e1"
+                text="🟢 Pronto para conexões — Aguardando...",
+                text_color="#94a3b8"
             )
 
 

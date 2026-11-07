@@ -15,16 +15,17 @@ from typing import Optional, Callable, Set
 
 import uvicorn
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Query
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from screen_capture import ScreenCapturer
 from input_controller import InputController
 
-app = FastAPI(title="RPsec Link Server", version="1.1.0")
+app = FastAPI(title="RPsec Link Server", version="1.2.0")
 
-STATIC_DIR = Path(__file__).parent / "static"
-INDEX_HTML = (STATIC_DIR / "index.html").read_text(encoding="utf-8")
+BASE_DIR = Path(__file__).parent
+STATIC_DIR = BASE_DIR / "static"
+ASSETS_DIR = BASE_DIR / "assets"
 
 CONFIG = {
     "pin": "1234",
@@ -32,29 +33,45 @@ CONFIG = {
     "host": "0.0.0.0",
 }
 
-# Controle de conexões ativas e callbacks para a GUI do Host
 ACTIVE_CLIENTS: Set[str] = set()
 CALLBACKS = {
     "on_connect": None,
     "on_disconnect": None,
 }
 
-# Inicializa motores
+# Inicializa motores com DPI awareness ativo
 capturer = ScreenCapturer(draw_cursor=True)
 input_ctrl = InputController(capturer.width, capturer.height)
 
 
 @app.get("/", response_class=HTMLResponse)
 async def serve_index():
-    """Entrega a aplicação cliente web zero-instalação."""
-    # Sempre recarrega do arquivo em tempo de desenvolvimento para refletir edições
-    content = (STATIC_DIR / "index.html").read_text(encoding="utf-8")
-    return HTMLResponse(content)
+    """Entrega a aplicação cliente web com no-cache para sempre refletir as melhorias."""
+    index_file = STATIC_DIR / "index.html"
+    content = index_file.read_text(encoding="utf-8")
+    return HTMLResponse(
+        content=content,
+        headers={
+            "Cache-Control": "no-cache, no-store, must-revalidate",
+            "Pragma": "no-cache",
+            "Expires": "0"
+        }
+    )
+
+
+@app.get("/favicon.ico")
+@app.get("/static/icon.png")
+async def serve_favicon():
+    """Entrega o ícone oficial da RPsecti para a aba do navegador."""
+    icon_path = STATIC_DIR / "icon.png"
+    if icon_path.exists():
+        return FileResponse(icon_path, media_type="image/png")
+    return HTMLResponse("")
 
 
 @app.get("/status")
 async def get_status():
-    """Status do host remoto."""
+    """Status do host remoto com resolução física real."""
     return {
         "status": "online",
         "resolution": f"{capturer.width}x{capturer.height}",
@@ -66,7 +83,6 @@ async def get_status():
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket, pin: str = Query("")):
     """Canal bidirecional: Streaming de vídeo (Binário) + Input do Cliente (JSON)."""
-    # Validação do PIN de segurança
     if CONFIG["pin"] and pin != CONFIG["pin"]:
         await websocket.close(code=4001, reason="PIN Incorreto")
         print(f"[-] Tentativa de conexão rejeitada com PIN inválido: '{pin}'")
@@ -83,7 +99,7 @@ async def websocket_endpoint(websocket: WebSocket, pin: str = Query("")):
         except Exception:
             pass
 
-    # Envia dimensões da tela do host
+    # Envia dimensões físicas nativas da tela
     await websocket.send_text(json.dumps({
         "type": "init",
         "width": capturer.width,
@@ -91,9 +107,9 @@ async def websocket_endpoint(websocket: WebSocket, pin: str = Query("")):
     }))
 
     session_state = {
-        "quality": 60,
+        "quality": 65,
         "scale": 1.0,
-        "fps": 22,
+        "fps": 25,
         "running": True
     }
 
@@ -145,9 +161,9 @@ async def websocket_endpoint(websocket: WebSocket, pin: str = Query("")):
                     input_ctrl.send_shortcut(msg.get("shortcut", ""))
 
                 elif mtype == "quality":
-                    session_state["quality"] = int(msg.get("quality", 60))
+                    session_state["quality"] = int(msg.get("quality", 65))
                     session_state["scale"] = float(msg.get("scale", 1.0))
-                    session_state["fps"] = int(msg.get("fps", 22))
+                    session_state["fps"] = int(msg.get("fps", 25))
 
                 elif mtype == "ping":
                     await websocket.send_text(json.dumps({"type": "pong", "ts": msg.get("ts")}))
@@ -177,7 +193,7 @@ async def websocket_endpoint(websocket: WebSocket, pin: str = Query("")):
 
 
 def get_network_ips():
-    """Retorna a lista de IPs locais da máquina."""
+    """Retorna os IPs da máquina na rede local."""
     hostname = socket.gethostname()
     try:
         ips = socket.gethostbyname_ex(hostname)[2]
@@ -201,7 +217,7 @@ def main():
     print("=" * 64)
     print("   ⚡ RPsec Link — Servidor de Acesso Remoto Ultraleve")
     print("=" * 64)
-    print(f"  • Resolução: {capturer.width}x{capturer.height}")
+    print(f"  • Resolução Nativa: {capturer.width}x{capturer.height}")
     print(f"  • PIN de Segurança: {args.pin}")
     print(f"  • Acesso Local    : http://localhost:{args.port}")
     for ip in ips:
