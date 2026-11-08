@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import type { Product, PaymentMethod, CartItem, Sale, Customer, Comanda } from '../types'
-import { formatCurrency, getNextDailyOrderNumber } from '../storage'
+import { formatCurrency, getNextDailyOrderNumber, peekNextDailyOrderNumber } from '../storage'
 import { 
   Plus, 
   Minus, 
@@ -807,8 +807,11 @@ export const PDVView: React.FC<PDVViewProps> = ({
                   <UtensilsCrossed className="w-5 h-5" />
                 </span>
                 <div>
-                  <h3 className="font-black text-lg text-stone-900 dark:text-stone-100">
-                    Comer no Local / Guardar Comanda
+                  <h3 className="font-black text-lg text-stone-900 dark:text-stone-100 flex items-center gap-2">
+                    Comer no Local
+                    <span className="bg-amber-400 text-stone-950 text-xs px-2.5 py-0.5 rounded-full font-black shadow-xs">
+                      Atendimento #{peekNextDailyOrderNumber()}
+                    </span>
                   </h3>
                   <p className="text-xs text-stone-500 dark:text-stone-400">
                     Identifique a comanda ou a mesa do cliente
@@ -829,16 +832,24 @@ export const PDVView: React.FC<PDVViewProps> = ({
                 Toque Rápido para Escolher:
               </span>
               <div className="grid grid-cols-3 gap-2">
-                {['Mesa 1', 'Mesa 2', 'Mesa 3', 'Mesa 4', 'Balcão 1', 'Balcão 2'].map(sug => (
-                  <button
-                    key={sug}
-                    type="button"
-                    onClick={() => handleSaveNewComanda(sug)}
-                    className="py-2.5 px-2 bg-stone-100 dark:bg-stone-800/80 hover:bg-amber-400 hover:text-stone-950 rounded-xl font-black text-xs text-stone-800 dark:text-stone-200 transition-all border border-stone-200 dark:border-stone-700 cursor-pointer text-center active:scale-95"
-                  >
-                    {sug}
-                  </button>
-                ))}
+                {['Mesa 1', 'Mesa 2', 'Mesa 3', 'Mesa 4', 'Balcão 1', 'Balcão 2'].map(sug => {
+                  const isOccupied = comandas.some(c => c.label.toLowerCase() === sug.toLowerCase())
+                  return (
+                    <button
+                      key={sug}
+                      type="button"
+                      onClick={() => handleSaveNewComanda(sug)}
+                      className={`py-2.5 px-2 rounded-xl font-black text-xs transition-all border cursor-pointer text-center active:scale-95 flex flex-col items-center justify-center gap-0.5 ${
+                        isOccupied 
+                          ? 'bg-amber-100 dark:bg-amber-950/60 border-amber-400 text-amber-900 dark:text-amber-200 shadow-xs' 
+                          : 'bg-stone-100 dark:bg-stone-800/80 hover:bg-amber-400 hover:text-stone-950 text-stone-800 dark:text-stone-200 border-stone-200 dark:border-stone-700'
+                      }`}
+                    >
+                      <span>{sug}</span>
+                      {isOccupied && <span className="text-[9px] text-amber-800 dark:text-amber-300 font-bold">(Ocupada)</span>}
+                    </button>
+                  )
+                })}
               </div>
             </div>
 
@@ -849,7 +860,7 @@ export const PDVView: React.FC<PDVViewProps> = ({
               </label>
               <input
                 type="text"
-                placeholder="Ex: Seu Antônio de Boné, Varanda..."
+                placeholder={`Ex: Comanda #${peekNextDailyOrderNumber()}, Seu Antônio, Varanda...`}
                 value={comandaLabelInput}
                 onChange={e => setComandaLabelInput(e.target.value)}
                 onKeyDown={e => {

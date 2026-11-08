@@ -77,6 +77,7 @@ export function App() {
     setProducts(loadProducts())
     setSales(loadSales())
     setExpenses(loadExpenses())
+    setComandas(loadComandas())
 
     const updateTimer = () => {
       const now = new Date()

@@ -45,19 +45,7 @@ export const INITIAL_CUSTOMERS: Customer[] = [
   { id: 'c3', name: 'Marcos (Obra)', phone: '', notes: 'Café e salgado matinal', createdAt: new Date().toISOString() },
 ]
 
-export const INITIAL_COMANDAS: Comanda[] = [
-  {
-    id: 'cmd_init_1',
-    number: 1,
-    label: 'Mesa 1 (Rapaz de azul)',
-    createdAt: new Date(Date.now() - 15 * 60000).toISOString(),
-    items: [
-      { product: INITIAL_PRODUCTS[0], quantity: 2 }, // 2x Coxinha
-      { product: INITIAL_PRODUCTS[6], quantity: 1 }, // 1x Refri
-    ],
-    notes: 'Comendo no balcão',
-  },
-]
+export const INITIAL_COMANDAS: Comanda[] = []
 
 export const INITIAL_INGREDIENTS: Ingredient[] = [
   { id: 'ing_1', name: 'Farinha de Trigo Especial', unit: 'kg', unitCost: 4.50, category: 'Massas' },
@@ -152,17 +140,77 @@ export function saveCustomer(customer: Customer): Customer[] {
   return updated
 }
 
+export function loadSales(): Sale[] {
+  const data = localStorage.getItem(STORAGE_KEYS.SALES)
+  if (!data) return []
+  try {
+    return JSON.parse(data)
+  } catch {
+    return []
+  }
+}
+
+export function saveSale(sale: Sale): Sale[] {
+  const current = loadSales()
+  const updated = [sale, ...current]
+  localStorage.setItem(STORAGE_KEYS.SALES, JSON.stringify(updated))
+  return updated
+}
+
 export function loadComandas(): Comanda[] {
   const data = localStorage.getItem(STORAGE_KEYS.COMANDAS)
   if (!data) {
     saveComandas(INITIAL_COMANDAS)
     return INITIAL_COMANDAS
   }
+  let comandas: Comanda[] = []
   try {
-    return JSON.parse(data)
+    comandas = JSON.parse(data)
   } catch {
-    return INITIAL_COMANDAS
+    return []
   }
+
+  // Sanitização automática: garantir que não existam comandas com números duplicados ou sem número
+  const seen = new Set<number>()
+  let hasDuplicatesOrInvalid = false
+  for (const c of comandas) {
+    if (!c.number || typeof c.number !== 'number' || seen.has(c.number)) {
+      hasDuplicatesOrInvalid = true
+      break
+    }
+    seen.add(c.number)
+  }
+
+  if (hasDuplicatesOrInvalid && comandas.length > 0) {
+    // Ordena do mais antigo para o mais novo
+    const sorted = [...comandas].sort(
+      (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+    )
+    let currentSeq = 1
+    const repaired = sorted.map(c => ({
+      ...c,
+      number: currentSeq++,
+    }))
+    saveComandas(repaired)
+
+    // Atualiza o DAILY_ORDER_COUNTER para que o próximo pedido seja estritamente superior
+    const todayStr = new Date().toISOString().split('T')[0]
+    const nextCount = currentSeq - 1
+    const stored = localStorage.getItem(STORAGE_KEYS.DAILY_ORDER_COUNTER)
+    let maxCount = nextCount
+    if (stored) {
+      try {
+        const parsed = JSON.parse(stored)
+        if (parsed.date === todayStr && parsed.count > maxCount) {
+          maxCount = parsed.count
+        }
+      } catch {}
+    }
+    localStorage.setItem(STORAGE_KEYS.DAILY_ORDER_COUNTER, JSON.stringify({ date: todayStr, count: maxCount }))
+    return repaired
+  }
+
+  return comandas
 }
 
 export function saveComandas(comandas: Comanda[]): void {
@@ -190,40 +238,47 @@ export function removeComanda(comandaId: string): Comanda[] {
   return updated
 }
 
-export function getNextDailyOrderNumber(): number {
+export function peekNextDailyOrderNumber(): number {
   const todayStr = new Date().toISOString().split('T')[0]
+
+  // 1. Maior número entre as vendas de hoje
+  const sales = loadSales()
+  const todaySales = sales.filter(s => s.createdAt.startsWith(todayStr))
+  const maxSaleNumber = todaySales.reduce((max, s) => Math.max(max, s.orderNumber || 0), 0)
+
+  // 2. Maior número entre as comandas abertas atualmente
+  let maxComandaNumber = 0
+  const cmdData = localStorage.getItem(STORAGE_KEYS.COMANDAS)
+  if (cmdData) {
+    try {
+      const cmds = JSON.parse(cmdData) as Comanda[]
+      maxComandaNumber = cmds.reduce((max, c) => Math.max(max, c.number || 0), 0)
+    } catch {}
+  }
+
+  // 3. Maior número salvo no contador diário
   const stored = localStorage.getItem(STORAGE_KEYS.DAILY_ORDER_COUNTER)
-  let currentData = { date: todayStr, count: 0 }
+  let storedCount = 0
   if (stored) {
     try {
       const parsed = JSON.parse(stored)
-      if (parsed.date === todayStr) {
-        currentData = parsed
+      if (parsed.date === todayStr && typeof parsed.count === 'number') {
+        storedCount = parsed.count
       }
-    } catch {
-      // fallback
-    }
+    } catch {}
   }
-  currentData.count += 1
-  localStorage.setItem(STORAGE_KEYS.DAILY_ORDER_COUNTER, JSON.stringify(currentData))
-  return currentData.count
+
+  return Math.max(maxSaleNumber, maxComandaNumber, storedCount) + 1
 }
 
-export function loadSales(): Sale[] {
-  const data = localStorage.getItem(STORAGE_KEYS.SALES)
-  if (!data) return []
-  try {
-    return JSON.parse(data)
-  } catch {
-    return []
-  }
-}
-
-export function saveSale(sale: Sale): Sale[] {
-  const current = loadSales()
-  const updated = [sale, ...current]
-  localStorage.setItem(STORAGE_KEYS.SALES, JSON.stringify(updated))
-  return updated
+export function getNextDailyOrderNumber(): number {
+  const todayStr = new Date().toISOString().split('T')[0]
+  const nextNumber = peekNextDailyOrderNumber()
+  localStorage.setItem(
+    STORAGE_KEYS.DAILY_ORDER_COUNTER,
+    JSON.stringify({ date: todayStr, count: nextNumber })
+  )
+  return nextNumber
 }
 
 export function markCreditAsPaid(saleId: string, paidMethod: PaymentMethod): Sale[] {
