@@ -134,40 +134,40 @@ export function App() {
 
   return (
     <div className="min-h-screen bg-[#fbf9f5] dark:bg-[#13110e] text-stone-900 dark:text-stone-100 flex flex-col transition-colors duration-200">
-      {/* Topo / Barra de Navegação Superior (Estilo Gastronômico Quente) */}
-      <header className="bg-[#1f1a16] dark:bg-[#14110e] text-stone-100 shadow-md sticky top-0 z-30 border-b border-amber-950/40">
+      {/* Topo / Cabeçalho Gastronômico VIBRANTE em Vermelho e Amarelo */}
+      <header className="bg-gradient-to-r from-red-600 via-rose-600 to-amber-500 dark:from-[#540d0d] dark:via-[#6e1515] dark:to-[#451e08] text-white shadow-lg sticky top-0 z-30 border-b-4 border-amber-400 dark:border-amber-500/80">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex flex-wrap items-center justify-between gap-4">
-          {/* Logo e Título com Cores Gastronômicas */}
+          {/* Logo e Título com Identidade Vermelha & Amarela de Comida */}
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center text-stone-950 font-black shadow-md shadow-amber-950/30">
-              <Store className="w-6 h-6 text-white" />
+            <div className="w-11 h-11 rounded-2xl bg-amber-400 text-red-950 font-black shadow-md shadow-red-950/40 border-2 border-amber-300 flex items-center justify-center shrink-0">
+              <Store className="w-6 h-6 text-red-950" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h1 className="font-black text-xl tracking-tight text-amber-50">RPsec Balcão</h1>
-                <span className="bg-amber-500/20 text-amber-300 text-[10px] font-bold px-2 py-0.5 rounded-full border border-amber-500/40">
+                <h1 className="font-black text-2xl tracking-tight text-white drop-shadow-sm">RPsec Balcão</h1>
+                <span className="bg-amber-400 text-red-950 text-[11px] font-black px-2.5 py-0.5 rounded-full border border-amber-300 shadow-xs uppercase tracking-wide">
                   Salgaderia & Sabor
                 </span>
               </div>
-              <p className="text-xs text-stone-400">Controle Ágil e Ficha Técnica</p>
+              <p className="text-xs text-amber-100 font-bold drop-shadow-xs">Controle Ágil e Ficha Técnica</p>
             </div>
           </div>
 
-          {/* Abas Principais (Botões Grandes com Cores Vivas de Comida) */}
-          <nav className="flex items-center gap-1.5 bg-stone-900/90 dark:bg-stone-950/90 p-1 rounded-xl border border-stone-800/80 flex-wrap">
+          {/* Abas Principais em Vermelho & Amarelo com Alto Contraste */}
+          <nav className="flex items-center gap-1.5 bg-red-950/60 dark:bg-black/60 p-1.5 rounded-2xl border border-amber-400/40 flex-wrap backdrop-blur-xs shadow-inner">
             <button
               onClick={() => setActiveTab('pdv')}
-              className={`flex items-center gap-2 px-3.5 py-2 rounded-lg font-bold text-sm transition-all cursor-pointer relative ${
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm transition-all cursor-pointer relative ${
                 activeTab === 'pdv'
-                  ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-stone-950 shadow-sm font-black'
-                  : 'text-stone-300 hover:text-white hover:bg-stone-800/60'
+                  ? 'bg-amber-400 text-red-950 shadow-md font-black scale-102'
+                  : 'text-amber-100 hover:text-white hover:bg-white/15 font-bold'
               }`}
             >
               <ShoppingBag className="w-4 h-4" />
               Caixa / Vender
               {totalCartItems > 0 && (
                 <span className={`px-2 py-0.5 rounded-full text-xs font-black ml-1 ${
-                  activeTab === 'pdv' ? 'bg-stone-950 text-amber-300' : 'bg-amber-500 text-stone-950'
+                  activeTab === 'pdv' ? 'bg-red-700 text-amber-300' : 'bg-amber-400 text-red-950'
                 }`}>
                   {totalCartItems}
                 </span>
@@ -176,10 +176,10 @@ export function App() {
 
             <button
               onClick={() => setActiveTab('expenses')}
-              className={`flex items-center gap-2 px-3.5 py-2 rounded-lg font-bold text-sm transition-all cursor-pointer ${
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm transition-all cursor-pointer ${
                 activeTab === 'expenses'
-                  ? 'bg-rose-600 text-white shadow-sm font-black'
-                  : 'text-stone-300 hover:text-white hover:bg-stone-800/60'
+                  ? 'bg-amber-400 text-red-950 shadow-md font-black scale-102'
+                  : 'text-amber-100 hover:text-white hover:bg-white/15 font-bold'
               }`}
             >
               <ArrowDownCircle className="w-4 h-4" />
@@ -188,10 +188,10 @@ export function App() {
 
             <button
               onClick={() => setActiveTab('summary')}
-              className={`flex items-center gap-2 px-3.5 py-2 rounded-lg font-bold text-sm transition-all cursor-pointer ${
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm transition-all cursor-pointer ${
                 activeTab === 'summary'
-                  ? 'bg-emerald-600 text-white shadow-sm font-black'
-                  : 'text-stone-300 hover:text-white hover:bg-stone-800/60'
+                  ? 'bg-amber-400 text-red-950 shadow-md font-black scale-102'
+                  : 'text-amber-100 hover:text-white hover:bg-white/15 font-bold'
               }`}
             >
               <BarChart3 className="w-4 h-4" />
@@ -200,22 +200,22 @@ export function App() {
 
             <button
               onClick={() => setActiveTab('costs')}
-              className={`flex items-center gap-2 px-3.5 py-2 rounded-lg font-bold text-sm transition-all cursor-pointer ${
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm transition-all cursor-pointer ${
                 activeTab === 'costs'
-                  ? 'bg-amber-600 text-white shadow-sm font-black'
-                  : 'text-stone-300 hover:text-white hover:bg-stone-800/60'
+                  ? 'bg-amber-400 text-red-950 shadow-md font-black scale-102'
+                  : 'text-amber-100 hover:text-white hover:bg-white/15 font-bold'
               }`}
             >
-              <ChefHat className="w-4 h-4 text-amber-300" />
+              <ChefHat className="w-4 h-4" />
               Custos & Produção
             </button>
 
             <button
               onClick={() => setActiveTab('products')}
-              className={`flex items-center gap-2 px-3.5 py-2 rounded-lg font-bold text-sm transition-all cursor-pointer ${
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm transition-all cursor-pointer ${
                 activeTab === 'products'
-                  ? 'bg-stone-200 text-stone-900 shadow-sm font-black'
-                  : 'text-stone-300 hover:text-white hover:bg-stone-800/60'
+                  ? 'bg-amber-400 text-red-950 shadow-md font-black scale-102'
+                  : 'text-amber-100 hover:text-white hover:bg-white/15 font-bold'
               }`}
             >
               <Tags className="w-4 h-4" />
@@ -223,18 +223,18 @@ export function App() {
             </button>
           </nav>
 
-          {/* Lado Direito: Alternador Claro/Escuro & Relógio */}
+          {/* Lado Direito: Alternador Claro/Escuro & Relógio com Moldura Dourada */}
           <div className="flex items-center gap-2">
             <button
               onClick={toggleTheme}
-              className="p-2 rounded-xl bg-stone-800/90 hover:bg-stone-700/80 text-amber-300 border border-stone-700/80 transition-all cursor-pointer shadow-xs"
+              className="p-2.5 rounded-xl bg-red-950/70 dark:bg-black/70 hover:bg-red-900 text-amber-300 border border-amber-400/50 transition-all cursor-pointer shadow-xs active:scale-95"
               title={theme === 'dark' ? 'Alternar para Modo Claro' : 'Alternar para Modo Escuro'}
             >
-              {theme === 'dark' ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-amber-200" />}
+              {theme === 'dark' ? <Sun className="w-4 h-4 text-amber-300" /> : <Moon className="w-4 h-4 text-amber-200" />}
             </button>
 
-            <div className="hidden sm:flex items-center gap-2 text-xs font-semibold text-stone-300 bg-stone-800/90 px-3 py-1.5 rounded-lg border border-stone-700/80">
-              <Clock className="w-3.5 h-3.5 text-amber-400" />
+            <div className="hidden sm:flex items-center gap-2 text-xs font-bold text-amber-200 bg-red-950/70 dark:bg-black/70 px-3 py-2 rounded-xl border border-amber-400/50 shadow-xs">
+              <Clock className="w-3.5 h-3.5 text-amber-300" />
               <span>{currentTime}</span>
             </div>
           </div>

@@ -213,7 +213,7 @@ export const PDVView: React.FC<PDVViewProps> = ({
               <button
                 key={product.id}
                 onClick={() => addToCart(product)}
-                className={`flex flex-col justify-between p-4 bg-white dark:bg-[#1a1613] rounded-2xl border-2 transition-all text-left cursor-pointer active:scale-95 min-h-[115px] shadow-xs hover:shadow-md ${
+                className={`flex flex-col justify-between p-3.5 bg-white dark:bg-[#1a1613] rounded-2xl border-2 transition-all text-left cursor-pointer active:scale-95 min-h-[125px] shadow-xs hover:shadow-md ${
                   isSalgado
                     ? 'border-amber-200/80 dark:border-amber-950/60 hover:border-amber-500 dark:hover:border-amber-500'
                     : isBebida
@@ -223,7 +223,7 @@ export const PDVView: React.FC<PDVViewProps> = ({
                     : 'border-stone-200 dark:border-stone-800 hover:border-amber-500'
                 }`}
               >
-                <div className="font-bold text-stone-900 dark:text-stone-100 text-base leading-snug line-clamp-2">
+                <div className="font-bold text-stone-900 dark:text-stone-100 text-sm sm:text-base leading-snug break-words">
                   {product.name}
                 </div>
                 <div className="flex items-center justify-between mt-3 pt-2 border-t border-stone-100 dark:border-stone-800/80">

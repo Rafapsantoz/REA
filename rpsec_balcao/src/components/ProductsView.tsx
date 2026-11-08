@@ -65,17 +65,26 @@ export const ProductsView: React.FC<ProductsViewProps> = ({ products, onUpdatePr
 
         <form onSubmit={handleAdd} className="flex flex-col gap-4">
           <div>
-            <label className="block text-xs font-bold text-stone-600 dark:text-stone-300 uppercase mb-1">
-              Nome do Salgado ou Bebida:
-            </label>
+            <div className="flex items-center justify-between mb-1">
+              <label className="text-xs font-bold text-stone-600 dark:text-stone-300 uppercase">
+                Nome do Salgado ou Bebida:
+              </label>
+              <span className={`text-[11px] font-bold ${name.length >= 28 ? 'text-amber-600 dark:text-amber-400' : 'text-stone-400 dark:text-stone-500'}`}>
+                {name.length}/32
+              </span>
+            </div>
             <input
               type="text"
+              maxLength={32}
               placeholder="Ex: Coxinha de Costela"
               value={name}
               onChange={e => setName(e.target.value)}
               className="w-full bg-stone-50 dark:bg-stone-900 border border-stone-300 dark:border-stone-700 rounded-xl px-4 py-3 text-base text-stone-900 dark:text-stone-100 font-semibold focus:outline-amber-600 focus:bg-white dark:focus:bg-stone-900"
               required
             />
+            <span className="text-[10px] text-stone-400 dark:text-stone-500 mt-1 block">
+              Máximo de 32 letras para não cortar nos botões do balcão.
+            </span>
           </div>
 
           <div>
@@ -147,7 +156,7 @@ export const ProductsView: React.FC<ProductsViewProps> = ({ products, onUpdatePr
                     <div className="w-4 h-4 rounded-full bg-white shadow-xs" />
                   </button>
                   <div>
-                    <p className={`font-bold ${prod.active ? 'text-stone-800 dark:text-stone-200' : 'text-stone-400 dark:text-stone-600 line-through'}`}>
+                    <p className={`font-bold break-words ${prod.active ? 'text-stone-800 dark:text-stone-200' : 'text-stone-400 dark:text-stone-600 line-through'}`}>
                       {prod.name}
                     </p>
                     <span className="text-xs uppercase font-semibold text-stone-400 dark:text-stone-500">
