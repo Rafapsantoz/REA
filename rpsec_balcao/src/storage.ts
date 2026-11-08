@@ -1,4 +1,15 @@
-import type { Product, Sale, Expense, CartItem, Ingredient, Recipe, ImportedInvoice, Customer, PaymentMethod } from './types'
+import type { 
+  Product, 
+  Sale, 
+  Expense, 
+  CartItem, 
+  Ingredient, 
+  Recipe, 
+  ImportedInvoice, 
+  Customer, 
+  PaymentMethod,
+  Comanda
+} from './types'
 
 const STORAGE_KEYS = {
   PRODUCTS: 'rpsec_balcao_products',
@@ -9,6 +20,8 @@ const STORAGE_KEYS = {
   RECIPES: 'rpsec_balcao_recipes',
   INVOICES: 'rpsec_balcao_invoices',
   CUSTOMERS: 'rpsec_balcao_customers',
+  COMANDAS: 'rpsec_balcao_comandas',
+  DAILY_ORDER_COUNTER: 'rpsec_balcao_daily_order_counter',
 }
 
 export const INITIAL_PRODUCTS: Product[] = [
@@ -30,6 +43,20 @@ export const INITIAL_CUSTOMERS: Customer[] = [
   { id: 'c1', name: 'Seu Zé (Oficina do Lado)', phone: '11 98765-4321', notes: 'Acerta toda sexta-feira', createdAt: new Date().toISOString() },
   { id: 'c2', name: 'Dona Maria (Costura)', phone: '11 97654-3210', notes: 'Paga no dia 10', createdAt: new Date().toISOString() },
   { id: 'c3', name: 'Marcos (Obra)', phone: '', notes: 'Café e salgado matinal', createdAt: new Date().toISOString() },
+]
+
+export const INITIAL_COMANDAS: Comanda[] = [
+  {
+    id: 'cmd_init_1',
+    number: 1,
+    label: 'Mesa 1 (Rapaz de azul)',
+    createdAt: new Date(Date.now() - 15 * 60000).toISOString(),
+    items: [
+      { product: INITIAL_PRODUCTS[0], quantity: 2 }, // 2x Coxinha
+      { product: INITIAL_PRODUCTS[6], quantity: 1 }, // 1x Refri
+    ],
+    notes: 'Comendo no balcão',
+  },
 ]
 
 export const INITIAL_INGREDIENTS: Ingredient[] = [
@@ -123,6 +150,63 @@ export function saveCustomer(customer: Customer): Customer[] {
   const updated = [customer, ...current]
   saveCustomers(updated)
   return updated
+}
+
+export function loadComandas(): Comanda[] {
+  const data = localStorage.getItem(STORAGE_KEYS.COMANDAS)
+  if (!data) {
+    saveComandas(INITIAL_COMANDAS)
+    return INITIAL_COMANDAS
+  }
+  try {
+    return JSON.parse(data)
+  } catch {
+    return INITIAL_COMANDAS
+  }
+}
+
+export function saveComandas(comandas: Comanda[]): void {
+  localStorage.setItem(STORAGE_KEYS.COMANDAS, JSON.stringify(comandas))
+}
+
+export function saveComanda(comanda: Comanda): Comanda[] {
+  const current = loadComandas()
+  const existsIndex = current.findIndex(c => c.id === comanda.id)
+  let updated: Comanda[]
+  if (existsIndex >= 0) {
+    updated = [...current]
+    updated[existsIndex] = comanda
+  } else {
+    updated = [comanda, ...current]
+  }
+  saveComandas(updated)
+  return updated
+}
+
+export function removeComanda(comandaId: string): Comanda[] {
+  const current = loadComandas()
+  const updated = current.filter(c => c.id !== comandaId)
+  saveComandas(updated)
+  return updated
+}
+
+export function getNextDailyOrderNumber(): number {
+  const todayStr = new Date().toISOString().split('T')[0]
+  const stored = localStorage.getItem(STORAGE_KEYS.DAILY_ORDER_COUNTER)
+  let currentData = { date: todayStr, count: 0 }
+  if (stored) {
+    try {
+      const parsed = JSON.parse(stored)
+      if (parsed.date === todayStr) {
+        currentData = parsed
+      }
+    } catch {
+      // fallback
+    }
+  }
+  currentData.count += 1
+  localStorage.setItem(STORAGE_KEYS.DAILY_ORDER_COUNTER, JSON.stringify(currentData))
+  return currentData.count
 }
 
 export function loadSales(): Sale[] {
@@ -271,6 +355,50 @@ export function formatCurrency(value: number): string {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value)
 }
 
+// Estatísticas por Faixa de Horário
+export interface HourlyStat {
+  hour: number
+  label: string
+  customerCount: number
+  totalAmount: number
+  isPeak: boolean
+}
+
+export function getHourlySalesStats(sales: Sale[], dateStr: string): HourlyStat[] {
+  const daySales = sales.filter(s => s.createdAt.startsWith(dateStr))
+  const hourMap: { [hour: number]: { count: number; total: number } } = {}
+
+  for (let h = 6; h <= 21; h++) {
+    hourMap[h] = { count: 0, total: 0 }
+  }
+
+  daySales.forEach(s => {
+    const saleDate = new Date(s.createdAt)
+    const hour = saleDate.getHours()
+    if (hourMap[hour]) {
+      hourMap[hour].count += 1
+      hourMap[hour].total += s.totalAmount
+    }
+  })
+
+  const counts = Object.values(hourMap).map(v => v.count)
+  const maxCount = Math.max(...counts, 0)
+
+  const stats: HourlyStat[] = []
+  for (let h = 6; h <= 21; h++) {
+    const data = hourMap[h]
+    stats.push({
+      hour: h,
+      label: `${h.toString().padStart(2, '0')}:00`,
+      customerCount: data.count,
+      totalAmount: data.total,
+      isPeak: maxCount > 0 && data.count === maxCount,
+    })
+  }
+
+  return stats
+}
+
 export interface BackupData {
   version: string
   exportedAt: string
@@ -278,16 +406,18 @@ export interface BackupData {
   sales: Sale[]
   expenses: Expense[]
   customers?: Customer[]
+  comandas?: Comanda[]
 }
 
 export function exportBackupJSON(): string {
   const backup: BackupData = {
-    version: '1.1.0',
+    version: '1.2.0',
     exportedAt: new Date().toISOString(),
     products: loadProducts(),
     sales: loadSales(),
     expenses: loadExpenses(),
     customers: loadCustomers(),
+    comandas: loadComandas(),
   }
   return JSON.stringify(backup, null, 2)
 }
@@ -295,7 +425,13 @@ export function exportBackupJSON(): string {
 export function importBackupJSON(jsonStr: string): {
   success: boolean
   error?: string
-  data?: { products: Product[]; sales: Sale[]; expenses: Expense[]; customers?: Customer[] }
+  data?: { 
+    products: Product[]
+    sales: Sale[]
+    expenses: Expense[]
+    customers?: Customer[]
+    comandas?: Comanda[]
+  }
 } {
   try {
     const parsed = JSON.parse(jsonStr) as Partial<BackupData>
@@ -308,6 +444,9 @@ export function importBackupJSON(jsonStr: string): {
     if (Array.isArray(parsed.customers)) {
       localStorage.setItem(STORAGE_KEYS.CUSTOMERS, JSON.stringify(parsed.customers))
     }
+    if (Array.isArray(parsed.comandas)) {
+      localStorage.setItem(STORAGE_KEYS.COMANDAS, JSON.stringify(parsed.comandas))
+    }
 
     return {
       success: true,
@@ -316,6 +455,7 @@ export function importBackupJSON(jsonStr: string): {
         sales: parsed.sales,
         expenses: parsed.expenses,
         customers: parsed.customers,
+        comandas: parsed.comandas,
       },
     }
   } catch (err: unknown) {

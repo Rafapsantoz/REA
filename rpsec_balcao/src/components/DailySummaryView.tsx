@@ -1,9 +1,10 @@
 import React, { useState, useRef } from 'react'
-import type { Sale, Expense, Product, PaymentMethod } from '../types'
+import type { Sale, Expense, Product, PaymentMethod, Comanda } from '../types'
 import { 
   formatCurrency, 
   exportBackupJSON, 
-  importBackupJSON 
+  importBackupJSON,
+  getHourlySalesStats 
 } from '../storage'
 import { 
   TrendingUp, 
@@ -23,13 +24,17 @@ import {
   ShieldCheck, 
   AlertCircle,
   CheckCircle2,
-  BookOpen
+  BookOpen,
+  Users,
+  Flame,
+  UtensilsCrossed
 } from 'lucide-react'
 
 interface DailySummaryViewProps {
   sales: Sale[]
   expenses: Expense[]
   products?: Product[]
+  comandas?: Comanda[]
   onRestoreData?: (products: Product[], sales: Sale[], expenses: Expense[]) => void
   onMarkCreditPaid?: (saleId: string, method: PaymentMethod) => void
 }
@@ -37,6 +42,7 @@ interface DailySummaryViewProps {
 export const DailySummaryView: React.FC<DailySummaryViewProps> = ({ 
   sales, 
   expenses, 
+  comandas = [],
   onRestoreData,
   onMarkCreditPaid
 }) => {
@@ -85,6 +91,13 @@ export const DailySummaryView: React.FC<DailySummaryViewProps> = ({
   const openFiados = sales.filter(s => s.paymentMethod === 'fiado' && !s.isCreditPaid)
   const totalOpenFiadosAmount = openFiados.reduce((sum, s) => sum + s.totalAmount, 0)
 
+  // Estatísticas de fluxo e picos de horário
+  const totalCustomersToday = todaySales.length
+  const averageTicket = totalCustomersToday > 0 ? totalSalesAmount / totalCustomersToday : 0
+  const hourlyStats = getHourlySalesStats(sales, todayStr)
+  const peakStat = hourlyStats.find(h => h.isPeak && h.customerCount > 0)
+  const maxHourlyCount = Math.max(...hourlyStats.map(h => h.customerCount), 1)
+
   // Ranking de itens vendidos hoje
   const itemCounts: { [name: string]: { count: number; total: number } } = {}
   todaySales.forEach(s => {
@@ -106,7 +119,14 @@ export const DailySummaryView: React.FC<DailySummaryViewProps> = ({
     let msg = `📊 *FECHAMENTO DO CAIXA — RPSEC BALCÃO*\n`
     msg += `🗓 *Data:* ${formattedTodayDate}\n\n`
     msg += `💰 *Entradas Totais:* ${formatCurrency(totalSalesAmount)} (${todaySales.length} vendas)\n`
-    msg += `💵 *Dinheiro na Gaveta:* ${formatCurrency(cashTotal)}\n`
+    msg += `👥 *Clientes Atendidos:* ${totalCustomersToday} (Ticket Médio: ${formatCurrency(averageTicket)})\n`
+    if (peakStat) {
+      msg += `🔥 *Horário de Pico:* ${peakStat.label} (${peakStat.customerCount} clientes / ${formatCurrency(peakStat.totalAmount)})\n`
+    }
+    if (comandas.length > 0) {
+      msg += `🍽️ *Comandas Abertas no Local:* ${comandas.length} em consumo agora\n`
+    }
+    msg += `\n💵 *Dinheiro na Gaveta:* ${formatCurrency(cashTotal)}\n`
     msg += `📱 *PIX Recebido:* ${formatCurrency(pixTotal)}\n`
     msg += `💳 *Cartões (Déb/Créd):* ${formatCurrency(cardDebitTotal + cardCreditTotal)}\n`
     if (totalOpenFiadosAmount > 0) {
@@ -256,6 +276,148 @@ export const DailySummaryView: React.FC<DailySummaryViewProps> = ({
           </div>
           <div className="w-14 h-14 rounded-2xl bg-white dark:bg-stone-800 shadow-xs flex items-center justify-center text-amber-700 dark:text-amber-400">
             <Wallet className="w-8 h-8" />
+          </div>
+        </div>
+      </div>
+
+      {/* Fluxo de Clientes & Picos de Horário de Atendimento */}
+      <div className="bg-white dark:bg-[#1a1613] p-6 rounded-2xl border border-stone-200 dark:border-stone-800 shadow-sm flex flex-col gap-5">
+        <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-stone-200 dark:border-stone-800">
+          <div className="flex items-center gap-2.5">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-amber-500 to-red-500 text-white flex items-center justify-center shadow-xs">
+              <Flame className="w-6 h-6 text-white" />
+            </div>
+            <div>
+              <h3 className="font-black text-lg text-stone-900 dark:text-stone-100 flex items-center gap-2">
+                Movimento de Clientes & Horários de Pico
+              </h3>
+              <p className="text-xs text-stone-500 dark:text-stone-400">
+                Acompanhe o ritmo de atendimento da salgaderia ao longo do dia
+              </p>
+            </div>
+          </div>
+
+          {peakStat && (
+            <div className="flex items-center gap-2 bg-gradient-to-r from-amber-500/15 via-rose-500/15 to-red-500/15 border border-amber-400/50 dark:border-amber-600/50 px-3.5 py-1.5 rounded-xl">
+              <Flame className="w-4 h-4 text-red-500 animate-pulse" />
+              <span className="text-xs font-black text-amber-950 dark:text-amber-200">
+                Pico de Atendimento: {peakStat.label} ({peakStat.customerCount} clientes • {formatCurrency(peakStat.totalAmount)})
+              </span>
+            </div>
+          )}
+        </div>
+
+        {/* 4 Indicadores Rápidos */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div className="p-3.5 rounded-xl bg-stone-50 dark:bg-stone-900/60 border border-stone-200 dark:border-stone-800">
+            <div className="flex items-center gap-1.5 text-xs font-bold text-stone-500 dark:text-stone-400">
+              <Users className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+              Clientes Atendidos
+            </div>
+            <p className="text-2xl font-black text-stone-900 dark:text-stone-100 mt-1">
+              {totalCustomersToday}
+            </p>
+            <span className="text-[11px] text-stone-400 dark:text-stone-500">Vendas concluídas hoje</span>
+          </div>
+
+          <div className="p-3.5 rounded-xl bg-stone-50 dark:bg-stone-900/60 border border-stone-200 dark:border-stone-800">
+            <div className="flex items-center gap-1.5 text-xs font-bold text-stone-500 dark:text-stone-400">
+              <TrendingUp className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+              Ticket Médio
+            </div>
+            <p className="text-2xl font-black text-stone-900 dark:text-stone-100 mt-1">
+              {formatCurrency(averageTicket)}
+            </p>
+            <span className="text-[11px] text-stone-400 dark:text-stone-500">Gasto médio por cliente</span>
+          </div>
+
+          <div className="p-3.5 rounded-xl bg-stone-50 dark:bg-stone-900/60 border border-stone-200 dark:border-stone-800">
+            <div className="flex items-center gap-1.5 text-xs font-bold text-stone-500 dark:text-stone-400">
+              <Clock className="w-4 h-4 text-red-500" />
+              Hora Mais Movimentada
+            </div>
+            <p className="text-2xl font-black text-stone-900 dark:text-stone-100 mt-1">
+              {peakStat ? peakStat.label : '--:--'}
+            </p>
+            <span className="text-[11px] text-stone-400 dark:text-stone-500">
+              {peakStat ? `${peakStat.customerCount} atendimentos` : 'Sem vendas ainda'}
+            </span>
+          </div>
+
+          <div className="p-3.5 rounded-xl bg-amber-50/80 dark:bg-amber-950/30 border border-amber-300 dark:border-amber-800">
+            <div className="flex items-center gap-1.5 text-xs font-bold text-amber-900 dark:text-amber-300">
+              <UtensilsCrossed className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+              Comendo no Local Agora
+            </div>
+            <p className="text-2xl font-black text-amber-950 dark:text-amber-200 mt-1">
+              {comandas.length}
+            </p>
+            <span className="text-[11px] text-amber-800/80 dark:text-amber-400/80">Comandas em aberto</span>
+          </div>
+        </div>
+
+        {/* Gráfico de Barras por Faixa de Horário */}
+        <div className="mt-1">
+          <span className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-wider block mb-3">
+            Distribuição de Atendimentos por Hora (06h às 22h):
+          </span>
+
+          <div className="grid grid-cols-4 sm:grid-cols-8 lg:grid-cols-16 gap-2">
+            {hourlyStats.map(stat => {
+              const hasActivity = stat.customerCount > 0
+              const heightPercent = hasActivity ? Math.max(Math.round((stat.customerCount / maxHourlyCount) * 100), 20) : 8
+
+              return (
+                <div
+                  key={stat.hour}
+                  className={`flex flex-col items-center justify-end p-2 rounded-xl transition-all border ${
+                    stat.isPeak && hasActivity
+                      ? 'bg-amber-500/15 border-amber-400 dark:border-amber-600 ring-2 ring-amber-400/50'
+                      : hasActivity
+                      ? 'bg-stone-50 dark:bg-stone-900/60 border-stone-200 dark:border-stone-800'
+                      : 'bg-stone-50/40 dark:bg-stone-900/20 border-transparent opacity-60'
+                  }`}
+                >
+                  {/* Etiqueta de Pico ou Contagem */}
+                  <div className="text-center mb-1.5">
+                    {stat.isPeak && hasActivity ? (
+                      <span className="bg-red-600 text-white text-[9px] font-black px-1.5 py-0.5 rounded-full uppercase tracking-tighter">
+                        Pico
+                      </span>
+                    ) : hasActivity ? (
+                      <span className="text-xs font-black text-stone-900 dark:text-stone-100">
+                        {stat.customerCount}
+                      </span>
+                    ) : (
+                      <span className="text-[10px] text-stone-300 dark:text-stone-700">-</span>
+                    )}
+                  </div>
+
+                  {/* Barra Visual */}
+                  <div className="w-full h-16 bg-stone-100 dark:bg-stone-800 rounded-lg overflow-hidden flex flex-col justify-end p-0.5">
+                    <div
+                      style={{ height: `${heightPercent}%` }}
+                      className={`w-full rounded-md transition-all duration-500 ${
+                        stat.isPeak && hasActivity
+                          ? 'bg-gradient-to-t from-red-600 to-amber-500'
+                          : hasActivity
+                          ? 'bg-gradient-to-t from-amber-600 to-amber-400'
+                          : 'bg-stone-200 dark:bg-stone-700/50'
+                      }`}
+                    />
+                  </div>
+
+                  {/* Hora */}
+                  <span className={`text-[11px] font-bold mt-2 ${
+                    stat.isPeak && hasActivity 
+                      ? 'text-red-700 dark:text-amber-300 font-black' 
+                      : 'text-stone-600 dark:text-stone-400'
+                  }`}>
+                    {stat.label}
+                  </span>
+                </div>
+              )
+            })}
           </div>
         </div>
       </div>
@@ -453,7 +615,17 @@ export const DailySummaryView: React.FC<DailySummaryViewProps> = ({
             {todaySales.map(sale => (
               <div key={sale.id} className="py-3 flex items-center justify-between">
                 <div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {sale.orderNumber && (
+                      <span className="text-xs font-black px-2 py-0.5 rounded-full bg-amber-400 text-stone-950 shadow-xs">
+                        Cliente #{sale.orderNumber}
+                      </span>
+                    )}
+                    {sale.comandaLabel && (
+                      <span className="text-xs font-bold px-2 py-0.5 rounded bg-amber-100 dark:bg-amber-950/60 text-amber-900 dark:text-amber-200 border border-amber-200 dark:border-amber-900/60">
+                        {sale.comandaLabel}
+                      </span>
+                    )}
                     <span className="text-xs font-bold px-2 py-0.5 rounded bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 uppercase">
                       {sale.paymentMethod.replace('_', ' ')}
                       {sale.paymentMethod === 'fiado' && sale.customerName && ` (${sale.customerName})`}

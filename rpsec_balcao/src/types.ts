@@ -32,8 +32,19 @@ export interface Customer {
   createdAt: string
 }
 
+export interface Comanda {
+  id: string
+  number: number // Número sequencial da comanda / pedido
+  label: string // Identificação (ex: "Mesa 1", "Comanda #01", "Balcão", "Marcos")
+  createdAt: string // ISO string de abertura
+  items: CartItem[]
+  notes?: string
+}
+
 export interface Sale {
   id: string
+  orderNumber?: number // Contador de atendimento do dia (ex: Cliente #01, #02...)
+  comandaLabel?: string // Identificador se veio de comanda ou balcão rápido
   createdAt: string // ISO string
   items: SaleItem[]
   totalAmount: number

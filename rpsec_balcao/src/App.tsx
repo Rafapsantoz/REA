@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import type { Product, Sale, Expense, CartItem, Ingredient, Recipe, ImportedInvoice, Customer, PaymentMethod } from './types'
+import type { Product, Sale, Expense, CartItem, Ingredient, Recipe, ImportedInvoice, Customer, PaymentMethod, Comanda } from './types'
 import {
   loadProducts,
   saveProducts,
@@ -14,6 +14,9 @@ import {
   loadInvoices,
   loadCustomers,
   saveCustomer,
+  loadComandas,
+  saveComanda,
+  removeComanda,
   markCreditAsPaid,
 } from './storage'
 import { PDVView } from './components/PDVView'
@@ -30,7 +33,8 @@ import {
   Clock, 
   ChefHat, 
   Sun, 
-  Moon 
+  Moon,
+  UtensilsCrossed 
 } from 'lucide-react'
 
 type TabType = 'pdv' | 'expenses' | 'summary' | 'products' | 'costs'
@@ -40,6 +44,7 @@ export function App() {
   const [products, setProducts] = useState<Product[]>([])
   const [sales, setSales] = useState<Sale[]>([])
   const [expenses, setExpenses] = useState<Expense[]>([])
+  const [comandas, setComandas] = useState<Comanda[]>(() => loadComandas())
   const [cart, setCart] = useState<CartItem[]>(() => loadActiveCart())
   const [customers, setCustomers] = useState<Customer[]>(() => loadCustomers())
   const [ingredients, setIngredients] = useState<Ingredient[]>(() => loadIngredients())
@@ -119,6 +124,16 @@ export function App() {
     localStorage.setItem('rpsec_balcao_expenses', JSON.stringify(updated))
   }
 
+  const handleSaveComanda = (comanda: Comanda) => {
+    const updated = saveComanda(comanda)
+    setComandas(updated)
+  }
+
+  const handleRemoveComanda = (id: string) => {
+    const updated = removeComanda(id)
+    setComandas(updated)
+  }
+
   const handleUpdateProducts = (updatedProds: Product[]) => {
     setProducts(updatedProds)
     saveProducts(updatedProds)
@@ -128,6 +143,7 @@ export function App() {
     setProducts(newProducts)
     setSales(newSales)
     setExpenses(newExpenses)
+    setComandas(loadComandas())
   }
 
   const totalCartItems = cart.reduce((sum, item) => sum + item.quantity, 0)
@@ -170,6 +186,12 @@ export function App() {
                   activeTab === 'pdv' ? 'bg-red-700 text-amber-300' : 'bg-amber-400 text-red-950'
                 }`}>
                   {totalCartItems}
+                </span>
+              )}
+              {comandas.length > 0 && (
+                <span className="px-1.5 py-0.5 rounded-full text-[11px] font-black bg-amber-400 text-red-950 flex items-center gap-0.5 shadow-xs" title={`${comandas.length} comandas abertas no local`}>
+                  <UtensilsCrossed className="w-3 h-3" />
+                  {comandas.length}
                 </span>
               )}
             </button>
@@ -252,6 +274,9 @@ export function App() {
             customers={customers}
             onAddCustomer={handleAddCustomer}
             sales={sales}
+            comandas={comandas}
+            onSaveComanda={handleSaveComanda}
+            onRemoveComanda={handleRemoveComanda}
           />
         </div>
 
@@ -268,6 +293,7 @@ export function App() {
             sales={sales} 
             expenses={expenses} 
             products={products}
+            comandas={comandas}
             onRestoreData={handleRestoreData}
             onMarkCreditPaid={handleMarkCreditPaid}
           />

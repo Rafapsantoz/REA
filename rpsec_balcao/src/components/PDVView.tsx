@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
-import type { Product, PaymentMethod, CartItem, Sale, Customer } from '../types'
-import { formatCurrency } from '../storage'
+import type { Product, PaymentMethod, CartItem, Sale, Customer, Comanda } from '../types'
+import { formatCurrency, getNextDailyOrderNumber } from '../storage'
 import { 
   Plus, 
   Minus, 
@@ -15,7 +15,11 @@ import {
   UserPlus,
   Users,
   AlertTriangle,
-  Phone
+  Phone,
+  UtensilsCrossed,
+  Clock,
+  Save,
+  XCircle
 } from 'lucide-react'
 
 interface PDVViewProps {
@@ -26,6 +30,9 @@ interface PDVViewProps {
   customers: Customer[]
   onAddCustomer: (customer: Customer) => void
   sales: Sale[]
+  comandas: Comanda[]
+  onSaveComanda: (comanda: Comanda) => void
+  onRemoveComanda: (comandaId: string) => void
 }
 
 export const PDVView: React.FC<PDVViewProps> = ({ 
@@ -35,12 +42,20 @@ export const PDVView: React.FC<PDVViewProps> = ({
   onCompleteSale,
   customers,
   onAddCustomer,
-  sales
+  sales,
+  comandas,
+  onSaveComanda,
+  onRemoveComanda
 }) => {
   const [selectedCategory, setSelectedCategory] = useState<string>('todos')
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('pix')
   const [cashGiven, setCashGiven] = useState<string>('')
-  const [showSuccessToast, setShowSuccessToast] = useState<boolean>(false)
+  const [showSuccessToast, setShowSuccessToast] = useState<{ title: string; subtitle: string } | null>(null)
+
+  // Estado da Comanda Ativa em Edição
+  const [activeComanda, setActiveComanda] = useState<Comanda | null>(null)
+  const [showComandaModal, setShowComandaModal] = useState<boolean>(false)
+  const [comandaLabelInput, setComandaLabelInput] = useState<string>('')
 
   // Estados do Fiado
   const [fiadoMode, setFiadoMode] = useState<'select' | 'new'>('select')
@@ -86,7 +101,10 @@ export const PDVView: React.FC<PDVViewProps> = ({
     })
   }
 
-  const clearCart = () => setCart([])
+  const clearCart = () => {
+    setCart([])
+    setActiveComanda(null)
+  }
 
   const totalAmount = cart.reduce((sum, item) => sum + item.product.price * item.quantity, 0)
   const totalItemsCount = cart.reduce((sum, item) => sum + item.quantity, 0)
@@ -102,6 +120,71 @@ export const PDVView: React.FC<PDVViewProps> = ({
         .filter(s => s.paymentMethod === 'fiado' && !s.isCreditPaid && (s.customerId === selectedCustomer.id || s.customerName === selectedCustomer.name))
         .reduce((sum, s) => sum + s.totalAmount, 0)
     : 0
+
+  // Carregar comanda na tela para adicionar itens ou cobrar
+  const handleSelectComanda = (comanda: Comanda) => {
+    setActiveComanda(comanda)
+    setCart(comanda.items)
+  }
+
+  // Desvincular comanda ativa (volta pro balcão rápido sem apagar a comanda)
+  const handleDetachComanda = () => {
+    setActiveComanda(null)
+    setCart([])
+  }
+
+  // Salvar alterações na comanda existente (cliente pediu mais salgados/bebidas)
+  const handleUpdateExistingComanda = () => {
+    if (!activeComanda) return
+    const updated: Comanda = {
+      ...activeComanda,
+      items: cart,
+    }
+    onSaveComanda(updated)
+    setActiveComanda(null)
+    setCart([])
+    setShowSuccessToast({
+      title: 'Comanda Atualizada!',
+      subtitle: `${updated.label} agora possui ${updated.items.reduce((s, i) => s + i.quantity, 0)} itens. Balcão liberado.`,
+    })
+    setTimeout(() => setShowSuccessToast(null), 2500)
+  }
+
+  // Salvar novo carrinho como Comanda / Comer no local
+  const handleSaveNewComanda = (label: string) => {
+    if (cart.length === 0) return
+    const nextNum = getNextDailyOrderNumber()
+    const chosenLabel = label.trim() || `Comanda #${nextNum}`
+    const newComanda: Comanda = {
+      id: `cmd_${Date.now()}`,
+      number: nextNum,
+      label: chosenLabel,
+      createdAt: new Date().toISOString(),
+      items: cart,
+    }
+    onSaveComanda(newComanda)
+    setActiveComanda(null)
+    setCart([])
+    setShowComandaModal(false)
+    setComandaLabelInput('')
+    setShowSuccessToast({
+      title: `Comanda #${nextNum} Aberta!`,
+      subtitle: `"${chosenLabel}" guardada na fila. Carrinho liberado para o próximo cliente.`,
+    })
+    setTimeout(() => setShowSuccessToast(null), 2500)
+  }
+
+  // Cancelar / Excluir comanda aberta
+  const handleDeleteComanda = (comandaId: string, e: React.MouseEvent) => {
+    e.stopPropagation()
+    if (confirm('Deseja realmente cancelar e remover esta comanda aberta?')) {
+      onRemoveComanda(comandaId)
+      if (activeComanda?.id === comandaId) {
+        setActiveComanda(null)
+        setCart([])
+      }
+    }
+  }
 
   // Finalizar venda
   const handleFinalize = () => {
@@ -137,8 +220,13 @@ export const PDVView: React.FC<PDVViewProps> = ({
       }
     }
 
+    const orderNum = activeComanda ? activeComanda.number : getNextDailyOrderNumber()
+    const orderLabel = activeComanda ? activeComanda.label : 'Balcão Rápido'
+
     const newSale: Sale = {
       id: Date.now().toString(),
+      orderNumber: orderNum,
+      comandaLabel: orderLabel,
       createdAt: new Date().toISOString(),
       items: cart.map(item => ({
         productId: item.product.id,
@@ -155,14 +243,26 @@ export const PDVView: React.FC<PDVViewProps> = ({
     }
 
     onCompleteSale(newSale)
+
+    // Se estava atendendo uma comanda existente, remove-a da fila
+    if (activeComanda) {
+      onRemoveComanda(activeComanda.id)
+      setActiveComanda(null)
+    }
+
     setCart([])
     setCashGiven('')
     setNewCustomerName('')
     setNewCustomerPhone('')
     setSelectedCustomerId('')
     setFiadoError(null)
-    setShowSuccessToast(true)
-    setTimeout(() => setShowSuccessToast(false), 2500)
+    setShowSuccessToast({
+      title: `Venda #${orderNum} Finalizada!`,
+      subtitle: activeComanda 
+        ? `Comanda "${orderLabel}" finalizada com sucesso e liberada.` 
+        : `Atendimento computado no resumo do caixa.`,
+    })
+    setTimeout(() => setShowSuccessToast(null), 2500)
   }
 
   return (
@@ -170,18 +270,114 @@ export const PDVView: React.FC<PDVViewProps> = ({
       {/* Toast de Sucesso */}
       {showSuccessToast && (
         <div className="fixed top-6 right-6 z-50 flex items-center gap-3 bg-emerald-600 text-white px-6 py-4 rounded-2xl shadow-2xl animate-bounce">
-          <CheckCircle2 className="w-8 h-8" />
+          <CheckCircle2 className="w-8 h-8 shrink-0" />
           <div>
-            <h4 className="font-bold text-lg">Venda Registrada com Sucesso!</h4>
-            <p className="text-emerald-100 text-sm">O valor já foi computado no resumo do caixa.</p>
+            <h4 className="font-bold text-lg">{showSuccessToast.title}</h4>
+            <p className="text-emerald-100 text-sm">{showSuccessToast.subtitle}</p>
           </div>
         </div>
       )}
 
-      {/* Lado Esquerdo: Catálogo de Produtos (7 ou 8 colunas) */}
-      <div className="lg:col-span-7 xl:col-span-8 flex flex-col gap-4">
+      {/* Lado Esquerdo: Catálogo de Produtos e Fila de Comandas (7 ou 8 colunas) */}
+      <div className="lg:col-span-7 xl:col-span-8 flex flex-col gap-3">
+        {/* Fila Visual de Comandas Abertas / Comer no Local */}
+        <div className="bg-white dark:bg-[#1a1613] p-3.5 rounded-2xl border-2 border-amber-300 dark:border-amber-800/80 shadow-xs">
+          <div className="flex items-center justify-between pb-2 mb-2 border-b border-amber-200/80 dark:border-amber-900/60">
+            <div className="flex items-center gap-2">
+              <span className="p-1.5 rounded-lg bg-amber-500 text-stone-950 font-black">
+                <UtensilsCrossed className="w-4 h-4" />
+              </span>
+              <div>
+                <h3 className="font-black text-sm text-stone-900 dark:text-stone-100 flex items-center gap-2">
+                  Comandas Abertas (Consumo no Local)
+                  <span className={`px-2 py-0.5 rounded-full text-xs font-black ${
+                    comandas.length > 0 
+                      ? 'bg-amber-500 text-stone-950' 
+                      : 'bg-stone-100 dark:bg-stone-800 text-stone-500'
+                  }`}>
+                    {comandas.length}
+                  </span>
+                </h3>
+                <p className="text-[11px] text-stone-500 dark:text-stone-400">
+                  Clientes que estão comendo e vão pagar ao sair
+                </p>
+              </div>
+            </div>
+
+            {cart.length > 0 && !activeComanda && (
+              <button
+                type="button"
+                onClick={() => setShowComandaModal(true)}
+                className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-stone-950 font-black text-xs flex items-center gap-1.5 transition-all shadow-xs cursor-pointer active:scale-95"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                Guardar este Carrinho na Fila
+              </button>
+            )}
+          </div>
+
+          {/* Lista Horizontal de Comandas */}
+          {comandas.length === 0 ? (
+            <div className="py-2 text-center text-xs text-stone-400 dark:text-stone-500 italic">
+              Nenhuma comanda aberta no momento. O balcão está livre para atendimento rápido!
+            </div>
+          ) : (
+            <div className="flex items-center gap-2.5 overflow-x-auto pb-1.5 pt-0.5">
+              {comandas.map(cmd => {
+                const isSelected = activeComanda?.id === cmd.id
+                const totalCmd = cmd.items.reduce((s, i) => s + i.product.price * i.quantity, 0)
+                const itemsCount = cmd.items.reduce((s, i) => s + i.quantity, 0)
+                const createdTime = new Date(cmd.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+
+                return (
+                  <div
+                    key={cmd.id}
+                    onClick={() => handleSelectComanda(cmd)}
+                    className={`shrink-0 flex items-center justify-between gap-3 px-3.5 py-2 rounded-xl cursor-pointer transition-all border-2 ${
+                      isSelected
+                        ? 'bg-amber-100 dark:bg-amber-950/70 border-amber-500 shadow-md ring-2 ring-amber-400/80 scale-102'
+                        : 'bg-stone-50 dark:bg-stone-900/60 hover:bg-amber-50/50 dark:hover:bg-stone-800/80 border-stone-200 dark:border-stone-800'
+                    }`}
+                  >
+                    <div>
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-black text-xs text-amber-800 dark:text-amber-400 bg-amber-200/80 dark:bg-amber-900/60 px-1.5 py-0.2 rounded">
+                          #{cmd.number}
+                        </span>
+                        <span className="font-black text-sm text-stone-900 dark:text-stone-100">
+                          {cmd.label}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2 mt-0.5 text-xs">
+                        <span className="font-bold text-emerald-700 dark:text-emerald-400">
+                          {formatCurrency(totalCmd)}
+                        </span>
+                        <span className="text-stone-400 text-[11px]">
+                          • {itemsCount} {itemsCount === 1 ? 'item' : 'itens'}
+                        </span>
+                        <span className="text-stone-400 text-[10px] flex items-center gap-0.5">
+                          <Clock className="w-2.5 h-2.5" /> {createdTime}
+                        </span>
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={(e) => handleDeleteComanda(cmd.id, e)}
+                      title="Cancelar/Apagar Comanda"
+                      className="text-stone-400 hover:text-rose-600 dark:hover:text-rose-400 p-1 rounded-lg hover:bg-stone-200 dark:hover:bg-stone-800 transition-colors"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </div>
+
         {/* Abas de Categorias Gastronômicas */}
-        <div className="flex gap-2 overflow-x-auto pb-2">
+        <div className="flex gap-2 overflow-x-auto pb-1">
           {[
             { id: 'todos', label: 'Todos os Itens' },
             { id: 'salgados', label: '🥟 Salgados & Fritos' },
@@ -254,17 +450,53 @@ export const PDVView: React.FC<PDVViewProps> = ({
           <div className="flex items-center justify-between pb-3 border-b border-stone-200 dark:border-stone-800">
             <div className="flex items-center gap-2">
               <ShoppingBag className="w-5 h-5 text-amber-600 dark:text-amber-400" />
-              <h2 className="font-black text-xl text-stone-900 dark:text-stone-100">Comanda Atual</h2>
+              <h2 className="font-black text-xl text-stone-900 dark:text-stone-100">
+                {activeComanda ? `Comanda #${activeComanda.number}` : 'Carrinho / Balcão'}
+              </h2>
             </div>
             {cart.length > 0 && (
               <button
                 onClick={clearCart}
                 className="text-xs text-rose-600 hover:text-rose-700 dark:text-rose-400 font-semibold flex items-center gap-1 cursor-pointer"
               >
-                <Trash2 className="w-4 h-4" /> Limpar
+                <Trash2 className="w-4 h-4" /> {activeComanda ? 'Desocupar' : 'Limpar'}
               </button>
             )}
           </div>
+
+          {/* Banner de Edição de Comanda Existente */}
+          {activeComanda && (
+            <div className="mt-2.5 bg-gradient-to-r from-amber-400 to-amber-500 text-stone-950 p-2.5 rounded-xl shadow-xs flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <UtensilsCrossed className="w-4 h-4 text-stone-950 shrink-0" />
+                <div>
+                  <span className="text-[10px] font-black uppercase text-amber-950 block">Cliente Consumindo no Local</span>
+                  <span className="text-xs font-black text-stone-950 leading-tight">
+                    {activeComanda.label}
+                  </span>
+                </div>
+              </div>
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={handleUpdateExistingComanda}
+                  className="px-2 py-1 bg-amber-950 hover:bg-black text-amber-300 font-black text-xs rounded-lg flex items-center gap-1 transition-all cursor-pointer shadow-xs active:scale-95"
+                  title="Salvar itens adicionados na comanda"
+                >
+                  <Save className="w-3.5 h-3.5" />
+                  Salvar
+                </button>
+                <button
+                  type="button"
+                  onClick={handleDetachComanda}
+                  className="p-1 text-stone-950 hover:text-rose-900 rounded-lg cursor-pointer"
+                  title="Voltar ao balcão rápido sem alterar esta comanda"
+                >
+                  <XCircle className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* Lista de Itens do Carrinho */}
           <div className="overflow-y-auto max-h-[190px] divide-y divide-stone-100 dark:divide-stone-800/80 my-2">
@@ -526,6 +758,29 @@ export const PDVView: React.FC<PDVViewProps> = ({
             </div>
           )}
 
+          {/* Botão de Guardar Comanda ou Atualizar (Consumo no Local) */}
+          {cart.length > 0 && (
+            !activeComanda ? (
+              <button
+                type="button"
+                onClick={() => setShowComandaModal(true)}
+                className="w-full py-2.5 px-3 rounded-xl bg-amber-500/15 dark:bg-amber-950/40 hover:bg-amber-500/25 border-2 border-amber-400 dark:border-amber-600 text-amber-950 dark:text-amber-200 font-black text-xs sm:text-sm flex items-center justify-center gap-2 transition-all cursor-pointer shadow-xs active:scale-98"
+              >
+                <UtensilsCrossed className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                🍽️ Comer no Local / Guardar na Fila de Comanda
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={handleUpdateExistingComanda}
+                className="w-full py-2.5 px-3 rounded-xl bg-amber-500/15 dark:bg-amber-950/40 hover:bg-amber-500/25 border-2 border-amber-400 dark:border-amber-600 text-amber-950 dark:text-amber-200 font-black text-xs sm:text-sm flex items-center justify-center gap-2 transition-all cursor-pointer shadow-xs active:scale-98"
+              >
+                <Save className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                💾 Salvar Alterações na Comanda (Cliente continua comendo)
+              </button>
+            )
+          )}
+
           {/* Botão Gigante de Finalizar Venda */}
           <button
             onClick={handleFinalize}
@@ -537,10 +792,95 @@ export const PDVView: React.FC<PDVViewProps> = ({
             }`}
           >
             <CheckCircle2 className="w-6 h-6" />
-            FINALIZAR VENDA
+            {activeComanda ? `RECEBER E FECHAR COMANDA (#${activeComanda.number})` : 'FINALIZAR VENDA'}
           </button>
         </div>
       </div>
+
+      {/* Modal para Abrir / Identificar Comanda */}
+      {showComandaModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-fadeIn">
+          <div className="bg-white dark:bg-[#1c1815] w-full max-w-md rounded-2xl border-2 border-amber-400 p-6 shadow-2xl flex flex-col gap-4">
+            <div className="flex items-center justify-between pb-3 border-b border-stone-200 dark:border-stone-800">
+              <div className="flex items-center gap-2">
+                <span className="p-2 rounded-xl bg-amber-500 text-stone-950 font-black">
+                  <UtensilsCrossed className="w-5 h-5" />
+                </span>
+                <div>
+                  <h3 className="font-black text-lg text-stone-900 dark:text-stone-100">
+                    Comer no Local / Guardar Comanda
+                  </h3>
+                  <p className="text-xs text-stone-500 dark:text-stone-400">
+                    Identifique a comanda ou a mesa do cliente
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowComandaModal(false)}
+                className="text-stone-400 hover:text-stone-600 dark:hover:text-stone-200 font-black text-lg cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Sugestões Rápidas de 1 Toque */}
+            <div>
+              <span className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-wider block mb-2">
+                Toque Rápido para Escolher:
+              </span>
+              <div className="grid grid-cols-3 gap-2">
+                {['Mesa 1', 'Mesa 2', 'Mesa 3', 'Mesa 4', 'Balcão 1', 'Balcão 2'].map(sug => (
+                  <button
+                    key={sug}
+                    type="button"
+                    onClick={() => handleSaveNewComanda(sug)}
+                    className="py-2.5 px-2 bg-stone-100 dark:bg-stone-800/80 hover:bg-amber-400 hover:text-stone-950 rounded-xl font-black text-xs text-stone-800 dark:text-stone-200 transition-all border border-stone-200 dark:border-stone-700 cursor-pointer text-center active:scale-95"
+                  >
+                    {sug}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Ou Digitar Nome Personalizado */}
+            <div>
+              <label className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-wider block mb-1">
+                Ou digite uma identificação personalizada:
+              </label>
+              <input
+                type="text"
+                placeholder="Ex: Seu Antônio de Boné, Varanda..."
+                value={comandaLabelInput}
+                onChange={e => setComandaLabelInput(e.target.value)}
+                onKeyDown={e => {
+                  if (e.key === 'Enter') {
+                    handleSaveNewComanda(comandaLabelInput)
+                  }
+                }}
+                className="w-full bg-white dark:bg-stone-900 border-2 border-stone-300 dark:border-stone-700 rounded-xl px-3.5 py-2.5 text-sm font-bold text-stone-900 dark:text-stone-100 focus:outline-amber-500"
+                autoFocus
+              />
+            </div>
+
+            <div className="flex items-center gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setShowComandaModal(false)}
+                className="flex-1 py-3 bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 font-bold text-sm rounded-xl cursor-pointer hover:bg-stone-200 dark:hover:bg-stone-700 transition-all"
+              >
+                Voltar
+              </button>
+              <button
+                type="button"
+                onClick={() => handleSaveNewComanda(comandaLabelInput)}
+                className="flex-2 py-3 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-black text-sm rounded-xl cursor-pointer shadow-md transition-all active:scale-95"
+              >
+                Guardar Comanda
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
