@@ -174,18 +174,18 @@ export const DailySummaryView: React.FC<DailySummaryViewProps> = ({
   return (
     <div className="flex flex-col gap-6">
       {/* Barra de Ações Rápidas: Enviar Fechamento / Compartilhar WhatsApp */}
-      <div className="bg-slate-900 text-white p-4 sm:p-5 rounded-2xl shadow-sm flex flex-wrap items-center justify-between gap-4">
+      <div className="bg-[#241c15] dark:bg-[#1a1410] border border-amber-950/40 text-stone-100 p-4 sm:p-5 rounded-2xl shadow-md flex flex-wrap items-center justify-between gap-4">
         <div>
           <span className="text-xs uppercase font-bold text-amber-400 tracking-wider block">
             Ações de Fechamento Diário
           </span>
-          <h2 className="text-xl font-black text-white">Relatório do Balcão ({formattedTodayDate})</h2>
+          <h2 className="text-xl font-black text-amber-50">Relatório do Balcão ({formattedTodayDate})</h2>
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
           <button
             onClick={handleCopyReport}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-100 font-bold text-sm transition-all border border-slate-700 cursor-pointer shadow-sm active:scale-95"
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-stone-800/90 hover:bg-stone-700 text-stone-200 font-bold text-sm transition-all border border-stone-700 cursor-pointer shadow-sm active:scale-95"
           >
             {copied ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4 text-amber-400" />}
             {copied ? 'Copiado para o Celular!' : 'Copiar Texto'}
@@ -193,7 +193,7 @@ export const DailySummaryView: React.FC<DailySummaryViewProps> = ({
 
           <button
             onClick={handleShareWhatsApp}
-            className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-black text-sm transition-all cursor-pointer shadow-md active:scale-95"
+            className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-stone-950 font-black text-sm transition-all cursor-pointer shadow-md active:scale-95"
           >
             <Share2 className="w-4 h-4" />
             Enviar no WhatsApp
@@ -204,50 +204,52 @@ export const DailySummaryView: React.FC<DailySummaryViewProps> = ({
       {/* 3 Grandes Cartões Principais */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
         {/* Entradas */}
-        <div className="bg-white p-6 rounded-2xl border-2 border-emerald-100 shadow-sm flex items-center justify-between">
+        <div className="bg-white dark:bg-[#1a1613] p-6 rounded-2xl border-2 border-emerald-100 dark:border-emerald-950/60 shadow-sm flex items-center justify-between">
           <div>
-            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block">
+            <span className="text-xs font-bold text-stone-400 dark:text-stone-500 uppercase tracking-wider block">
               Entradas Hoje ({todaySales.length} vendas)
             </span>
-            <span className="text-3xl font-black text-emerald-600 mt-1 block">
+            <span className="text-3xl font-black text-emerald-600 dark:text-emerald-400 mt-1 block">
               {formatCurrency(totalSalesAmount)}
             </span>
           </div>
-          <div className="w-14 h-14 rounded-2xl bg-emerald-50 flex items-center justify-center text-emerald-600">
+          <div className="w-14 h-14 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
             <TrendingUp className="w-8 h-8" />
           </div>
         </div>
 
         {/* Saídas */}
-        <div className="bg-white p-6 rounded-2xl border-2 border-rose-100 shadow-sm flex items-center justify-between">
+        <div className="bg-white dark:bg-[#1a1613] p-6 rounded-2xl border-2 border-rose-100 dark:border-rose-950/60 shadow-sm flex items-center justify-between">
           <div>
-            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block">
+            <span className="text-xs font-bold text-stone-400 dark:text-stone-500 uppercase tracking-wider block">
               Saídas Hoje ({todayExpenses.length} despesas)
             </span>
-            <span className="text-3xl font-black text-rose-600 mt-1 block">
+            <span className="text-3xl font-black text-rose-600 dark:text-rose-400 mt-1 block">
               {formatCurrency(totalExpensesAmount)}
             </span>
           </div>
-          <div className="w-14 h-14 rounded-2xl bg-rose-50 flex items-center justify-center text-rose-600">
+          <div className="w-14 h-14 rounded-2xl bg-rose-50 dark:bg-rose-950/40 flex items-center justify-center text-rose-600 dark:text-rose-400">
             <TrendingDown className="w-8 h-8" />
           </div>
         </div>
 
         {/* Saldo Líquido do Dia */}
         <div className={`p-6 rounded-2xl border-2 shadow-sm flex items-center justify-between ${
-          netBalance >= 0 ? 'bg-amber-50/70 border-amber-200' : 'bg-rose-50 border-rose-200'
+          netBalance >= 0 
+            ? 'bg-amber-50/70 dark:bg-amber-950/30 border-amber-200 dark:border-amber-900/50' 
+            : 'bg-rose-50 dark:bg-rose-950/30 border-rose-200 dark:border-rose-900/50'
         }`}>
           <div>
-            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider block">
+            <span className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-wider block">
               Saldo Líquido de Hoje
             </span>
             <span className={`text-3xl font-black mt-1 block ${
-              netBalance >= 0 ? 'text-amber-900' : 'text-rose-700'
+              netBalance >= 0 ? 'text-amber-950 dark:text-amber-300' : 'text-rose-700 dark:text-rose-400'
             }`}>
               {formatCurrency(netBalance)}
             </span>
           </div>
-          <div className="w-14 h-14 rounded-2xl bg-white shadow-xs flex items-center justify-center text-amber-700">
+          <div className="w-14 h-14 rounded-2xl bg-white dark:bg-stone-800 shadow-xs flex items-center justify-center text-amber-700 dark:text-amber-400">
             <Wallet className="w-8 h-8" />
           </div>
         </div>
@@ -256,55 +258,55 @@ export const DailySummaryView: React.FC<DailySummaryViewProps> = ({
       {/* Seção Central: Onde está o dinheiro (Conferência de Caixa) + Top Produtos */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Conferência por Meio de Pagamento (7 colunas) */}
-        <div className="lg:col-span-7 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-          <h3 className="text-lg font-black text-slate-800 mb-4 flex items-center gap-2">
-            <Banknote className="w-5 h-5 text-amber-600" />
+        <div className="lg:col-span-7 bg-white dark:bg-[#1a1613] p-6 rounded-2xl border border-stone-200 dark:border-stone-800 shadow-sm">
+          <h3 className="text-lg font-black text-stone-900 dark:text-stone-100 mb-4 flex items-center gap-2">
+            <Banknote className="w-5 h-5 text-amber-600 dark:text-amber-400" />
             Conferência de Caixa (Onde está o dinheiro de hoje)
           </h3>
 
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-            <div className="p-4 rounded-xl bg-slate-50 border border-slate-200">
-              <div className="flex items-center gap-2 text-slate-500 text-xs font-bold">
-                <Banknote className="w-4 h-4 text-emerald-600" />
+            <div className="p-4 rounded-xl bg-stone-50 dark:bg-stone-900/70 border border-stone-200 dark:border-stone-800">
+              <div className="flex items-center gap-2 text-stone-500 dark:text-stone-400 text-xs font-bold">
+                <Banknote className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                 Dinheiro na Gaveta
               </div>
-              <p className="text-2xl font-black text-slate-800 mt-2">
+              <p className="text-2xl font-black text-stone-900 dark:text-stone-100 mt-2">
                 {formatCurrency(cashTotal)}
               </p>
-              <span className="text-[11px] text-slate-400 mt-0.5 block">Notas e moedas físicas</span>
+              <span className="text-[11px] text-stone-400 dark:text-stone-500 mt-0.5 block">Notas e moedas físicas</span>
             </div>
 
-            <div className="p-4 rounded-xl bg-slate-50 border border-slate-200">
-              <div className="flex items-center gap-2 text-slate-500 text-xs font-bold">
-                <QrCode className="w-4 h-4 text-emerald-600" />
+            <div className="p-4 rounded-xl bg-stone-50 dark:bg-stone-900/70 border border-stone-200 dark:border-stone-800">
+              <div className="flex items-center gap-2 text-stone-500 dark:text-stone-400 text-xs font-bold">
+                <QrCode className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                 PIX Recebido
               </div>
-              <p className="text-2xl font-black text-slate-800 mt-2">
+              <p className="text-2xl font-black text-stone-900 dark:text-stone-100 mt-2">
                 {formatCurrency(pixTotal)}
               </p>
-              <span className="text-[11px] text-slate-400 mt-0.5 block">Caiu na conta do banco</span>
+              <span className="text-[11px] text-stone-400 dark:text-stone-500 mt-0.5 block">Caiu na conta do banco</span>
             </div>
 
-            <div className="p-4 rounded-xl bg-slate-50 border border-slate-200">
-              <div className="flex items-center gap-2 text-slate-500 text-xs font-bold">
-                <CreditCard className="w-4 h-4 text-emerald-600" />
+            <div className="p-4 rounded-xl bg-stone-50 dark:bg-stone-900/70 border border-stone-200 dark:border-stone-800">
+              <div className="flex items-center gap-2 text-stone-500 dark:text-stone-400 text-xs font-bold">
+                <CreditCard className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                 Cartões (Déb./Créd.)
               </div>
-              <p className="text-2xl font-black text-slate-800 mt-2">
+              <p className="text-2xl font-black text-stone-900 dark:text-stone-100 mt-2">
                 {formatCurrency(cardDebitTotal + cardCreditTotal)}
               </p>
-              <span className="text-[11px] text-slate-400 mt-0.5 block">
+              <span className="text-[11px] text-stone-400 dark:text-stone-500 mt-0.5 block">
                 Déb: {formatCurrency(cardDebitTotal)} | Créd: {formatCurrency(cardCreditTotal)}
               </span>
             </div>
 
             {creditPendingTotal > 0 && (
-              <div className="col-span-2 sm:col-span-3 p-3 rounded-xl bg-amber-50 border border-amber-200 flex items-center justify-between">
-                <div className="flex items-center gap-2 text-amber-900 text-xs font-bold">
-                  <UserCheck className="w-4 h-4 text-amber-700" />
+              <div className="col-span-2 sm:col-span-3 p-3 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900/50 flex items-center justify-between">
+                <div className="flex items-center gap-2 text-amber-900 dark:text-amber-300 text-xs font-bold">
+                  <UserCheck className="w-4 h-4 text-amber-700 dark:text-amber-400" />
                   Total a Receber (Fiados Anotados):
                 </div>
-                <span className="text-xl font-black text-amber-900">
+                <span className="text-xl font-black text-amber-900 dark:text-amber-300">
                   {formatCurrency(creditPendingTotal)}
                 </span>
               </div>
@@ -313,30 +315,30 @@ export const DailySummaryView: React.FC<DailySummaryViewProps> = ({
         </div>
 
         {/* Top Salgados Mais Vendidos Hoje (5 colunas) */}
-        <div className="lg:col-span-5 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between">
+        <div className="lg:col-span-5 bg-white dark:bg-[#1a1613] p-6 rounded-2xl border border-stone-200 dark:border-stone-800 shadow-sm flex flex-col justify-between">
           <div>
-            <h3 className="text-lg font-black text-slate-800 mb-4 flex items-center gap-2">
+            <h3 className="text-lg font-black text-stone-900 dark:text-stone-100 mb-4 flex items-center gap-2">
               <Award className="w-5 h-5 text-amber-500" />
               Campeões de Venda Hoje
             </h3>
 
             {topItems.length === 0 ? (
-              <p className="text-sm text-slate-400 py-8 text-center">Nenhuma venda registrada ainda hoje.</p>
+              <p className="text-sm text-stone-400 dark:text-stone-500 py-8 text-center">Nenhuma venda registrada ainda hoje.</p>
             ) : (
               <div className="space-y-3">
                 {topItems.map(([name, data], idx) => (
-                  <div key={name} className="flex items-center justify-between p-2 rounded-lg bg-slate-50">
+                  <div key={name} className="flex items-center justify-between p-2.5 rounded-xl bg-stone-50 dark:bg-stone-900/60 border border-stone-100 dark:border-stone-800/60">
                     <div className="flex items-center gap-2">
                       <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-black ${
-                        idx === 0 ? 'bg-amber-400 text-amber-950' : 'bg-slate-200 text-slate-600'
+                        idx === 0 ? 'bg-amber-400 text-amber-950' : 'bg-stone-200 dark:bg-stone-800 text-stone-600 dark:text-stone-300'
                       }`}>
                         {idx + 1}
                       </span>
-                      <span className="font-bold text-sm text-slate-800">{name}</span>
+                      <span className="font-bold text-sm text-stone-800 dark:text-stone-200">{name}</span>
                     </div>
                     <div className="text-right">
-                      <span className="font-black text-sm text-slate-900 block">{data.count} un.</span>
-                      <span className="text-xs text-slate-400">{formatCurrency(data.total)}</span>
+                      <span className="font-black text-sm text-stone-900 dark:text-stone-100 block">{data.count} un.</span>
+                      <span className="text-xs text-stone-400 dark:text-stone-500">{formatCurrency(data.total)}</span>
                     </div>
                   </div>
                 ))}
@@ -347,31 +349,31 @@ export const DailySummaryView: React.FC<DailySummaryViewProps> = ({
       </div>
 
       {/* Histórico das Vendas de Hoje */}
-      <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-        <h3 className="text-lg font-black text-slate-800 mb-3 flex items-center gap-2">
-          <Clock className="w-5 h-5 text-slate-600" />
+      <div className="bg-white dark:bg-[#1a1613] p-6 rounded-2xl border border-stone-200 dark:border-stone-800 shadow-sm">
+        <h3 className="text-lg font-black text-stone-900 dark:text-stone-100 mb-3 flex items-center gap-2">
+          <Clock className="w-5 h-5 text-amber-600 dark:text-amber-400" />
           Últimas Vendas Registradas Hoje
         </h3>
         {todaySales.length === 0 ? (
-          <p className="text-sm text-slate-400 py-6 text-center">Nenhuma venda realizada hoje.</p>
+          <p className="text-sm text-stone-400 dark:text-stone-500 py-6 text-center">Nenhuma venda realizada hoje.</p>
         ) : (
-          <div className="divide-y divide-slate-100 max-h-[300px] overflow-y-auto">
+          <div className="divide-y divide-stone-100 dark:divide-stone-800/80 max-h-[300px] overflow-y-auto">
             {todaySales.map(sale => (
               <div key={sale.id} className="py-3 flex items-center justify-between">
                 <div>
                   <div className="flex items-center gap-2">
-                    <span className="text-xs font-bold px-2 py-0.5 rounded bg-slate-100 text-slate-700 uppercase">
+                    <span className="text-xs font-bold px-2 py-0.5 rounded bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 uppercase">
                       {sale.paymentMethod.replace('_', ' ')}
                     </span>
-                    <span className="text-xs text-slate-400">
+                    <span className="text-xs text-stone-400 dark:text-stone-500">
                       {new Date(sale.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                     </span>
                   </div>
-                  <p className="text-sm text-slate-600 mt-1">
+                  <p className="text-sm text-stone-600 dark:text-stone-300 mt-1">
                     {sale.items.map(i => `${i.quantity}x ${i.productName}`).join(', ')}
                   </p>
                 </div>
-                <span className="text-lg font-black text-emerald-600">
+                <span className="text-lg font-black text-emerald-600 dark:text-emerald-400">
                   {formatCurrency(sale.totalAmount)}
                 </span>
               </div>
@@ -381,15 +383,15 @@ export const DailySummaryView: React.FC<DailySummaryViewProps> = ({
       </div>
 
       {/* Seção de Backup & Segurança dos Dados */}
-      <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+      <div className="bg-white dark:bg-[#1a1613] p-6 rounded-2xl border border-stone-200 dark:border-stone-800 shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center text-amber-700">
+            <div className="w-10 h-10 rounded-xl bg-amber-100 dark:bg-amber-950/50 flex items-center justify-center text-amber-700 dark:text-amber-400">
               <ShieldCheck className="w-6 h-6" />
             </div>
             <div>
-              <h4 className="font-bold text-slate-800 text-base">Segurança & Backup do Balcão</h4>
-              <p className="text-xs text-slate-500">
+              <h4 className="font-bold text-stone-900 dark:text-stone-100 text-base">Segurança & Backup do Balcão</h4>
+              <p className="text-xs text-stone-500 dark:text-stone-400">
                 Baixe uma cópia dos seus produtos, vendas e despesas para garantir que nada se perca ao limpar o navegador.
               </p>
             </div>
@@ -398,17 +400,17 @@ export const DailySummaryView: React.FC<DailySummaryViewProps> = ({
           <div className="flex items-center gap-3">
             <button
               onClick={handleDownloadBackup}
-              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs transition-all cursor-pointer border border-slate-300"
+              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-800 dark:text-stone-200 font-bold text-xs transition-all cursor-pointer border border-stone-300 dark:border-stone-700"
             >
-              <Download className="w-4 h-4 text-slate-600" />
+              <Download className="w-4 h-4 text-stone-600 dark:text-stone-400" />
               Baixar Backup (.json)
             </button>
 
             <button
               onClick={() => fileInputRef.current?.click()}
-              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs transition-all cursor-pointer border border-slate-300"
+              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-800 dark:text-stone-200 font-bold text-xs transition-all cursor-pointer border border-stone-300 dark:border-stone-700"
             >
-              <Upload className="w-4 h-4 text-slate-600" />
+              <Upload className="w-4 h-4 text-stone-600 dark:text-stone-400" />
               Restaurar Backup
             </button>
 
@@ -425,13 +427,13 @@ export const DailySummaryView: React.FC<DailySummaryViewProps> = ({
         {backupMessage && (
           <div className={`mt-4 p-3 rounded-xl flex items-center gap-2 text-sm font-semibold ${
             backupMessage.type === 'success' 
-              ? 'bg-emerald-50 text-emerald-800 border border-emerald-200' 
-              : 'bg-rose-50 text-rose-800 border border-rose-200'
+              ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800' 
+              : 'bg-rose-50 dark:bg-rose-950/40 text-rose-800 dark:text-rose-300 border border-rose-200 dark:border-rose-800'
           }`}>
             {backupMessage.type === 'success' ? (
-              <Check className="w-4 h-4 text-emerald-600" />
+              <Check className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
             ) : (
-              <AlertCircle className="w-4 h-4 text-rose-600" />
+              <AlertCircle className="w-4 h-4 text-rose-600 dark:text-rose-400" />
             )}
             {backupMessage.text}
           </div>

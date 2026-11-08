@@ -184,7 +184,6 @@ export const ProductionCostView: React.FC<ProductionCostViewProps> = ({
 
   // Atualizar custo de um ingrediente com base em item da nota
   const handleSyncInvoiceItem = (invoiceItemName: string, unitPrice: number) => {
-    // Procura por aproximação no nome
     const match = ingredients.find(ing =>
       invoiceItemName.toLowerCase().includes(ing.name.toLowerCase().slice(0, 5))
     )
@@ -196,7 +195,6 @@ export const ProductionCostView: React.FC<ProductionCostViewProps> = ({
       saveIngredients(updated)
       alert(`Preço do ingrediente "${match.name}" atualizado para ${formatCurrency(unitPrice)}!`)
     } else {
-      // Cria novo ingrediente a partir do item da nota
       const newIng: Ingredient = {
         id: `ing_${Date.now()}`,
         name: invoiceItemName,
@@ -213,13 +211,13 @@ export const ProductionCostView: React.FC<ProductionCostViewProps> = ({
   return (
     <div className="flex flex-col gap-6">
       {/* Sub-navegação da Fase 2 */}
-      <div className="bg-white p-2 rounded-2xl border border-slate-200 shadow-xs flex flex-wrap gap-2">
+      <div className="bg-white dark:bg-[#1a1613] p-2 rounded-2xl border border-stone-200 dark:border-stone-800 shadow-xs flex flex-wrap gap-2">
         <button
           onClick={() => setSubTab('recipes')}
           className={`flex items-center gap-2 px-5 py-3 rounded-xl font-bold text-sm cursor-pointer transition-all ${
             subTab === 'recipes'
-              ? 'bg-amber-600 text-white shadow-md'
-              : 'text-slate-600 hover:bg-slate-100'
+              ? 'bg-gradient-to-r from-amber-600 to-orange-600 text-white shadow-md font-black'
+              : 'text-stone-600 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-800/80'
           }`}
         >
           <ChefHat className="w-5 h-5" />
@@ -230,8 +228,8 @@ export const ProductionCostView: React.FC<ProductionCostViewProps> = ({
           onClick={() => setSubTab('ingredients')}
           className={`flex items-center gap-2 px-5 py-3 rounded-xl font-bold text-sm cursor-pointer transition-all ${
             subTab === 'ingredients'
-              ? 'bg-amber-600 text-white shadow-md'
-              : 'text-slate-600 hover:bg-slate-100'
+              ? 'bg-gradient-to-r from-amber-600 to-orange-600 text-white shadow-md font-black'
+              : 'text-stone-600 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-800/80'
           }`}
         >
           <Package className="w-5 h-5" />
@@ -242,8 +240,8 @@ export const ProductionCostView: React.FC<ProductionCostViewProps> = ({
           onClick={() => setSubTab('invoices')}
           className={`flex items-center gap-2 px-5 py-3 rounded-xl font-bold text-sm cursor-pointer transition-all ${
             subTab === 'invoices'
-              ? 'bg-amber-600 text-white shadow-md'
-              : 'text-slate-600 hover:bg-slate-100'
+              ? 'bg-gradient-to-r from-amber-600 to-orange-600 text-white shadow-md font-black'
+              : 'text-stone-600 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-800/80'
           }`}
         >
           <ReceiptText className="w-5 h-5" />
@@ -256,10 +254,10 @@ export const ProductionCostView: React.FC<ProductionCostViewProps> = ({
          ============================================================ */}
       {subTab === 'recipes' && (
         <div className="flex flex-col gap-4">
-          <div className="bg-amber-50 border border-amber-200 p-4 rounded-2xl flex items-start gap-3">
-            <HelpCircle className="w-6 h-6 text-amber-700 shrink-0 mt-0.5" />
-            <div className="text-sm text-amber-900 leading-relaxed">
-              <strong className="block text-amber-950 font-bold mb-0.5">
+          <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/50 p-4 rounded-2xl flex items-start gap-3">
+            <HelpCircle className="w-6 h-6 text-amber-700 dark:text-amber-400 shrink-0 mt-0.5" />
+            <div className="text-sm text-amber-950 dark:text-amber-200 leading-relaxed">
+              <strong className="block text-amber-950 dark:text-amber-100 font-bold mb-0.5">
                 Como Funciona o Cálculo do Custo Real:
               </strong>
               Aqui sua mãe vê exatamente quanto gasta para fazer cada fornada (farinha, frango, óleo, gás) e quanto cada salgado custa individualmente na vitrine. Assim, ela nunca vende nada no prejuízo!
@@ -279,20 +277,20 @@ export const ProductionCostView: React.FC<ProductionCostViewProps> = ({
                 return (
                   <div
                     key={prod.id}
-                    className="bg-white rounded-2xl border-2 border-slate-200 p-5 shadow-sm hover:border-amber-400 transition-all flex flex-col justify-between"
+                    className="bg-white dark:bg-[#1a1613] rounded-2xl border-2 border-stone-200 dark:border-stone-800 p-5 shadow-sm hover:border-amber-500 dark:hover:border-amber-500 transition-all flex flex-col justify-between"
                   >
                     <div>
-                      <div className="flex items-start justify-between gap-2 pb-3 border-b border-slate-100">
+                      <div className="flex items-start justify-between gap-2 pb-3 border-b border-stone-100 dark:border-stone-800">
                         <div>
-                          <h3 className="font-black text-lg text-slate-800 leading-tight">
+                          <h3 className="font-black text-lg text-stone-900 dark:text-stone-100 leading-tight">
                             {prod.name}
                           </h3>
-                          <span className="text-xs text-slate-400 font-semibold">
-                            Preço de Venda: <strong className="text-slate-700">{formatCurrency(prod.price)}</strong>
+                          <span className="text-xs text-stone-400 dark:text-stone-500 font-semibold">
+                            Preço de Venda: <strong className="text-stone-700 dark:text-stone-300">{formatCurrency(prod.price)}</strong>
                           </span>
                         </div>
                         {recipe && (
-                          <span className="text-xs font-bold px-2 py-1 rounded bg-amber-100 text-amber-900">
+                          <span className="text-xs font-bold px-2 py-1 rounded bg-amber-100 text-amber-900 dark:bg-amber-950/60 dark:text-amber-300">
                             Fornada: {recipe.yieldQuantity} un.
                           </span>
                         )}
@@ -301,20 +299,20 @@ export const ProductionCostView: React.FC<ProductionCostViewProps> = ({
                       {/* Métricas de Custo e Lucro */}
                       {recipe ? (
                         <div className="my-4 space-y-3">
-                          <div className="grid grid-cols-2 gap-2 bg-slate-50 p-3 rounded-xl">
+                          <div className="grid grid-cols-2 gap-2 bg-stone-50 dark:bg-stone-900/70 p-3 rounded-xl border border-stone-100 dark:border-stone-800/60">
                             <div>
-                              <span className="text-[11px] font-bold text-slate-400 block uppercase">
+                              <span className="text-[11px] font-bold text-stone-400 dark:text-stone-500 block uppercase">
                                 Custo p/ Fazer 1
                               </span>
-                              <span className="text-xl font-black text-rose-600">
+                              <span className="text-xl font-black text-rose-600 dark:text-rose-400">
                                 {formatCurrency(unitCost)}
                               </span>
                             </div>
                             <div>
-                              <span className="text-[11px] font-bold text-slate-400 block uppercase">
+                              <span className="text-[11px] font-bold text-stone-400 dark:text-stone-500 block uppercase">
                                 Lucro em 1 Salgado
                               </span>
-                              <span className="text-xl font-black text-emerald-600">
+                              <span className="text-xl font-black text-emerald-600 dark:text-emerald-400">
                                 + {formatCurrency(profit)}
                               </span>
                             </div>
@@ -322,25 +320,25 @@ export const ProductionCostView: React.FC<ProductionCostViewProps> = ({
 
                           {/* Margem Percentual */}
                           <div className="flex items-center justify-between text-xs px-1">
-                            <span className="font-semibold text-slate-500">Margem Bruta Real:</span>
+                            <span className="font-semibold text-stone-500 dark:text-stone-400">Margem Bruta Real:</span>
                             <span className={`font-black px-2 py-0.5 rounded ${
                               marginPercent >= 60
-                                ? 'bg-emerald-100 text-emerald-800'
+                                ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300'
                                 : marginPercent >= 40
-                                ? 'bg-amber-100 text-amber-800'
-                                : 'bg-rose-100 text-rose-800'
+                                ? 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300'
+                                : 'bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300'
                             }`}>
                               {marginPercent.toFixed(1)}% de margem
                             </span>
                           </div>
 
-                          <div className="text-[11px] text-slate-400">
-                            Custo total da fornada: <strong className="text-slate-600">{formatCurrency(batchCost)}</strong>
+                          <div className="text-[11px] text-stone-400 dark:text-stone-500">
+                            Custo total da fornada: <strong className="text-stone-600 dark:text-stone-300">{formatCurrency(batchCost)}</strong>
                           </div>
                         </div>
                       ) : (
-                        <div className="py-8 text-center text-slate-400">
-                          <ChefHat className="w-8 h-8 mx-auto text-slate-300 mb-1" />
+                        <div className="py-8 text-center text-stone-400 dark:text-stone-500">
+                          <ChefHat className="w-8 h-8 mx-auto text-stone-300 dark:text-stone-600 mb-1" />
                           <p className="text-xs font-semibold">Sem receita cadastrada</p>
                           <p className="text-[11px] mt-0.5">Cadastre os ingredientes para ver o custo.</p>
                         </div>
@@ -348,11 +346,11 @@ export const ProductionCostView: React.FC<ProductionCostViewProps> = ({
                     </div>
 
                     {/* Botão de Ação */}
-                    <div className="pt-3 border-t border-slate-100">
+                    <div className="pt-3 border-t border-stone-100 dark:border-stone-800">
                       {recipe ? (
                         <button
                           onClick={() => handleOpenEditRecipe(recipe)}
-                          className="w-full py-2.5 bg-slate-100 hover:bg-amber-500 hover:text-white text-slate-700 font-bold text-xs rounded-xl flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                          className="w-full py-2.5 bg-stone-100 dark:bg-stone-800 hover:bg-amber-600 hover:text-white dark:hover:bg-amber-600 text-stone-700 dark:text-stone-300 font-bold text-xs rounded-xl flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
                         >
                           <Edit2 className="w-3.5 h-3.5" />
                           Ver / Editar Ficha Técnica
@@ -360,7 +358,7 @@ export const ProductionCostView: React.FC<ProductionCostViewProps> = ({
                       ) : (
                         <button
                           onClick={() => handleOpenNewRecipe(prod)}
-                          className="w-full py-2.5 bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs rounded-xl flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                          className="w-full py-2.5 bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 text-white font-bold text-xs rounded-xl flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
                         >
                           <Plus className="w-3.5 h-3.5" />
                           Criar Ficha Técnica
@@ -380,15 +378,15 @@ export const ProductionCostView: React.FC<ProductionCostViewProps> = ({
       {subTab === 'ingredients' && (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           {/* Formulário Novo Ingrediente */}
-          <div className="lg:col-span-4 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col gap-4">
-            <h3 className="text-lg font-black text-slate-800 flex items-center gap-2 pb-3 border-b border-slate-100">
-              <Package className="w-5 h-5 text-amber-600" />
+          <div className="lg:col-span-4 bg-white dark:bg-[#1a1613] p-6 rounded-2xl border border-stone-200 dark:border-stone-800 shadow-sm flex flex-col gap-4">
+            <h3 className="text-lg font-black text-stone-900 dark:text-stone-100 flex items-center gap-2 pb-3 border-b border-stone-100 dark:border-stone-800">
+              <Package className="w-5 h-5 text-amber-600 dark:text-amber-400" />
               Novo Ingrediente
             </h3>
 
             <form onSubmit={handleAddIngredient} className="flex flex-col gap-4">
               <div>
-                <label className="block text-xs font-bold text-slate-600 uppercase mb-1">
+                <label className="block text-xs font-bold text-stone-600 dark:text-stone-300 uppercase mb-1">
                   Nome do Ingrediente:
                 </label>
                 <input
@@ -396,14 +394,14 @@ export const ProductionCostView: React.FC<ProductionCostViewProps> = ({
                   placeholder="Ex: Peito de Frango"
                   value={newIngName}
                   onChange={e => setNewIngName(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-2.5 text-sm font-semibold text-slate-800 focus:outline-amber-600"
+                  className="w-full bg-stone-50 dark:bg-stone-900 border border-stone-300 dark:border-stone-700 rounded-xl px-4 py-2.5 text-sm font-semibold text-stone-900 dark:text-stone-100 focus:outline-amber-600"
                   required
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-bold text-slate-600 uppercase mb-1">
+                  <label className="block text-xs font-bold text-stone-600 dark:text-stone-300 uppercase mb-1">
                     Preço Pago (R$):
                   </label>
                   <input
@@ -411,19 +409,19 @@ export const ProductionCostView: React.FC<ProductionCostViewProps> = ({
                     placeholder="Ex: 18,50"
                     value={newIngCost}
                     onChange={e => setNewIngCost(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-2.5 text-sm font-black text-rose-600 focus:outline-amber-600"
+                    className="w-full bg-stone-50 dark:bg-stone-900 border border-stone-300 dark:border-stone-700 rounded-xl px-4 py-2.5 text-sm font-black text-rose-600 dark:text-rose-400 focus:outline-amber-600"
                     required
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-slate-600 uppercase mb-1">
+                  <label className="block text-xs font-bold text-stone-600 dark:text-stone-300 uppercase mb-1">
                     Unidade:
                   </label>
                   <select
                     value={newIngUnit}
                     onChange={e => setNewIngUnit(e.target.value as UnitType)}
-                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2.5 text-sm font-semibold text-slate-700 focus:outline-amber-600"
+                    className="w-full bg-stone-50 dark:bg-stone-900 border border-stone-300 dark:border-stone-700 rounded-xl px-3 py-2.5 text-sm font-semibold text-stone-700 dark:text-stone-300 focus:outline-amber-600"
                   >
                     <option value="kg">Quilo (kg)</option>
                     <option value="g">Grama (g)</option>
@@ -436,7 +434,7 @@ export const ProductionCostView: React.FC<ProductionCostViewProps> = ({
 
               <button
                 type="submit"
-                className="w-full py-3 bg-amber-600 hover:bg-amber-700 text-white font-bold text-sm rounded-xl flex items-center justify-center gap-2 cursor-pointer shadow-sm transition-all"
+                className="w-full py-3 bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 text-white font-bold text-sm rounded-xl flex items-center justify-center gap-2 cursor-pointer shadow-sm transition-all"
               >
                 <Plus className="w-4 h-4" /> Cadastrar Ingrediente
               </button>
@@ -444,23 +442,23 @@ export const ProductionCostView: React.FC<ProductionCostViewProps> = ({
           </div>
 
           {/* Lista de Ingredientes Cadastrados */}
-          <div className="lg:col-span-8 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between">
+          <div className="lg:col-span-8 bg-white dark:bg-[#1a1613] p-6 rounded-2xl border border-stone-200 dark:border-stone-800 shadow-sm flex flex-col justify-between">
             <div>
-              <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-                <h3 className="text-lg font-black text-slate-800">
+              <div className="flex items-center justify-between pb-3 border-b border-stone-100 dark:border-stone-800">
+                <h3 className="text-lg font-black text-stone-900 dark:text-stone-100">
                   Ingredientes & Matérias-Primas ({ingredients.length})
                 </h3>
-                <span className="text-xs text-slate-400">
+                <span className="text-xs text-stone-400 dark:text-stone-500">
                   Clique no valor para atualizar o preço pago
                 </span>
               </div>
 
-              <div className="divide-y divide-slate-100 my-2 overflow-y-auto max-h-[460px]">
+              <div className="divide-y divide-stone-100 dark:divide-stone-800/80 my-2 overflow-y-auto max-h-[460px]">
                 {ingredients.map(ing => (
                   <div key={ing.id} className="py-3 flex items-center justify-between gap-3">
                     <div>
-                      <p className="font-bold text-slate-800 text-sm">{ing.name}</p>
-                      <span className="text-xs text-slate-400">
+                      <p className="font-bold text-stone-900 dark:text-stone-100 text-sm">{ing.name}</p>
+                      <span className="text-xs text-stone-400 dark:text-stone-500">
                         Cobrado por: <strong>1 {ing.unit}</strong>
                       </span>
                     </div>
@@ -468,12 +466,12 @@ export const ProductionCostView: React.FC<ProductionCostViewProps> = ({
                     <div className="flex items-center gap-3">
                       {editingIngId === ing.id ? (
                         <div className="flex items-center gap-1.5">
-                          <span className="text-xs font-bold text-slate-500">R$</span>
+                          <span className="text-xs font-bold text-stone-500 dark:text-stone-400">R$</span>
                           <input
                             type="text"
                             value={editIngCostStr}
                             onChange={e => setEditIngCostStr(e.target.value)}
-                            className="w-20 bg-slate-100 border border-amber-400 rounded px-2 py-1 text-sm font-bold text-slate-800"
+                            className="w-20 bg-stone-100 dark:bg-stone-800 border border-amber-400 rounded px-2 py-1 text-sm font-bold text-stone-900 dark:text-stone-100"
                             autoFocus
                           />
                           <button
@@ -484,14 +482,14 @@ export const ProductionCostView: React.FC<ProductionCostViewProps> = ({
                           </button>
                           <button
                             onClick={() => setEditingIngId(null)}
-                            className="p-1.5 bg-slate-200 text-slate-600 rounded hover:bg-slate-300 cursor-pointer text-xs"
+                            className="p-1.5 bg-stone-200 dark:bg-stone-700 text-stone-600 dark:text-stone-300 rounded hover:bg-stone-300 dark:hover:bg-stone-600 cursor-pointer text-xs"
                           >
                             X
                           </button>
                         </div>
                       ) : (
                         <div className="flex items-center gap-2">
-                          <span className="font-black text-base text-slate-900">
+                          <span className="font-black text-base text-stone-900 dark:text-stone-100">
                             {formatCurrency(ing.unitCost)} / {ing.unit}
                           </span>
                           <button
@@ -499,7 +497,7 @@ export const ProductionCostView: React.FC<ProductionCostViewProps> = ({
                               setEditingIngId(ing.id)
                               setEditIngCostStr(ing.unitCost.toFixed(2).replace('.', ','))
                             }}
-                            className="p-1.5 text-slate-400 hover:text-amber-600 rounded cursor-pointer"
+                            className="p-1.5 text-stone-400 hover:text-amber-600 dark:hover:text-amber-400 rounded cursor-pointer"
                             title="Alterar preço"
                           >
                             <Edit2 className="w-3.5 h-3.5" />
@@ -520,40 +518,40 @@ export const ProductionCostView: React.FC<ProductionCostViewProps> = ({
          ============================================================ */}
       {subTab === 'invoices' && (
         <div className="flex flex-col gap-6">
-          <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-            <h3 className="text-lg font-black text-slate-800 flex items-center gap-2 mb-2">
-              <FileCode className="w-5 h-5 text-amber-600" />
+          <div className="bg-white dark:bg-[#1a1613] p-6 rounded-2xl border border-stone-200 dark:border-stone-800 shadow-sm">
+            <h3 className="text-lg font-black text-stone-900 dark:text-stone-100 flex items-center gap-2 mb-2">
+              <FileCode className="w-5 h-5 text-amber-600 dark:text-amber-400" />
               Leitor Automático de Nota Fiscal (XML da NFe / NFCe)
             </h3>
-            <p className="text-xs text-slate-500 mb-5">
+            <p className="text-xs text-stone-500 dark:text-stone-400 mb-5">
               Quando você ou sua mãe comprarem produtos no atacado (Assaí, Atacadão, etc.), basta salvar o arquivo .xml da nota e arrastar aqui. O sistema extrai todos os preços unitários automaticamente sem precisar digitar nada!
             </p>
 
             {/* Input de Upload */}
-            <div className="border-2 border-dashed border-amber-300 bg-amber-50/50 hover:bg-amber-50 rounded-2xl p-8 text-center transition-all cursor-pointer relative">
+            <div className="border-2 border-dashed border-amber-300 dark:border-amber-700 bg-amber-50/50 dark:bg-amber-950/20 hover:bg-amber-50 dark:hover:bg-amber-950/30 rounded-2xl p-8 text-center transition-all cursor-pointer relative">
               <input
                 type="file"
                 accept=".xml"
                 onChange={handleFileUpload}
                 className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
               />
-              <Upload className="w-10 h-10 text-amber-600 mx-auto mb-2" />
-              <p className="font-bold text-slate-800 text-base">
+              <Upload className="w-10 h-10 text-amber-600 dark:text-amber-400 mx-auto mb-2" />
+              <p className="font-bold text-stone-900 dark:text-stone-100 text-base">
                 Clique aqui ou arraste o arquivo .XML da Nota Fiscal
               </p>
-              <p className="text-xs text-slate-400 mt-1">Formato suportado: NF-e ou NFC-e padrão SEFAZ</p>
+              <p className="text-xs text-stone-400 dark:text-stone-500 mt-1">Formato suportado: NF-e ou NFC-e padrão SEFAZ</p>
             </div>
 
             {xmlError && (
-              <div className="mt-4 p-4 rounded-xl bg-rose-50 border border-rose-200 flex items-center gap-2 text-rose-800 text-sm font-semibold">
-                <AlertCircle className="w-5 h-5 text-rose-600 shrink-0" />
+              <div className="mt-4 p-4 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/50 flex items-center gap-2 text-rose-800 dark:text-rose-300 text-sm font-semibold">
+                <AlertCircle className="w-5 h-5 text-rose-600 dark:text-rose-400 shrink-0" />
                 {xmlError}
               </div>
             )}
 
             {xmlSuccess && (
-              <div className="mt-4 p-4 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center gap-2 text-emerald-800 text-sm font-semibold">
-                <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
+              <div className="mt-4 p-4 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900/50 flex items-center gap-2 text-emerald-800 dark:text-emerald-300 text-sm font-semibold">
+                <CheckCircle2 className="w-5 h-5 text-emerald-600 dark:text-emerald-400 shrink-0" />
                 {xmlSuccess}
               </div>
             )}
@@ -561,43 +559,43 @@ export const ProductionCostView: React.FC<ProductionCostViewProps> = ({
 
           {/* Pré-visualização da Nota Carregada */}
           {parsedPreview && (
-            <div className="bg-white p-6 rounded-2xl border-2 border-amber-400 shadow-lg flex flex-col gap-4">
-              <div className="flex items-center justify-between pb-3 border-b border-slate-200">
+            <div className="bg-white dark:bg-[#1a1613] p-6 rounded-2xl border-2 border-amber-400 dark:border-amber-600 shadow-lg flex flex-col gap-4">
+              <div className="flex items-center justify-between pb-3 border-b border-stone-200 dark:border-stone-800">
                 <div>
-                  <span className="text-xs uppercase font-bold text-amber-600 tracking-wider">
+                  <span className="text-xs uppercase font-bold text-amber-600 dark:text-amber-400 tracking-wider">
                     Nota Encontrada
                   </span>
-                  <h4 className="text-xl font-black text-slate-800">
+                  <h4 className="text-xl font-black text-stone-900 dark:text-stone-100">
                     {parsedPreview.supplier}
                   </h4>
-                  <p className="text-xs text-slate-400">
-                    Data: {new Date(parsedPreview.date).toLocaleDateString()} | Total da Nota: <strong className="text-slate-700">{formatCurrency(parsedPreview.totalAmount)}</strong>
+                  <p className="text-xs text-stone-400 dark:text-stone-500">
+                    Data: {new Date(parsedPreview.date).toLocaleDateString()} | Total da Nota: <strong className="text-stone-700 dark:text-stone-300">{formatCurrency(parsedPreview.totalAmount)}</strong>
                   </p>
                 </div>
                 <button
                   onClick={handleConfirmInvoice}
-                  className="px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-sm rounded-xl cursor-pointer shadow-md transition-all"
+                  className="px-6 py-3 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-black text-sm rounded-xl cursor-pointer shadow-md transition-all"
                 >
                   Confirmar e Salvar Nota
                 </button>
               </div>
 
               <div>
-                <h5 className="font-bold text-sm text-slate-700 mb-2">
+                <h5 className="font-bold text-sm text-stone-700 dark:text-stone-300 mb-2">
                   Itens Identificados na Nota ({parsedPreview.items.length}):
                 </h5>
-                <div className="divide-y divide-slate-100 max-h-[350px] overflow-y-auto">
+                <div className="divide-y divide-stone-100 dark:divide-stone-800/80 max-h-[350px] overflow-y-auto">
                   {parsedPreview.items.map((item, idx) => (
                     <div key={idx} className="py-2.5 flex items-center justify-between gap-3 text-sm">
                       <div className="flex-1">
-                        <p className="font-bold text-slate-800">{item.name}</p>
-                        <p className="text-xs text-slate-400">
-                          {item.quantity} {item.unit} x {formatCurrency(item.unitPrice)} = <strong className="text-slate-600">{formatCurrency(item.total)}</strong>
+                        <p className="font-bold text-stone-900 dark:text-stone-100">{item.name}</p>
+                        <p className="text-xs text-stone-400 dark:text-stone-500">
+                          {item.quantity} {item.unit} x {formatCurrency(item.unitPrice)} = <strong className="text-stone-600 dark:text-stone-300">{formatCurrency(item.total)}</strong>
                         </p>
                       </div>
                       <button
                         onClick={() => handleSyncInvoiceItem(item.name, item.unitPrice)}
-                        className="text-xs bg-amber-100 hover:bg-amber-600 hover:text-white text-amber-900 font-bold px-3 py-1.5 rounded-lg transition-colors cursor-pointer"
+                        className="text-xs bg-amber-100 hover:bg-amber-600 hover:text-white dark:bg-amber-950/60 dark:hover:bg-amber-600 text-amber-900 dark:text-amber-200 font-bold px-3 py-1.5 rounded-lg transition-colors cursor-pointer"
                       >
                         Vincular / Atualizar Custo
                       </button>
@@ -610,18 +608,18 @@ export const ProductionCostView: React.FC<ProductionCostViewProps> = ({
 
           {/* Histórico de Notas Importadas */}
           {invoices.length > 0 && (
-            <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-              <h4 className="font-black text-lg text-slate-800 mb-3">Notas Já Salvas no Histórico</h4>
-              <div className="divide-y divide-slate-100 max-h-[250px] overflow-y-auto">
+            <div className="bg-white dark:bg-[#1a1613] p-6 rounded-2xl border border-stone-200 dark:border-stone-800 shadow-sm">
+              <h4 className="font-black text-lg text-stone-900 dark:text-stone-100 mb-3">Notas Já Salvas no Histórico</h4>
+              <div className="divide-y divide-stone-100 dark:divide-stone-800/80 max-h-[250px] overflow-y-auto">
                 {invoices.map(inv => (
                   <div key={inv.id} className="py-3 flex items-center justify-between text-sm">
                     <div>
-                      <p className="font-bold text-slate-800">{inv.supplier}</p>
-                      <span className="text-xs text-slate-400">
+                      <p className="font-bold text-stone-900 dark:text-stone-100">{inv.supplier}</p>
+                      <span className="text-xs text-stone-400 dark:text-stone-500">
                         {new Date(inv.date).toLocaleDateString()} • {inv.items.length} itens
                       </span>
                     </div>
-                    <span className="font-black text-slate-800">{formatCurrency(inv.totalAmount)}</span>
+                    <span className="font-black text-stone-800 dark:text-stone-200">{formatCurrency(inv.totalAmount)}</span>
                   </div>
                 ))}
               </div>
@@ -634,27 +632,27 @@ export const ProductionCostView: React.FC<ProductionCostViewProps> = ({
           MODAL DE EDIÇÃO DE RECEITA / FICHA TÉCNICA
          ============================================================ */}
       {editingRecipe && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white w-full max-w-2xl rounded-3xl p-6 shadow-2xl flex flex-col gap-4 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-200">
+        <div className="fixed inset-0 z-50 bg-stone-950/70 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-[#1a1613] border border-stone-200 dark:border-stone-800 w-full max-w-2xl rounded-3xl p-6 shadow-2xl flex flex-col gap-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between pb-3 border-b border-stone-200 dark:border-stone-800">
               <div className="flex items-center gap-2">
-                <ChefHat className="w-6 h-6 text-amber-600" />
-                <h3 className="font-black text-xl text-slate-800">
+                <ChefHat className="w-6 h-6 text-amber-600 dark:text-amber-400" />
+                <h3 className="font-black text-xl text-stone-900 dark:text-stone-100">
                   {isNewRecipe ? 'Criar Ficha Técnica' : 'Editar Ficha Técnica da Fornada'}
                 </h3>
               </div>
               <button
                 onClick={() => setEditingRecipe(null)}
-                className="text-slate-400 hover:text-slate-700 p-1 cursor-pointer"
+                className="text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 p-1 cursor-pointer"
               >
                 <X className="w-6 h-6" />
               </button>
             </div>
 
             {/* Rendimento e Custos Fixos */}
-            <div className="grid grid-cols-2 gap-4 bg-slate-50 p-4 rounded-2xl">
+            <div className="grid grid-cols-2 gap-4 bg-stone-50 dark:bg-stone-900/70 p-4 rounded-2xl border border-stone-100 dark:border-stone-800/80">
               <div>
-                <label className="block text-xs font-bold text-slate-600 uppercase mb-1">
+                <label className="block text-xs font-bold text-stone-600 dark:text-stone-300 uppercase mb-1">
                   Rendimento da Fornada (Salgados):
                 </label>
                 <input
@@ -667,12 +665,12 @@ export const ProductionCostView: React.FC<ProductionCostViewProps> = ({
                       yieldQuantity: parseInt(e.target.value) || 1,
                     })
                   }
-                  className="w-full bg-white border border-slate-300 rounded-xl px-4 py-2 font-bold text-slate-800 text-lg"
+                  className="w-full bg-white dark:bg-stone-900 border border-stone-300 dark:border-stone-700 rounded-xl px-4 py-2 font-bold text-stone-900 dark:text-stone-100 text-lg"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-600 uppercase mb-1">
+                <label className="block text-xs font-bold text-stone-600 dark:text-stone-300 uppercase mb-1">
                   Gás, Óleo e Temperos Rateados (R$):
                 </label>
                 <input
@@ -685,7 +683,7 @@ export const ProductionCostView: React.FC<ProductionCostViewProps> = ({
                       additionalCostPerBatch: parseFloat(e.target.value) || 0,
                     })
                   }
-                  className="w-full bg-white border border-slate-300 rounded-xl px-4 py-2 font-bold text-slate-800 text-lg"
+                  className="w-full bg-white dark:bg-stone-900 border border-stone-300 dark:border-stone-700 rounded-xl px-4 py-2 font-bold text-stone-900 dark:text-stone-100 text-lg"
                 />
               </div>
             </div>
@@ -693,10 +691,9 @@ export const ProductionCostView: React.FC<ProductionCostViewProps> = ({
             {/* Ingredientes Utilizados */}
             <div>
               <div className="flex items-center justify-between mb-2">
-                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                <label className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-wider">
                   Ingredientes da Receita:
                 </label>
-                {/* Seletor para adicionar novo ingrediente */}
                 <select
                   onChange={e => {
                     if (e.target.value) {
@@ -704,7 +701,7 @@ export const ProductionCostView: React.FC<ProductionCostViewProps> = ({
                       e.target.value = ''
                     }
                   }}
-                  className="text-xs bg-amber-50 border border-amber-300 font-bold text-amber-900 rounded-lg px-2 py-1 cursor-pointer"
+                  className="text-xs bg-amber-50 dark:bg-amber-950/50 border border-amber-300 dark:border-amber-800 font-bold text-amber-900 dark:text-amber-200 rounded-lg px-2 py-1 cursor-pointer"
                 >
                   <option value="">+ Adicionar Ingrediente...</option>
                   {ingredients.map(ing => (
@@ -715,13 +712,13 @@ export const ProductionCostView: React.FC<ProductionCostViewProps> = ({
                 </select>
               </div>
 
-              <div className="divide-y divide-slate-100 max-h-[220px] overflow-y-auto">
+              <div className="divide-y divide-stone-100 dark:divide-stone-800/80 max-h-[220px] overflow-y-auto">
                 {editingRecipe.ingredients.map(item => {
                   const ing = ingredients.find(i => i.id === item.ingredientId)
                   if (!ing) return null
                   return (
                     <div key={item.ingredientId} className="py-2.5 flex items-center justify-between gap-3 text-sm">
-                      <span className="font-bold text-slate-800 flex-1">{ing.name}</span>
+                      <span className="font-bold text-stone-900 dark:text-stone-100 flex-1">{ing.name}</span>
                       <div className="flex items-center gap-2">
                         <input
                           type="number"
@@ -736,12 +733,12 @@ export const ProductionCostView: React.FC<ProductionCostViewProps> = ({
                               ),
                             })
                           }}
-                          className="w-20 bg-slate-100 border border-slate-300 rounded px-2 py-1 text-center font-bold"
+                          className="w-20 bg-stone-100 dark:bg-stone-800 border border-stone-300 dark:border-stone-700 rounded px-2 py-1 text-center font-bold text-stone-900 dark:text-stone-100"
                         />
-                        <span className="text-xs text-slate-500 w-8">{item.unit}</span>
+                        <span className="text-xs text-stone-500 dark:text-stone-400 w-8">{item.unit}</span>
                         <button
                           onClick={() => handleRemoveIngredientFromRecipe(item.ingredientId)}
-                          className="text-rose-400 hover:text-rose-600 p-1 cursor-pointer"
+                          className="text-rose-400 hover:text-rose-600 dark:hover:text-rose-300 p-1 cursor-pointer"
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
@@ -753,16 +750,16 @@ export const ProductionCostView: React.FC<ProductionCostViewProps> = ({
             </div>
 
             {/* Resumo do Custo Calculado */}
-            <div className="bg-amber-50 border border-amber-200 p-4 rounded-2xl flex items-center justify-between">
+            <div className="bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900/50 p-4 rounded-2xl flex items-center justify-between">
               <div>
-                <span className="text-xs font-bold text-amber-900 block">Custo Total da Fornada:</span>
-                <span className="text-xl font-black text-slate-900">
+                <span className="text-xs font-bold text-amber-900 dark:text-amber-300 block">Custo Total da Fornada:</span>
+                <span className="text-xl font-black text-stone-900 dark:text-stone-100">
                   {formatCurrency(calculateBatchCost(editingRecipe, ingredients))}
                 </span>
               </div>
               <div className="text-right">
-                <span className="text-xs font-bold text-amber-900 block">Custo por Salgado Unitário:</span>
-                <span className="text-2xl font-black text-rose-600">
+                <span className="text-xs font-bold text-amber-900 dark:text-amber-300 block">Custo por Salgado Unitário:</span>
+                <span className="text-2xl font-black text-rose-600 dark:text-rose-400">
                   {formatCurrency(calculateUnitCost(editingRecipe, ingredients))}
                 </span>
               </div>
@@ -772,13 +769,13 @@ export const ProductionCostView: React.FC<ProductionCostViewProps> = ({
             <div className="flex gap-3 pt-2">
               <button
                 onClick={() => setEditingRecipe(null)}
-                className="flex-1 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl cursor-pointer"
+                className="flex-1 py-3 bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-700 dark:text-stone-300 font-bold rounded-xl cursor-pointer"
               >
                 Cancelar
               </button>
               <button
                 onClick={handleSaveRecipe}
-                className="flex-1 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-black rounded-xl cursor-pointer shadow-md"
+                className="flex-1 py-3 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-black rounded-xl cursor-pointer shadow-md"
               >
                 Salvar Ficha Técnica
               </button>
