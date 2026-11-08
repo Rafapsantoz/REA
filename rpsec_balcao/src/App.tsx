@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import type { Product, Sale, Expense, CartItem, Ingredient, Recipe, ImportedInvoice } from './types'
+import type { Product, Sale, Expense, CartItem, Ingredient, Recipe, ImportedInvoice, Customer, PaymentMethod } from './types'
 import {
   loadProducts,
   saveProducts,
@@ -12,6 +12,9 @@ import {
   loadIngredients,
   loadRecipes,
   loadInvoices,
+  loadCustomers,
+  saveCustomer,
+  markCreditAsPaid,
 } from './storage'
 import { PDVView } from './components/PDVView'
 import { ExpensesView } from './components/ExpensesView'
@@ -23,11 +26,11 @@ import {
   ArrowDownCircle, 
   BarChart3, 
   Tags, 
-  Store,
-  Clock,
-  ChefHat,
-  Sun,
-  Moon
+  Store, 
+  Clock, 
+  ChefHat, 
+  Sun, 
+  Moon 
 } from 'lucide-react'
 
 type TabType = 'pdv' | 'expenses' | 'summary' | 'products' | 'costs'
@@ -38,6 +41,7 @@ export function App() {
   const [sales, setSales] = useState<Sale[]>([])
   const [expenses, setExpenses] = useState<Expense[]>([])
   const [cart, setCart] = useState<CartItem[]>(() => loadActiveCart())
+  const [customers, setCustomers] = useState<Customer[]>(() => loadCustomers())
   const [ingredients, setIngredients] = useState<Ingredient[]>(() => loadIngredients())
   const [recipes, setRecipes] = useState<Recipe[]>(() => loadRecipes())
   const [invoices, setInvoices] = useState<ImportedInvoice[]>(() => loadInvoices())
@@ -92,6 +96,16 @@ export function App() {
     setSales(updated)
     setCart([])
     saveActiveCart([])
+  }
+
+  const handleAddCustomer = (customer: Customer) => {
+    const updated = saveCustomer(customer)
+    setCustomers(updated)
+  }
+
+  const handleMarkCreditPaid = (saleId: string, method: PaymentMethod) => {
+    const updated = markCreditAsPaid(saleId, method)
+    setSales(updated)
   }
 
   const handleAddExpense = (expense: Expense) => {
@@ -235,6 +249,9 @@ export function App() {
             cart={cart}
             setCart={setCart}
             onCompleteSale={handleCompleteSale}
+            customers={customers}
+            onAddCustomer={handleAddCustomer}
+            sales={sales}
           />
         </div>
 
@@ -252,6 +269,7 @@ export function App() {
             expenses={expenses} 
             products={products}
             onRestoreData={handleRestoreData}
+            onMarkCreditPaid={handleMarkCreditPaid}
           />
         </div>
 

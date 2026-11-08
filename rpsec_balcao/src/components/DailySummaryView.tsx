@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react'
-import type { Sale, Expense, Product } from '../types'
+import type { Sale, Expense, Product, PaymentMethod } from '../types'
 import { 
   formatCurrency, 
   exportBackupJSON, 
@@ -12,16 +12,18 @@ import {
   Banknote, 
   QrCode, 
   CreditCard, 
-  UserCheck,
-  Award,
-  Clock,
-  Share2,
-  Copy,
-  Check,
-  Download,
-  Upload,
-  ShieldCheck,
-  AlertCircle
+  UserCheck, 
+  Award, 
+  Clock, 
+  Share2, 
+  Copy, 
+  Check, 
+  Download, 
+  Upload, 
+  ShieldCheck, 
+  AlertCircle,
+  CheckCircle2,
+  BookOpen
 } from 'lucide-react'
 
 interface DailySummaryViewProps {
@@ -29,15 +31,18 @@ interface DailySummaryViewProps {
   expenses: Expense[]
   products?: Product[]
   onRestoreData?: (products: Product[], sales: Sale[], expenses: Expense[]) => void
+  onMarkCreditPaid?: (saleId: string, method: PaymentMethod) => void
 }
 
 export const DailySummaryView: React.FC<DailySummaryViewProps> = ({ 
   sales, 
   expenses, 
-  onRestoreData 
+  onRestoreData,
+  onMarkCreditPaid
 }) => {
   const [copied, setCopied] = useState(false)
   const [backupMessage, setBackupMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+  const [settlingSaleId, setSettlingSaleId] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const today = new Date()
@@ -61,11 +66,11 @@ export const DailySummaryView: React.FC<DailySummaryViewProps> = ({
 
   // Quebra por pagamento
   const cashTotal = todaySales
-    .filter(s => s.paymentMethod === 'dinheiro')
+    .filter(s => s.paymentMethod === 'dinheiro' || (s.paymentMethod === 'fiado' && s.isCreditPaid && s.creditPaidMethod === 'dinheiro'))
     .reduce((sum, s) => sum + s.totalAmount, 0)
 
   const pixTotal = todaySales
-    .filter(s => s.paymentMethod === 'pix')
+    .filter(s => s.paymentMethod === 'pix' || (s.paymentMethod === 'fiado' && s.isCreditPaid && s.creditPaidMethod === 'pix'))
     .reduce((sum, s) => sum + s.totalAmount, 0)
 
   const cardDebitTotal = todaySales
@@ -76,9 +81,9 @@ export const DailySummaryView: React.FC<DailySummaryViewProps> = ({
     .filter(s => s.paymentMethod === 'cartao_credito')
     .reduce((sum, s) => sum + s.totalAmount, 0)
 
-  const creditPendingTotal = todaySales
-    .filter(s => s.paymentMethod === 'fiado')
-    .reduce((sum, s) => sum + s.totalAmount, 0)
+  // Fiados em aberto (não pagos)
+  const openFiados = sales.filter(s => s.paymentMethod === 'fiado' && !s.isCreditPaid)
+  const totalOpenFiadosAmount = openFiados.reduce((sum, s) => sum + s.totalAmount, 0)
 
   // Ranking de itens vendidos hoje
   const itemCounts: { [name: string]: { count: number; total: number } } = {}
@@ -104,8 +109,8 @@ export const DailySummaryView: React.FC<DailySummaryViewProps> = ({
     msg += `💵 *Dinheiro na Gaveta:* ${formatCurrency(cashTotal)}\n`
     msg += `📱 *PIX Recebido:* ${formatCurrency(pixTotal)}\n`
     msg += `💳 *Cartões (Déb/Créd):* ${formatCurrency(cardDebitTotal + cardCreditTotal)}\n`
-    if (creditPendingTotal > 0) {
-      msg += `📝 *Fiados Anotados:* ${formatCurrency(creditPendingTotal)}\n`
+    if (totalOpenFiadosAmount > 0) {
+      msg += `📝 *Fiados Pendentes:* ${formatCurrency(totalOpenFiadosAmount)} (${openFiados.length} clientes)\n`
     }
     msg += `\n🔻 *Saídas / Despesas:* ${formatCurrency(totalExpensesAmount)} (${todayExpenses.length} despesas)\n`
     msg += `\n⚖️ *SALDO LÍQUIDO DO DIA:* ${formatCurrency(netBalance)}\n`
@@ -126,7 +131,7 @@ export const DailySummaryView: React.FC<DailySummaryViewProps> = ({
       setCopied(true)
       setTimeout(() => setCopied(false), 2500)
     } catch {
-      // Fallback simples
+      // Fallback
     }
   }
 
@@ -255,6 +260,93 @@ export const DailySummaryView: React.FC<DailySummaryViewProps> = ({
         </div>
       </div>
 
+      {/* Caderninho de Fiados em Aberto (A Receber) */}
+      {openFiados.length > 0 && (
+        <div className="bg-amber-50/70 dark:bg-amber-950/30 border-2 border-amber-300 dark:border-amber-800/80 p-5 rounded-2xl shadow-sm flex flex-col gap-3">
+          <div className="flex items-center justify-between pb-2 border-b border-amber-200 dark:border-amber-900/60">
+            <div className="flex items-center gap-2">
+              <BookOpen className="w-5 h-5 text-amber-700 dark:text-amber-400" />
+              <h3 className="font-black text-lg text-amber-950 dark:text-amber-200">
+                Caderninho de Fiados em Aberto ({openFiados.length})
+              </h3>
+            </div>
+            <div className="text-right">
+              <span className="text-xs text-amber-900/70 dark:text-amber-300/70 block uppercase font-bold">Total a Receber:</span>
+              <span className="text-xl font-black text-amber-950 dark:text-amber-200">
+                {formatCurrency(totalOpenFiadosAmount)}
+              </span>
+            </div>
+          </div>
+
+          <div className="divide-y divide-amber-200/60 dark:divide-amber-900/40 max-h-[280px] overflow-y-auto">
+            {openFiados.map(sale => (
+              <div key={sale.id} className="py-2.5 flex flex-wrap items-center justify-between gap-3 text-sm">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="font-black text-stone-900 dark:text-stone-100 text-base">
+                      {sale.customerName || 'Cliente não identificado'}
+                    </span>
+                    <span className="text-xs text-stone-400 dark:text-stone-500">
+                      {new Date(sale.createdAt).toLocaleDateString()} às {new Date(sale.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </span>
+                  </div>
+                  <p className="text-xs text-stone-600 dark:text-stone-400 mt-0.5">
+                    {sale.items.map(i => `${i.quantity}x ${i.productName}`).join(', ')}
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <span className="font-black text-lg text-amber-900 dark:text-amber-300">
+                    {formatCurrency(sale.totalAmount)}
+                  </span>
+
+                  {/* Botão de Dar Baixa */}
+                  {settlingSaleId === sale.id ? (
+                    <div className="flex items-center gap-1.5 bg-white dark:bg-stone-900 p-1 rounded-xl border border-amber-300 dark:border-amber-700 shadow-sm animate-fadeIn">
+                      <span className="text-[11px] font-bold text-stone-600 dark:text-stone-300 pl-1">
+                        Recebeu em:
+                      </span>
+                      <button
+                        onClick={() => {
+                          if (onMarkCreditPaid) onMarkCreditPaid(sale.id, 'dinheiro')
+                          setSettlingSaleId(null)
+                        }}
+                        className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-lg cursor-pointer transition-all"
+                      >
+                        💵 Dinheiro
+                      </button>
+                      <button
+                        onClick={() => {
+                          if (onMarkCreditPaid) onMarkCreditPaid(sale.id, 'pix')
+                          setSettlingSaleId(null)
+                        }}
+                        className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-lg cursor-pointer transition-all"
+                      >
+                        ⚡ PIX
+                      </button>
+                      <button
+                        onClick={() => setSettlingSaleId(null)}
+                        className="px-1.5 py-1 text-stone-400 hover:text-stone-600 dark:hover:text-stone-200 text-xs font-bold cursor-pointer"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => setSettlingSaleId(sale.id)}
+                      className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl flex items-center gap-1.5 cursor-pointer shadow-xs transition-all active:scale-95"
+                    >
+                      <CheckCircle2 className="w-3.5 h-3.5" />
+                      Receber / Dar Baixa
+                    </button>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Seção Central: Onde está o dinheiro (Conferência de Caixa) + Top Produtos */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Conferência por Meio de Pagamento (7 colunas) */}
@@ -300,14 +392,14 @@ export const DailySummaryView: React.FC<DailySummaryViewProps> = ({
               </span>
             </div>
 
-            {creditPendingTotal > 0 && (
+            {totalOpenFiadosAmount > 0 && (
               <div className="col-span-2 sm:col-span-3 p-3 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900/50 flex items-center justify-between">
                 <div className="flex items-center gap-2 text-amber-900 dark:text-amber-300 text-xs font-bold">
                   <UserCheck className="w-4 h-4 text-amber-700 dark:text-amber-400" />
-                  Total a Receber (Fiados Anotados):
+                  Total a Receber no Caderninho:
                 </div>
                 <span className="text-xl font-black text-amber-900 dark:text-amber-300">
-                  {formatCurrency(creditPendingTotal)}
+                  {formatCurrency(totalOpenFiadosAmount)}
                 </span>
               </div>
             )}
@@ -364,7 +456,17 @@ export const DailySummaryView: React.FC<DailySummaryViewProps> = ({
                   <div className="flex items-center gap-2">
                     <span className="text-xs font-bold px-2 py-0.5 rounded bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 uppercase">
                       {sale.paymentMethod.replace('_', ' ')}
+                      {sale.paymentMethod === 'fiado' && sale.customerName && ` (${sale.customerName})`}
                     </span>
+                    {sale.paymentMethod === 'fiado' && (
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${
+                        sale.isCreditPaid 
+                          ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300' 
+                          : 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300'
+                      }`}>
+                        {sale.isCreditPaid ? '✓ Pago' : '⏳ Em aberto'}
+                      </span>
+                    )}
                     <span className="text-xs text-stone-400 dark:text-stone-500">
                       {new Date(sale.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                     </span>
@@ -392,7 +494,7 @@ export const DailySummaryView: React.FC<DailySummaryViewProps> = ({
             <div>
               <h4 className="font-bold text-stone-900 dark:text-stone-100 text-base">Segurança & Backup do Balcão</h4>
               <p className="text-xs text-stone-500 dark:text-stone-400">
-                Baixe uma cópia dos seus produtos, vendas e despesas para garantir que nada se perca ao limpar o navegador.
+                Baixe uma cópia dos seus produtos, vendas, despesas e clientes do fiado para garantir que nada se perca ao limpar o navegador.
               </p>
             </div>
           </div>

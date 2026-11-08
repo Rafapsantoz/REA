@@ -24,12 +24,25 @@ export interface SaleItem {
   total: number
 }
 
+export interface Customer {
+  id: string
+  name: string
+  phone?: string
+  notes?: string
+  createdAt: string
+}
+
 export interface Sale {
   id: string
   createdAt: string // ISO string
   items: SaleItem[]
   totalAmount: number
   paymentMethod: PaymentMethod
+  customerId?: string
+  customerName?: string
+  isCreditPaid?: boolean
+  creditPaidAt?: string
+  creditPaidMethod?: PaymentMethod
   notes?: string
 }
 
@@ -84,4 +97,3 @@ export interface ImportedInvoice {
   totalAmount: number
   items: InvoiceItem[]
 }
-

@@ -1,4 +1,4 @@
-import type { Product, Sale, Expense, CartItem, Ingredient, Recipe, ImportedInvoice } from './types'
+import type { Product, Sale, Expense, CartItem, Ingredient, Recipe, ImportedInvoice, Customer, PaymentMethod } from './types'
 
 const STORAGE_KEYS = {
   PRODUCTS: 'rpsec_balcao_products',
@@ -8,6 +8,7 @@ const STORAGE_KEYS = {
   INGREDIENTS: 'rpsec_balcao_ingredients',
   RECIPES: 'rpsec_balcao_recipes',
   INVOICES: 'rpsec_balcao_invoices',
+  CUSTOMERS: 'rpsec_balcao_customers',
 }
 
 export const INITIAL_PRODUCTS: Product[] = [
@@ -23,6 +24,12 @@ export const INITIAL_PRODUCTS: Product[] = [
   { id: '10', name: 'Café Expresso / Coado', price: 3.50, category: 'bebidas', active: true, color: 'bg-amber-200 border-amber-400 text-amber-950' },
   { id: '11', name: 'Brigadeiro Tradicional', price: 4.00, category: 'doces', active: true, color: 'bg-pink-100 border-pink-300 text-pink-900' },
   { id: '12', name: 'Bolo no Pote', price: 10.00, category: 'doces', active: true, color: 'bg-rose-100 border-rose-300 text-rose-900' },
+]
+
+export const INITIAL_CUSTOMERS: Customer[] = [
+  { id: 'c1', name: 'Seu Zé (Oficina do Lado)', phone: '11 98765-4321', notes: 'Acerta toda sexta-feira', createdAt: new Date().toISOString() },
+  { id: 'c2', name: 'Dona Maria (Costura)', phone: '11 97654-3210', notes: 'Paga no dia 10', createdAt: new Date().toISOString() },
+  { id: 'c3', name: 'Marcos (Obra)', phone: '', notes: 'Café e salgado matinal', createdAt: new Date().toISOString() },
 ]
 
 export const INITIAL_INGREDIENTS: Ingredient[] = [
@@ -43,7 +50,7 @@ export const INITIAL_RECIPES: Recipe[] = [
     id: 'rec_1',
     productId: '1', // Coxinha de Frango
     yieldQuantity: 50,
-    additionalCostPerBatch: 5.00, // Gás, tempero verde, água
+    additionalCostPerBatch: 5.00,
     ingredients: [
       { ingredientId: 'ing_1', quantity: 2, unit: 'kg' },
       { ingredientId: 'ing_2', quantity: 1.5, unit: 'kg' },
@@ -94,6 +101,30 @@ export function saveProducts(products: Product[]): void {
   localStorage.setItem(STORAGE_KEYS.PRODUCTS, JSON.stringify(products))
 }
 
+export function loadCustomers(): Customer[] {
+  const data = localStorage.getItem(STORAGE_KEYS.CUSTOMERS)
+  if (!data) {
+    saveCustomers(INITIAL_CUSTOMERS)
+    return INITIAL_CUSTOMERS
+  }
+  try {
+    return JSON.parse(data)
+  } catch {
+    return INITIAL_CUSTOMERS
+  }
+}
+
+export function saveCustomers(customers: Customer[]): void {
+  localStorage.setItem(STORAGE_KEYS.CUSTOMERS, JSON.stringify(customers))
+}
+
+export function saveCustomer(customer: Customer): Customer[] {
+  const current = loadCustomers()
+  const updated = [customer, ...current]
+  saveCustomers(updated)
+  return updated
+}
+
 export function loadSales(): Sale[] {
   const data = localStorage.getItem(STORAGE_KEYS.SALES)
   if (!data) return []
@@ -107,6 +138,23 @@ export function loadSales(): Sale[] {
 export function saveSale(sale: Sale): Sale[] {
   const current = loadSales()
   const updated = [sale, ...current]
+  localStorage.setItem(STORAGE_KEYS.SALES, JSON.stringify(updated))
+  return updated
+}
+
+export function markCreditAsPaid(saleId: string, paidMethod: PaymentMethod): Sale[] {
+  const current = loadSales()
+  const updated = current.map(s => {
+    if (s.id === saleId) {
+      return {
+        ...s,
+        isCreditPaid: true,
+        creditPaidAt: new Date().toISOString(),
+        creditPaidMethod: paidMethod,
+      }
+    }
+    return s
+  })
   localStorage.setItem(STORAGE_KEYS.SALES, JSON.stringify(updated))
   return updated
 }
@@ -229,15 +277,17 @@ export interface BackupData {
   products: Product[]
   sales: Sale[]
   expenses: Expense[]
+  customers?: Customer[]
 }
 
 export function exportBackupJSON(): string {
   const backup: BackupData = {
-    version: '1.0.0',
+    version: '1.1.0',
     exportedAt: new Date().toISOString(),
     products: loadProducts(),
     sales: loadSales(),
     expenses: loadExpenses(),
+    customers: loadCustomers(),
   }
   return JSON.stringify(backup, null, 2)
 }
@@ -245,7 +295,7 @@ export function exportBackupJSON(): string {
 export function importBackupJSON(jsonStr: string): {
   success: boolean
   error?: string
-  data?: { products: Product[]; sales: Sale[]; expenses: Expense[] }
+  data?: { products: Product[]; sales: Sale[]; expenses: Expense[]; customers?: Customer[] }
 } {
   try {
     const parsed = JSON.parse(jsonStr) as Partial<BackupData>
@@ -255,6 +305,9 @@ export function importBackupJSON(jsonStr: string): {
     localStorage.setItem(STORAGE_KEYS.PRODUCTS, JSON.stringify(parsed.products))
     localStorage.setItem(STORAGE_KEYS.SALES, JSON.stringify(parsed.sales))
     localStorage.setItem(STORAGE_KEYS.EXPENSES, JSON.stringify(parsed.expenses))
+    if (Array.isArray(parsed.customers)) {
+      localStorage.setItem(STORAGE_KEYS.CUSTOMERS, JSON.stringify(parsed.customers))
+    }
 
     return {
       success: true,
@@ -262,6 +315,7 @@ export function importBackupJSON(jsonStr: string): {
         products: parsed.products,
         sales: parsed.sales,
         expenses: parsed.expenses,
+        customers: parsed.customers,
       },
     }
   } catch (err: unknown) {
