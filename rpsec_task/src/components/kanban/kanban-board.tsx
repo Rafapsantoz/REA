@@ -16,19 +16,33 @@ import { DemandCardPreview } from "@/components/kanban/demand-card";
 import { KanbanColumn } from "@/components/kanban/kanban-column";
 import {
   LANES,
+  PRIORITY_LANES,
   demandIdFromDragId,
+  laneDropId,
   laneFromDropId,
+  priorityFromDropId,
+  priorityLaneDropId,
 } from "@/components/kanban/lanes";
 import { laneOf, statusOfLane } from "@/lib/demands";
-import type { CategoriesDoapp, LaneKey, ListDoapp, TaskStatus } from "@/types/doapp";
+import type {
+  CategoriesDoapp,
+  LaneKey,
+  ListDoapp,
+  PriorityLevel,
+  TaskStatus,
+} from "@/types/doapp";
+
+export type KanbanGroupBy = "status" | "priority";
 
 interface KanbanBoardProps {
   demands: ListDoapp[];
   categories: CategoriesDoapp[];
   now: Date;
-  onQuickAdd: (status: TaskStatus) => void;
+  groupBy?: KanbanGroupBy;
+  onQuickAdd: (status?: TaskStatus, priority?: PriorityLevel) => void;
   onEdit: (demand: ListDoapp) => void;
   onMove: (demand: ListDoapp, status: TaskStatus) => void;
+  onUpdatePriority: (demand: ListDoapp, priority: PriorityLevel) => void;
   onDelete: (demand: ListDoapp) => void;
 }
 
@@ -36,9 +50,11 @@ export function KanbanBoard({
   demands,
   categories,
   now,
+  groupBy = "status",
   onQuickAdd,
   onEdit,
   onMove,
+  onUpdatePriority,
   onDelete,
 }: KanbanBoardProps) {
   const [activeDemandId, setActiveDemandId] = useState<number | null>(null);
@@ -53,7 +69,7 @@ export function KanbanBoard({
     useSensor(KeyboardSensor),
   );
 
-  const grouped = useMemo(() => {
+  const groupedByStatus = useMemo(() => {
     const byLane: Record<LaneKey, ListDoapp[]> = {
       pending: [],
       in_progress: [],
@@ -63,6 +79,20 @@ export function KanbanBoard({
     demands.forEach((demand) => byLane[laneOf(demand, now)].push(demand));
     return byLane;
   }, [demands, now]);
+
+  const groupedByPriority = useMemo(() => {
+    const byPriority: Record<PriorityLevel, ListDoapp[]> = {
+      urgent: [],
+      high: [],
+      normal: [],
+      low: [],
+    };
+    demands.forEach((demand) => {
+      const p = demand.priority || "normal";
+      byPriority[p].push(demand);
+    });
+    return byPriority;
+  }, [demands]);
 
   const categoryById = useMemo(
     () => new Map(categories.map((category) => [category.id, category])),
@@ -81,16 +111,26 @@ export function KanbanBoard({
   const handleDragEnd = (event: DragEndEvent) => {
     setActiveDemandId(null);
 
-    const lane = laneFromDropId(event.over?.id);
     const demandId = demandIdFromDragId(event.active.id);
-    const status = lane ? statusOfLane(lane) : null;
-
-    if (demandId === null || !status) return;
+    if (demandId === null) return;
 
     const demand = demands.find((candidate) => candidate.id === demandId);
-    if (!demand || demand.status === status) return;
+    if (!demand) return;
 
-    onMove(demand, status);
+    if (groupBy === "priority") {
+      const targetPriority = priorityFromDropId(event.over?.id);
+      if (targetPriority && (demand.priority || "normal") !== targetPriority) {
+        onUpdatePriority(demand, targetPriority);
+      }
+      return;
+    }
+
+    // Modo Status
+    const lane = laneFromDropId(event.over?.id);
+    const status = lane ? statusOfLane(lane) : null;
+    if (status && demand.status !== status) {
+      onMove(demand, status);
+    }
   };
 
   return (
@@ -102,19 +142,41 @@ export function KanbanBoard({
       onDragCancel={() => setActiveDemandId(null)}
     >
       <div className="grid h-full min-h-0 grid-cols-[repeat(4,minmax(240px,1fr))] gap-4 overflow-x-auto pb-1">
-        {LANES.map((lane) => (
-          <KanbanColumn
-            key={lane.key}
-            lane={lane}
-            demands={grouped[lane.key]}
-            categories={categories}
-            now={now}
-            onQuickAdd={onQuickAdd}
-            onEdit={onEdit}
-            onMove={onMove}
-            onDelete={onDelete}
-          />
-        ))}
+        {groupBy === "priority"
+          ? PRIORITY_LANES.map((plane) => (
+              <KanbanColumn
+                key={plane.key}
+                lane={plane}
+                dropId={priorityLaneDropId(plane.key)}
+                isDroppable={true}
+                demands={groupedByPriority[plane.key]}
+                categories={categories}
+                now={now}
+                onQuickAdd={() => onQuickAdd(undefined, plane.priority)}
+                onEdit={onEdit}
+                onMove={onMove}
+                onUpdatePriority={onUpdatePriority}
+                onDelete={onDelete}
+              />
+            ))
+          : LANES.map((lane) => (
+              <KanbanColumn
+                key={lane.key}
+                lane={lane}
+                dropId={laneDropId(lane.key)}
+                isDroppable={lane.status !== null}
+                demands={groupedByStatus[lane.key]}
+                categories={categories}
+                now={now}
+                onQuickAdd={
+                  lane.status ? () => onQuickAdd(lane.status as TaskStatus) : undefined
+                }
+                onEdit={onEdit}
+                onMove={onMove}
+                onUpdatePriority={onUpdatePriority}
+                onDelete={onDelete}
+              />
+            ))}
       </div>
 
       <DragOverlay

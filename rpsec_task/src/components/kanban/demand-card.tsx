@@ -3,6 +3,7 @@ import {
   ArrowRightLeft,
   CalendarClock,
   ExternalLink,
+  Flame,
   MoreHorizontal,
   Pencil,
   Trash2,
@@ -20,8 +21,8 @@ import { demandDragId } from "@/components/kanban/lanes";
 import { categoryDotClass } from "@/lib/category-colors";
 import { describeDeadline, isOverdue } from "@/lib/demands";
 import { cn } from "@/lib/utils";
-import { TASK_STATUSES } from "@/types/doapp";
-import type { CategoriesDoapp, ListDoapp, TaskStatus } from "@/types/doapp";
+import { PRIORITIES, TASK_STATUSES } from "@/types/doapp";
+import type { CategoriesDoapp, ListDoapp, PriorityLevel, TaskStatus } from "@/types/doapp";
 
 const CARD_SHELL =
   "group/card relative flex flex-col gap-2 rounded-lg border border-border bg-card p-3 shadow-card transition-[transform,box-shadow,border-color] duration-fast ease-standard motion-reduce:transition-none";
@@ -29,7 +30,7 @@ const CARD_SHELL =
 const CARD_INTERACTIVE =
   "hover:-translate-y-px hover:border-primary/30 hover:shadow-elevated motion-reduce:hover:translate-y-0";
 
-interface DemandCardBodyProps {
+export interface DemandCardBodyProps {
   demand: ListDoapp;
   category?: CategoriesDoapp;
   now: Date;
@@ -37,6 +38,7 @@ interface DemandCardBodyProps {
   dragging?: boolean;
   onEdit?: (demand: ListDoapp) => void;
   onMove?: (demand: ListDoapp, status: TaskStatus) => void;
+  onUpdatePriority?: (demand: ListDoapp, priority: PriorityLevel) => void;
   onDelete?: (demand: ListDoapp) => void;
 }
 
@@ -47,10 +49,12 @@ function DemandCardBody({
   dragging = false,
   onEdit,
   onMove,
+  onUpdatePriority,
   onDelete,
 }: DemandCardBodyProps) {
   const overdue = isOverdue(demand, now);
   const deadlineLabel = describeDeadline(demand.deadline, now);
+  const isUrgent = demand.priority === "urgent";
 
   return (
     <div
@@ -58,12 +62,15 @@ function DemandCardBody({
         CARD_SHELL,
         !dragging && CARD_INTERACTIVE,
         overdue && "border-l-[3px] border-l-lane-overdue bg-lane-overdue-soft/50",
+        !overdue && isUrgent && "border-l-[3px] border-l-rose-500 bg-rose-500/[0.03] dark:bg-rose-950/10",
         dragging && "rotate-[1.5deg] scale-[1.02] shadow-drag ring-2 ring-primary/40",
       )}
     >
-      <p className="line-clamp-2 pr-6 text-sm font-medium leading-snug text-card-foreground">
-        {demand.description}
-      </p>
+      <div className="flex items-start justify-between gap-2">
+        <p className="line-clamp-2 pr-6 text-sm font-medium leading-snug text-card-foreground">
+          {demand.description}
+        </p>
+      </div>
 
       <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5">
         <span className="inline-flex h-5 max-w-full items-center gap-1.5 rounded-full border border-border bg-muted/60 px-2 text-2xs font-medium text-muted-foreground">
@@ -76,11 +83,30 @@ function DemandCardBody({
           <span className="truncate">{category?.description ?? "Uncategorized"}</span>
         </span>
 
+        {demand.priority === "urgent" && (
+          <span className="inline-flex h-5 items-center gap-1 rounded-full border border-rose-500/30 bg-rose-500/15 px-2 text-2xs font-bold text-rose-600 dark:text-rose-400">
+            <Flame className="size-3 text-rose-500" />
+            Urgente
+          </span>
+        )}
+
+        {demand.priority === "high" && (
+          <span className="inline-flex h-5 items-center gap-1 rounded-full border border-amber-500/30 bg-amber-500/15 px-2 text-2xs font-semibold text-amber-600 dark:text-amber-400">
+            ⚡ Alta
+          </span>
+        )}
+
+        {demand.priority === "low" && (
+          <span className="inline-flex h-5 items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/15 px-2 text-2xs font-medium text-emerald-600 dark:text-emerald-400">
+            🟢 Baixa
+          </span>
+        )}
+
         {deadlineLabel && (
           <span
             className={cn(
               "inline-flex items-center gap-1 text-2xs font-medium tabular-nums",
-              overdue ? "text-lane-overdue-foreground" : "text-muted-foreground",
+              overdue ? "text-lane-overdue-foreground font-semibold" : "text-muted-foreground",
             )}
           >
             <CalendarClock className="size-3" />
@@ -101,7 +127,7 @@ function DemandCardBody({
         )}
       </div>
 
-      {!dragging && onEdit && onMove && onDelete && (
+      {!dragging && onEdit && onDelete && (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <button
@@ -112,33 +138,62 @@ function DemandCardBody({
               <MoreHorizontal className="size-4" />
             </button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-48">
+          <DropdownMenuContent align="end" className="w-52">
             <DropdownMenuItem onSelect={() => onEdit(demand)}>
-              <Pencil className="size-4" />
-              Edit demand
+              <Pencil className="size-4 mr-2" />
+              Editar demanda
             </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuLabel className="text-2xs uppercase tracking-[0.08em] text-muted-foreground">
-              Move to
-            </DropdownMenuLabel>
-            {TASK_STATUSES.filter((status) => status.value !== demand.status).map(
-              (status) => (
-                <DropdownMenuItem
-                  key={status.value}
-                  onSelect={() => onMove(demand, status.value)}
-                >
-                  <ArrowRightLeft className="size-4" />
-                  {status.label}
-                </DropdownMenuItem>
-              ),
+
+            {onUpdatePriority && (
+              <>
+                <DropdownMenuSeparator />
+                <DropdownMenuLabel className="text-2xs uppercase tracking-[0.08em] text-muted-foreground">
+                  Definir Prioridade
+                </DropdownMenuLabel>
+                {PRIORITIES.map((p) => {
+                  const active = (demand.priority || "normal") === p.value;
+                  return (
+                    <DropdownMenuItem
+                      key={p.value}
+                      className={active ? "font-semibold bg-accent/50" : ""}
+                      onSelect={() => onUpdatePriority(demand, p.value)}
+                    >
+                      <span className="mr-2 text-xs">{p.icon}</span>
+                      {p.label}
+                      {active && <span className="ml-auto text-2xs text-muted-foreground">(Atual)</span>}
+                    </DropdownMenuItem>
+                  );
+                })}
+              </>
             )}
+
+            {onMove && (
+              <>
+                <DropdownMenuSeparator />
+                <DropdownMenuLabel className="text-2xs uppercase tracking-[0.08em] text-muted-foreground">
+                  Mover Status
+                </DropdownMenuLabel>
+                {TASK_STATUSES.filter((status) => status.value !== demand.status).map(
+                  (status) => (
+                    <DropdownMenuItem
+                      key={status.value}
+                      onSelect={() => onMove(demand, status.value)}
+                    >
+                      <ArrowRightLeft className="size-4 mr-2" />
+                      {status.label}
+                    </DropdownMenuItem>
+                  ),
+                )}
+              </>
+            )}
+
             <DropdownMenuSeparator />
             <DropdownMenuItem
               onSelect={() => onDelete(demand)}
               className="text-destructive focus:text-destructive"
             >
-              <Trash2 className="size-4" />
-              Delete
+              <Trash2 className="size-4 mr-2" />
+              Excluir
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
@@ -147,7 +202,7 @@ function DemandCardBody({
   );
 }
 
-/** Card on the board: draggable onto another lane to change its status. */
+/** Card on the board: draggable onto another lane to change its status or priority. */
 export function DemandCard(props: DemandCardBodyProps) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: demandDragId(props.demand.id),

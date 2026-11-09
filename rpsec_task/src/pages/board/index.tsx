@@ -1,11 +1,11 @@
 import { useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { Inbox, Sparkles } from "lucide-react";
+import { Flame, Inbox, Sparkles } from "lucide-react";
 
 import { SidebarPanel, type CategoryActionResult } from "@/components/app-sidebar";
 import { DemandDialog } from "@/components/demand-dialog";
 import { AiDemandDialog } from "@/components/ai-demand-dialog";
-import { KanbanBoard } from "@/components/kanban/kanban-board";
+import { KanbanBoard, type KanbanGroupBy } from "@/components/kanban/kanban-board";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -23,16 +23,18 @@ import { toast } from "@/components/ui/sonner";
 import { useAuth } from "@/hooks/use-auth";
 import { useCategories, useCreateCategory, useDeleteCategory } from "@/hooks/use-categories";
 import {
+  useClearAllDemands,
   useCreateDemand,
   useDeleteDemand,
   useDemands,
   useMoveDemand,
   useUpdateDemand,
+  useUpdatePriority,
   type DemandInput,
 } from "@/hooks/use-demands";
 import { filterDemands } from "@/lib/demands";
-import { VIEWS } from "@/types/doapp";
-import type { ListDoapp, TaskStatus, ViewKey } from "@/types/doapp";
+import { PRIORITIES, VIEWS } from "@/types/doapp";
+import type { ListDoapp, PriorityLevel, TaskStatus, ViewKey } from "@/types/doapp";
 
 import { BoardHeader } from "./BoardHeader";
 
@@ -40,6 +42,7 @@ interface DialogState {
   open: boolean;
   demand: ListDoapp | null;
   status?: TaskStatus;
+  priority?: PriorityLevel;
 }
 
 const CLOSED_DIALOG: DialogState = { open: false, demand: null };
@@ -67,10 +70,10 @@ function EmptyBoard({ onCreate, onOpenAi }: { onCreate: () => void; onOpenAi: ()
       <Inbox className="size-10 text-muted-foreground/40" />
       <div className="flex flex-col gap-2">
         <h2 className="text-lg font-semibold tracking-[-0.01em] text-foreground">
-          Seu quadro de demandas está vazio
+          Seu quadro de demandas está limpo e pronto!
         </h2>
-        <p className="max-w-[44ch] text-sm leading-relaxed text-muted-foreground">
-          Adicione suas pendências ou use a IA para converter chamados e tickets de suporte em tarefas organizadas com 1 clique.
+        <p className="max-w-[48ch] text-sm leading-relaxed text-muted-foreground">
+          A base foi limpa para você lançar os casos reais de trabalho hoje. Cole prints com <strong>Ctrl+V</strong> no botão de IA ou cadastre manualmente.
         </p>
       </div>
       <div className="flex items-center gap-3">
@@ -81,7 +84,7 @@ function EmptyBoard({ onCreate, onOpenAi }: { onCreate: () => void; onOpenAi: ()
           onClick={onOpenAi}
         >
           <Sparkles className="size-4" />
-          Adicionar com IA
+          Adicionar Chamados com IA
         </Button>
         <Button type="button" onClick={onCreate}>
           Nova Demanda Manual
@@ -95,6 +98,20 @@ const Board = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
+
+  const [groupBy, setGroupByState] = useState<KanbanGroupBy>(() => {
+    if (typeof window === "undefined") return "status";
+    return (localStorage.getItem("rpsec_task.groupby") as KanbanGroupBy) || "status";
+  });
+
+  const setGroupBy = (mode: KanbanGroupBy) => {
+    setGroupByState(mode);
+    try {
+      localStorage.setItem("rpsec_task.groupby", mode);
+    } catch {
+      // Ignora erro de storage
+    }
+  };
 
   const view = useMemo<ViewKey>(() => {
     const requested = searchParams.get("view");
@@ -121,6 +138,8 @@ const Board = () => {
   const { createDemand } = useCreateDemand(user?.id ?? null);
   const { updateDemand } = useUpdateDemand();
   const { moveDemand } = useMoveDemand();
+  const { updatePriority } = useUpdatePriority();
+  const { clearAllDemands } = useClearAllDemands();
   const { deleteDemand } = useDeleteDemand();
   const { createCategory } = useCreateCategory();
   const { deleteCategory } = useDeleteCategory();
@@ -172,8 +191,8 @@ const Board = () => {
     setSearchParams(next, { replace: true });
   };
 
-  const openCreate = (status?: TaskStatus) =>
-    setDialog({ open: true, demand: null, status });
+  const openCreate = (status?: TaskStatus, priority?: PriorityLevel) =>
+    setDialog({ open: true, demand: null, status, priority });
 
   const handleDialogSubmit = async (input: DemandInput) => {
     if (dialog.demand) {
@@ -183,11 +202,23 @@ const Board = () => {
     }
 
     await createDemand(input);
-    toast.success("Demanda adicionada");
+    toast.success("Demanda adicionada ao quadro");
   };
 
   const handleMove = (demand: ListDoapp, status: TaskStatus) => {
     void moveDemand({ id: demand.id, status });
+    toast.success(`Status alterado`);
+  };
+
+  const handleUpdatePriority = (demand: ListDoapp, priority: PriorityLevel) => {
+    void updatePriority({ id: demand.id, priority });
+    const pInfo = PRIORITIES.find((p) => p.value === priority);
+    toast.success(`Prioridade alterada: ${pInfo?.icon ?? ""} ${pInfo?.label ?? priority}`);
+  };
+
+  const handleClearAllDemands = async () => {
+    await clearAllDemands();
+    toast.success("Quadro limpo com sucesso! Base pronta para novos casos reais.");
   };
 
   const requestDelete = (demand: ListDoapp) => {
@@ -245,7 +276,7 @@ const Board = () => {
 
       <Sheet open={mobileNavOpen} onOpenChange={setMobileNavOpen}>
         <SheetContent side="left" className="w-[280px] border-sidebar-border bg-sidebar p-0">
-          <SheetTitle className="sr-only">Board navigation</SheetTitle>
+          <SheetTitle className="sr-only">Navegação do quadro</SheetTitle>
           <SidebarPanel {...sidebarProps} onNavigate={() => setMobileNavOpen(false)} />
         </SheetContent>
       </Sheet>
@@ -255,11 +286,15 @@ const Board = () => {
           title={viewLabel}
           category={activeCategory}
           search={search}
+          groupBy={groupBy}
+          onGroupByChange={setGroupBy}
           onSearchChange={(value) => updateParams({ q: value })}
           onClearCategory={() => updateParams({ category: null })}
           onCreate={() => openCreate()}
           onOpenAi={() => setAiDialogOpen(true)}
           onOpenNav={() => setMobileNavOpen(true)}
+          onClearAllDemands={handleClearAllDemands}
+          totalDemandsCount={demands.length}
         />
 
         <div className="min-h-0 flex-1 px-4 py-4 md:px-6 md:py-6">
@@ -272,9 +307,11 @@ const Board = () => {
               demands={visibleDemands}
               categories={categories}
               now={now}
+              groupBy={groupBy}
               onQuickAdd={openCreate}
               onEdit={(demand) => setDialog({ open: true, demand })}
               onMove={handleMove}
+              onUpdatePriority={handleUpdatePriority}
               onDelete={requestDelete}
             />
           )}
@@ -286,6 +323,7 @@ const Board = () => {
         onOpenChange={(open) => setDialog(open ? dialog : CLOSED_DIALOG)}
         demand={dialog.demand}
         defaultStatus={dialog.status}
+        defaultPriority={dialog.priority}
         categories={categories}
         onSubmit={handleDialogSubmit}
         onDelete={requestDelete}

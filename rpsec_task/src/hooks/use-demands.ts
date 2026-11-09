@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { demandsApi, getToken } from "@/lib/api";
 import { compareDemands } from "@/lib/demands";
-import type { Horizon, ListDoapp, TaskStatus } from "@/types/doapp";
+import type { Horizon, ListDoapp, PriorityLevel, TaskStatus } from "@/types/doapp";
 
 export interface DemandInput {
   description: string;
@@ -11,6 +11,7 @@ export interface DemandInput {
   deadline: string | null;
   horizon: Horizon;
   status: TaskStatus;
+  priority?: PriorityLevel;
 }
 
 /** Demands owned by the signed-in user, ordered by deadline. */
@@ -102,6 +103,44 @@ export function useDeleteDemand() {
 
   return {
     deleteDemand: mutation.mutateAsync,
+    isPending: mutation.isPending,
+  };
+}
+
+/** Priority change coming from dragging to a priority column or selecting in card menu. */
+export function useUpdatePriority() {
+  const queryClient = useQueryClient();
+
+  const mutation = useMutation<
+    ListDoapp,
+    Error,
+    { id: number; priority: PriorityLevel }
+  >({
+    mutationFn: ({ id, priority }) => demandsApi.updatePriority(id, priority),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["demands"] });
+    },
+  });
+
+  return {
+    updatePriority: mutation.mutateAsync,
+    isPending: mutation.isPending,
+  };
+}
+
+/** Clears all demands to start the board fresh with a clean slate. */
+export function useClearAllDemands() {
+  const queryClient = useQueryClient();
+
+  const mutation = useMutation<void, Error, void>({
+    mutationFn: () => demandsApi.clearAll(),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["demands"] });
+    },
+  });
+
+  return {
+    clearAllDemands: mutation.mutateAsync,
     isPending: mutation.isPending,
   };
 }

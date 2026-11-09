@@ -42,7 +42,7 @@ import {
   setGeminiApiKey,
   type ExtractedDemandItem,
 } from "@/lib/gemini";
-import type { CategoriesDoapp, Horizon, TaskStatus } from "@/types/doapp";
+import type { CategoriesDoapp, Horizon, PriorityLevel, TaskStatus } from "@/types/doapp";
 import type { DemandInput } from "@/hooks/use-demands";
 
 interface AiDemandDialogProps {
@@ -237,6 +237,14 @@ export function AiDemandDialog({
     let createdCount = 0;
     try {
       for (const item of selected) {
+        const mapUrgenciaToPriority = (u?: string): PriorityLevel => {
+          if (!u) return "normal";
+          if (/urgente/i.test(u)) return "urgent";
+          if (/alta/i.test(u)) return "high";
+          if (/baixa/i.test(u)) return "low";
+          return "normal";
+        };
+
         const input: DemandInput = {
           description: item.description.trim(),
           category_id: Number(item.category_id) || categories[0]?.id || 1,
@@ -244,6 +252,7 @@ export function AiDemandDialog({
           deadline: item.deadline ? item.deadline : null,
           horizon: item.horizon as Horizon,
           status: item.status as TaskStatus,
+          priority: mapUrgenciaToPriority(item.urgencia),
         };
         await onCreateDemand(input);
         createdCount++;

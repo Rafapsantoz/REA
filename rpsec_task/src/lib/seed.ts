@@ -14,14 +14,30 @@ export const DEMO_PASSWORD = "demo1234";
 
 export const DEFAULT_CATEGORY_NAMES = ["Trabalho / Suporte", "Pessoal", "Financeiro"];
 
+export const DEMO_MOCK_KEYWORDS = [
+  "OAuth token expiration",
+  "landing page hero",
+  "Q1 financial report",
+  "Data-Intensive Applications",
+  "Quarterly tax preparation",
+];
+
 /**
  * Seeds the starter account and categories with an EMPTY demands list
  * so the user starts with a clean board for real work today.
  */
 export async function ensureSeeded(): Promise<void> {
-  if (hasSeeded()) return;
-
   const database = readDatabase();
+
+  // Se houver resquícios dos mocks antigos em inglês, remove automaticamente
+  if (database.list_doapp.some((d) => DEMO_MOCK_KEYWORDS.some((kw) => d.description.includes(kw)))) {
+    const cleaned = database.list_doapp.filter(
+      (d) => !DEMO_MOCK_KEYWORDS.some((kw) => d.description.includes(kw))
+    );
+    writeDatabase({ ...database, list_doapp: cleaned });
+  }
+
+  if (hasSeeded()) return;
 
   const demoUser: Users =
     database.users.find((user) => user.email === DEMO_EMAIL) ??

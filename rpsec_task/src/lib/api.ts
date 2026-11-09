@@ -2,6 +2,7 @@ import type {
   CategoriesDoapp,
   Horizon,
   ListDoapp,
+  PriorityLevel,
   TaskStatus,
   Users,
 } from "@/types/doapp";
@@ -338,6 +339,26 @@ export const demandsApi = {
       });
     } catch {
       return demandsApi.update(id, { status });
+    }
+  },
+
+  async updatePriority(id: number, priority: PriorityLevel): Promise<ListDoapp> {
+    try {
+      return await fetchApi<ListDoapp>(`/demands/${id}/priority`, {
+        method: "PATCH",
+        body: JSON.stringify({ priority }),
+      });
+    } catch {
+      return demandsApi.update(id, { priority });
+    }
+  },
+
+  async clearAll(): Promise<void> {
+    try {
+      await fetchApi<void>("/demands/clear-all", { method: "POST" });
+    } catch {
+      const db = readDatabase();
+      writeDatabase({ ...db, list_doapp: [] });
     }
   },
 

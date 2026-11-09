@@ -6,6 +6,8 @@
 
 export type TaskStatus = "pending" | "in_progress" | "done";
 
+export type PriorityLevel = "urgent" | "high" | "normal" | "low";
+
 export type Horizon = "daily" | "weekly" | "monthly" | "long_term";
 
 /**
@@ -35,7 +37,7 @@ export interface CategoriesDoapp {
   description: string;
 }
 
-/** Table `list_doapp` + the `horizon` column that drives the four views. */
+/** Table `list_doapp` + the `horizon` and `priority` columns. */
 export interface ListDoapp {
   id: number;
   description: string;
@@ -46,6 +48,7 @@ export interface ListDoapp {
   deadline: string | null;
   status: TaskStatus;
   horizon: Horizon;
+  priority?: PriorityLevel;
 }
 
 export interface DoappDatabase {
@@ -56,19 +59,51 @@ export interface DoappDatabase {
 }
 
 export const TASK_STATUSES: { value: TaskStatus; label: string }[] = [
-  { value: "pending", label: "Pending" },
-  { value: "in_progress", label: "In Progress" },
-  { value: "done", label: "Done" },
+  { value: "pending", label: "Pendente" },
+  { value: "in_progress", label: "Em Progresso" },
+  { value: "done", label: "Concluído" },
+];
+
+export const PRIORITIES: {
+  value: PriorityLevel;
+  label: string;
+  icon: string;
+  badgeClass: string;
+}[] = [
+  {
+    value: "urgent",
+    label: "Urgente",
+    icon: "🚨",
+    badgeClass: "bg-rose-500/15 text-rose-600 dark:text-rose-400 border-rose-500/30",
+  },
+  {
+    value: "high",
+    label: "Alta",
+    icon: "⚡",
+    badgeClass: "bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30",
+  },
+  {
+    value: "normal",
+    label: "Normal",
+    icon: "📌",
+    badgeClass: "bg-blue-500/15 text-blue-600 dark:text-blue-400 border-blue-500/30",
+  },
+  {
+    value: "low",
+    label: "Baixa",
+    icon: "🟢",
+    badgeClass: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30",
+  },
 ];
 
 export const HORIZONS: { value: Horizon; label: string }[] = [
-  { value: "daily", label: "Daily" },
-  { value: "weekly", label: "Weekly" },
-  { value: "monthly", label: "Monthly" },
-  { value: "long_term", label: "Long-term" },
+  { value: "daily", label: "Hoje (Daily)" },
+  { value: "weekly", label: "Esta Semana (Weekly)" },
+  { value: "monthly", label: "Este Mês (Monthly)" },
+  { value: "long_term", label: "Longo Prazo" },
 ];
 
 export const VIEWS: { value: ViewKey; label: string }[] = [
-  { value: "all", label: "All demands" },
+  { value: "all", label: "Todas as demandas" },
   ...HORIZONS,
 ];

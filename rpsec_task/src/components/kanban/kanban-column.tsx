@@ -3,36 +3,41 @@ import { useDroppable } from "@dnd-kit/core";
 import { Plus } from "lucide-react";
 
 import { DemandCard } from "@/components/kanban/demand-card";
-import { laneDropId, type LaneDefinition } from "@/components/kanban/lanes";
+import type { LaneDefinition, PriorityLaneDefinition } from "@/components/kanban/lanes";
 import { cn } from "@/lib/utils";
-import type { CategoriesDoapp, ListDoapp, TaskStatus } from "@/types/doapp";
+import type { CategoriesDoapp, ListDoapp, PriorityLevel, TaskStatus } from "@/types/doapp";
 
-interface KanbanColumnProps {
-  lane: LaneDefinition;
+export interface KanbanColumnProps {
+  lane: LaneDefinition | PriorityLaneDefinition;
+  dropId: string;
+  isDroppable?: boolean;
   demands: ListDoapp[];
   categories: CategoriesDoapp[];
   now: Date;
-  onQuickAdd: (status: TaskStatus) => void;
+  onQuickAdd?: () => void;
   onEdit: (demand: ListDoapp) => void;
-  onMove: (demand: ListDoapp, status: TaskStatus) => void;
+  onMove?: (demand: ListDoapp, status: TaskStatus) => void;
+  onUpdatePriority?: (demand: ListDoapp, priority: PriorityLevel) => void;
   onDelete: (demand: ListDoapp) => void;
 }
 
 export function KanbanColumn({
   lane,
+  dropId,
+  isDroppable = true,
   demands,
   categories,
   now,
   onQuickAdd,
   onEdit,
   onMove,
+  onUpdatePriority,
   onDelete,
 }: KanbanColumnProps) {
   const { setNodeRef, isOver } = useDroppable({
-    id: laneDropId(lane.key),
+    id: dropId,
     data: { lane: lane.key },
-    // Overdue is derived from the deadline, so it never accepts a drop.
-    disabled: lane.status === null,
+    disabled: !isDroppable,
   });
 
   const categoryById = useMemo(
@@ -41,7 +46,6 @@ export function KanbanColumn({
   );
 
   const LaneIcon = lane.icon;
-  const isDroppable = lane.status !== null;
 
   return (
     <section
@@ -75,11 +79,11 @@ export function KanbanColumn({
           {demands.length}
         </span>
 
-        {lane.status && (
+        {onQuickAdd && (
           <button
             type="button"
-            onClick={() => onQuickAdd(lane.status as TaskStatus)}
-            aria-label={`Add a demand to ${lane.label}`}
+            onClick={onQuickAdd}
+            aria-label={`Adicionar demanda em ${lane.label}`}
             className={cn(
               "ml-auto inline-flex size-6 items-center justify-center rounded-md opacity-100 transition-opacity duration-fast ease-standard hover:bg-foreground/10 focus-visible:outline-none focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-ring md:opacity-0 md:group-hover/lane:opacity-100",
               lane.style.title,
@@ -102,6 +106,7 @@ export function KanbanColumn({
             now={now}
             onEdit={onEdit}
             onMove={onMove}
+            onUpdatePriority={onUpdatePriority}
             onDelete={onDelete}
           />
         ))}
