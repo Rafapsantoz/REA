@@ -456,7 +456,12 @@ class HostApp(ctk.CTk):
     def _exit_app(self):
         """Encerra todas as sessões e fecha o programa completamente."""
         try:
-            server.trigger_disconnect_all()
+            fut = server.trigger_disconnect_all()
+            if fut:
+                try:
+                    fut.result(timeout=0.25)
+                except Exception:
+                    pass
         except Exception:
             pass
         self.destroy()

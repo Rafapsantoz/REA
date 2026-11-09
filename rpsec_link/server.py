@@ -168,7 +168,8 @@ async def disconnect_all_clients():
 def trigger_disconnect_all():
     """Dispara a desconexão a partir de threads síncronas (como a GUI do Host)."""
     if SERVER_LOOP and SERVER_LOOP.is_running():
-        asyncio.run_coroutine_threadsafe(disconnect_all_clients(), SERVER_LOOP)
+        return asyncio.run_coroutine_threadsafe(disconnect_all_clients(), SERVER_LOOP)
+    return None
 
 
 @app.get("/", response_class=HTMLResponse)

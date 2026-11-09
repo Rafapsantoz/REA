@@ -412,6 +412,7 @@ class RemoteViewerWindow(tk.Toplevel):
                 ws.send(json.dumps({"type": "request_devices"}))
 
                 last_ping = time.perf_counter()
+                last_recv_time = time.perf_counter()
 
                 while self.is_running:
                     # Envia todos os eventos acumulados na fila de saída
@@ -432,9 +433,14 @@ class RemoteViewerWindow(tk.Toplevel):
                     try:
                         raw_data = ws.recv(timeout=0.02)
                     except TimeoutError:
+                        # Watchdog de conexão: detecta host offline se nenhum dado chegar por > 4.5s
+                        if time.perf_counter() - last_recv_time > 4.5:
+                            raise TimeoutError("Host remoto parou de responder (timeout > 4.5s)")
                         continue
                     except Exception:
                         break
+
+                    last_recv_time = time.perf_counter()
 
                     if isinstance(raw_data, bytes):
                         # Decodifica frame JPEG usando OpenCV SIMD direto em BGR (< 3ms)
@@ -596,10 +602,10 @@ class RemoteViewerWindow(tk.Toplevel):
 
     def _on_server_disconnect(self, message: Optional[str]):
         msg = message or "A sessão remota foi encerrada pelo Host."
-        self.launcher.show_status(msg, is_error=False)
+        self.launcher.show_status(f"⚠️ {msg}", is_error=True)
 
     def _on_connection_error(self, err: str):
-        self.launcher.show_status(f"Conexão perdida: {err}", is_error=True)
+        self.launcher.show_status("⚠️ Conexão perdida: o computador Host ficou offline.", is_error=True)
 
     def quit_app(self):
         """Encerra a sessão remota e fecha o aplicativo cliente completamente."""
@@ -864,6 +870,8 @@ class ClientLauncher(ctk.CTk):
     def on_session_closed(self):
         """Chamado quando a sessão remota é finalizada."""
         self.deiconify()
+        self.lift()
+        self.focus_force()
         self.btn_connect.configure(text="⚡ Conectar à Máquina", state="normal")
         self.active_session = None
 

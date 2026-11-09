@@ -109,6 +109,138 @@
       40%, 60% { transform: translate3d(6px, 0, 0); }
     }
 
+    /* Modal / Overlay de Host Offline & Desconexão */
+    #offlineOverlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(10, 15, 29, 0.82);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 2500;
+      animation: fadeInOverlay 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    body.theme-light #offlineOverlay {
+      background: rgba(241, 245, 249, 0.88);
+    }
+    @keyframes fadeInOverlay {
+      from { opacity: 0; transform: scale(0.96); }
+      to { opacity: 1; transform: scale(1); }
+    }
+    .offline-card {
+      border: 1px solid rgba(239, 68, 68, 0.4);
+      box-shadow: 0 25px 60px -15px rgba(239, 68, 68, 0.25), var(--shadow-card);
+    }
+    .offline-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 0.35rem 0.85rem;
+      border-radius: 9999px;
+      background: rgba(239, 68, 68, 0.15);
+      border: 1px solid rgba(239, 68, 68, 0.4);
+      color: #ef4444;
+      font-size: 0.75rem;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      margin-bottom: 1.25rem;
+      text-transform: uppercase;
+    }
+    .offline-icon {
+      font-size: 3rem;
+      margin-bottom: 0.75rem;
+      filter: drop-shadow(0 0 16px rgba(239, 68, 68, 0.45));
+      animation: pulseAlert 2s infinite ease-in-out;
+    }
+    @keyframes pulseAlert {
+      0%, 100% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(1.08); opacity: 0.8; }
+    }
+    .offline-title {
+      font-size: 1.5rem;
+      font-weight: 800;
+      color: var(--text-primary);
+      margin-bottom: 0.5rem;
+      letter-spacing: -0.02em;
+    }
+    .offline-desc {
+      font-size: 0.9rem;
+      color: var(--text-secondary);
+      line-height: 1.5;
+      margin-bottom: 1.5rem;
+    }
+    .reconnect-box {
+      background: var(--btn-bg);
+      border: 1px solid var(--btn-border);
+      border-radius: 12px;
+      padding: 0.9rem 1rem;
+      margin-bottom: 1.5rem;
+      text-align: left;
+    }
+    .reconnect-status-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.6rem;
+    }
+    .reconnect-status-text {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+    .reconnect-timer-text {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: var(--brand-cyan);
+    }
+    .reconnect-bar-track {
+      width: 100%;
+      height: 6px;
+      background: rgba(0, 0, 0, 0.2);
+      border-radius: 3px;
+      overflow: hidden;
+    }
+    body.theme-light .reconnect-bar-track {
+      background: rgba(0, 0, 0, 0.08);
+    }
+    .reconnect-progress-bar {
+      height: 100%;
+      width: 100%;
+      background: linear-gradient(90deg, #ef4444, #0284c7);
+      border-radius: 3px;
+      transition: width 1s linear;
+    }
+    .offline-actions {
+      display: flex;
+      flex-direction: column;
+      gap: 0.65rem;
+    }
+    .btn-secondary {
+      width: 100%;
+      padding: 0.9rem;
+      background: var(--btn-bg);
+      color: var(--btn-text);
+      border: 1px solid var(--btn-border);
+      border-radius: 12px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .btn-secondary:hover {
+      background: var(--btn-hover);
+      color: var(--btn-hover-text);
+      border-color: var(--brand-blue);
+      transform: translateY(-1px);
+    }
+    #remoteCanvas.mode-paused {
+      filter: grayscale(60%) brightness(65%) blur(1px);
+      transition: filter 0.3s ease;
+    }
+
     .auth-theme-btn {
       position: absolute;
       top: 1.25rem;
@@ -414,6 +546,31 @@
     </div>
   </div>
 
+  <!-- Modal / Overlay de Host Offline & Desconexão Inesperada -->
+  <div id="offlineOverlay" style="display: none;">
+    <div class="auth-card offline-card">
+      <div class="offline-badge">🔴 Host Remoto Offline</div>
+      <div class="offline-icon">📡</div>
+      <h2 class="offline-title">Conexão Perdida</h2>
+      <p class="offline-desc" id="offlineReason">O computador remoto parou de responder ou o servidor RPsec Link foi encerrado.</p>
+      
+      <div class="reconnect-box">
+        <div class="reconnect-status-row">
+          <span class="reconnect-status-text" id="reconnectStatusLabel">Reconectando automaticamente:</span>
+          <span class="reconnect-timer-text"><span id="reconnectSeconds">5</span>s</span>
+        </div>
+        <div class="reconnect-bar-track">
+          <div id="reconnectProgressBar" class="reconnect-progress-bar"></div>
+        </div>
+      </div>
+
+      <div class="offline-actions">
+        <button id="btnReconnectNow" class="btn-connect">⚡ Reconectar Agora</button>
+        <button id="btnBackToLogin" class="btn-secondary">🔑 Alterar PIN / Conexão</button>
+      </div>
+    </div>
+  </div>
+
   <!-- WIDGET FLUTUANTE RECOLHÍVEL & ARRASTÁVEL (Não obstrui o topo direito!) -->
   <div id="floatingWidget">
     <div id="widgetPill" title="Clique para abrir/fechar opções de conexão (Arraste para mover)">
@@ -473,6 +630,15 @@
     const btnLoginTheme = document.getElementById('btnLoginTheme');
     const btnToggleTheme = document.getElementById('btnToggleTheme');
     
+    // Modal de Host Offline
+    const offlineOverlay = document.getElementById('offlineOverlay');
+    const offlineReason = document.getElementById('offlineReason');
+    const reconnectStatusLabel = document.getElementById('reconnectStatusLabel');
+    const reconnectSeconds = document.getElementById('reconnectSeconds');
+    const reconnectProgressBar = document.getElementById('reconnectProgressBar');
+    const btnReconnectNow = document.getElementById('btnReconnectNow');
+    const btnBackToLogin = document.getElementById('btnBackToLogin');
+
     // Widget flutuante
     const floatingWidget = document.getElementById('floatingWidget');
     const widgetPill = document.getElementById('widgetPill');
@@ -498,6 +664,16 @@
     let currentFps = 0;
     let lastMouseMove = 0;
     let lockoutTimer = null;
+
+    // Estado da sessão e Watchdog de Conexão
+    let isSessionActive = false;
+    let userInitiatedDisconnect = false;
+    let lastActivityTime = 0;
+    let watchdogTimer = null;
+    let pingInterval = null;
+    let reconnectCountdownTimer = null;
+    let reconnectSecondsLeft = 5;
+    let isAutoReconnecting = false;
 
     // Gerenciamento de Tema (Escuro / Claro)
     let currentTheme = localStorage.getItem('rpsec_link_theme') || 'dark';
@@ -609,16 +785,26 @@
     }
 
     function connect() {
-      const pin = pinInput.value.trim();
+      const pin = pinInput.value.trim() || localStorage.getItem('rpsec_link_pin') || '';
       if (!pin) {
+        if (offlineOverlay.style.display === 'flex') {
+          hideOfflineOverlay();
+        }
         showNotice("Por favor, digite o PIN de acesso.", "error");
         return;
       }
       localStorage.setItem('rpsec_link_pin', pin);
+      pinInput.value = pin;
 
       btnConnect.disabled = true;
       btnConnect.textContent = "Conectando...";
       authMessage.style.display = 'none';
+
+      // Fecha conexão anterior pendente se houver
+      if (ws) {
+        try { ws.close(); } catch (e) {}
+        ws = null;
+      }
 
       const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
       const wsUrl = `${protocol}//${location.host}/ws?pin=${encodeURIComponent(pin)}`;
@@ -627,12 +813,13 @@
       ws.binaryType = 'blob';
 
       ws.onopen = () => {
-        // Conexão autorizada
         btnConnect.disabled = false;
         btnConnect.textContent = "Conectar à Máquina";
       };
 
       ws.onmessage = async (event) => {
+        lastActivityTime = performance.now();
+
         if (event.data instanceof Blob) {
           // Frame de imagem JPEG da máquina remota com renderização sem acúmulo de fila
           pendingBlob = event.data;
@@ -646,6 +833,8 @@
             if (data.type === 'auth_error') {
               btnConnect.disabled = false;
               btnConnect.textContent = "Conectar à Máquina";
+              isSessionActive = false;
+              hideOfflineOverlay();
 
               if (data.status === 'locked') {
                 triggerLockout(data.seconds);
@@ -656,23 +845,35 @@
             }
 
             if (data.type === 'server_disconnect') {
-              showNotice(data.message || "A sessão remota foi encerrada pelo Host.", "info");
+              isSessionActive = false;
+              handleHostOffline(data.message || "A sessão remota foi encerrada pelo Host.");
               if (ws) ws.close();
               return;
             }
 
             if (data.type === 'init') {
+              isSessionActive = true;
+              isAutoReconnecting = false;
+              userInitiatedDisconnect = false;
+              lastActivityTime = performance.now();
+
               remoteWidth = data.width;
               remoteHeight = data.height;
+
               if (data.devices) {
                 updateDevicesBadge(data.devices);
               }
-              // Esconde tela de autenticação
+
+              // Oculta overlays de autenticação e de host offline
+              hideOfflineOverlay();
               authOverlay.style.display = 'none';
+              canvas.classList.remove('mode-paused');
               pillStatusDot.classList.remove('offline');
+
               container.focus();
               sendQualityConfig();
               startPingLoop();
+              startWatchdog();
             } else if (data.type === 'devices_list') {
               updateDevicesBadge(data.devices || []);
             } else if (data.type === 'pong') {
@@ -683,18 +884,157 @@
         }
       };
 
-      ws.onclose = () => {
+      ws.onclose = (event) => {
         pillStatusDot.classList.add('offline');
         fpsCount.textContent = '--';
         pingCount.textContent = '--';
         btnConnect.disabled = false;
         btnConnect.textContent = "Conectar à Máquina";
+        stopPingLoop();
+        stopWatchdog();
+
+        if (userInitiatedDisconnect) {
+          userInitiatedDisconnect = false;
+          isSessionActive = false;
+          canvas.classList.add('mode-paused');
+          showNotice("✓ Sessão remota encerrada com sucesso.", "success");
+          return;
+        }
+
+        if (isSessionActive) {
+          // Sessão estava em andamento e o host foi desconectado/fechado!
+          isSessionActive = false;
+          const reason = event.reason || "O computador remoto ficou offline ou o RPsec Link foi encerrado.";
+          handleHostOffline(reason);
+        } else if (offlineOverlay.style.display === 'flex') {
+          // Tentativa de reconexão falhou (host ainda offline), reinicia contador para nova tentativa
+          reconnectStatusLabel.textContent = "Host ainda indisponível. Próxima tentativa em:";
+          startReconnectCountdown();
+        }
       };
 
       ws.onerror = () => {
-        ws.close();
+        try { ws.close(); } catch (e) {}
       };
     }
+
+    /* Watchdog de Conexão: Detecta quedas silenciosas sem TCP FIN em < 4.2s */
+    function startWatchdog() {
+      stopWatchdog();
+      watchdogTimer = setInterval(() => {
+        if (isSessionActive && ws && ws.readyState === WebSocket.OPEN) {
+          const elapsed = performance.now() - lastActivityTime;
+          if (elapsed > 4200) {
+            console.warn(`Watchdog timeout: Host inativo há ${Math.round(elapsed)}ms.`);
+            try { ws.close(); } catch (e) {}
+            isSessionActive = false;
+            handleHostOffline("O host remoto parou de responder (timeout de rede > 4s).");
+          }
+        }
+      }, 1000);
+    }
+
+    function stopWatchdog() {
+      if (watchdogTimer) {
+        clearInterval(watchdogTimer);
+        watchdogTimer = null;
+      }
+    }
+
+    /* Loop de Ping / Latência */
+    function startPingLoop() {
+      stopPingLoop();
+      pingInterval = setInterval(() => {
+        if (ws && ws.readyState === WebSocket.OPEN) {
+          ws.send(JSON.stringify({ type: 'ping', ts: performance.now() }));
+        }
+      }, 1500);
+    }
+
+    function stopPingLoop() {
+      if (pingInterval) {
+        clearInterval(pingInterval);
+        pingInterval = null;
+      }
+    }
+
+    /* Tratamento Visual e Reação a Host Offline */
+    function handleHostOffline(reason) {
+      isSessionActive = false;
+      stopPingLoop();
+      stopWatchdog();
+      pillStatusDot.classList.add('offline');
+      fpsCount.textContent = '--';
+      pingCount.textContent = '--';
+      canvas.classList.add('mode-paused');
+
+      offlineReason.textContent = reason || "O computador remoto parou de responder ou o servidor RPsec Link foi encerrado.";
+      reconnectStatusLabel.textContent = "Reconectando automaticamente:";
+      offlineOverlay.style.display = 'flex';
+      startReconnectCountdown();
+    }
+
+    function hideOfflineOverlay() {
+      offlineOverlay.style.display = 'none';
+      if (reconnectCountdownTimer) {
+        clearInterval(reconnectCountdownTimer);
+        reconnectCountdownTimer = null;
+      }
+    }
+
+    function startReconnectCountdown() {
+      if (reconnectCountdownTimer) {
+        clearInterval(reconnectCountdownTimer);
+      }
+      reconnectSecondsLeft = 5;
+      reconnectSeconds.textContent = reconnectSecondsLeft;
+      reconnectProgressBar.style.transition = 'none';
+      reconnectProgressBar.style.width = '100%';
+
+      setTimeout(() => {
+        reconnectProgressBar.style.transition = 'width 1s linear';
+      }, 50);
+
+      reconnectCountdownTimer = setInterval(() => {
+        reconnectSecondsLeft--;
+        reconnectSeconds.textContent = reconnectSecondsLeft;
+        reconnectProgressBar.style.width = `${Math.max(0, (reconnectSecondsLeft / 5) * 100)}%`;
+
+        if (reconnectSecondsLeft <= 0) {
+          clearInterval(reconnectCountdownTimer);
+          reconnectCountdownTimer = null;
+          triggerReconnectNow();
+        }
+      }, 1000);
+    }
+
+    function triggerReconnectNow() {
+      if (reconnectCountdownTimer) {
+        clearInterval(reconnectCountdownTimer);
+        reconnectCountdownTimer = null;
+      }
+      isAutoReconnecting = true;
+      btnReconnectNow.disabled = true;
+      btnReconnectNow.textContent = "⚡ Reconectando...";
+      reconnectStatusLabel.textContent = "Tentando conectar ao Host...";
+      reconnectSeconds.textContent = "●●●";
+      reconnectProgressBar.style.width = "100%";
+
+      connect();
+
+      setTimeout(() => {
+        btnReconnectNow.disabled = false;
+        btnReconnectNow.textContent = "⚡ Reconectar Agora";
+      }, 1500);
+    }
+
+    btnReconnectNow.addEventListener('click', triggerReconnectNow);
+
+    btnBackToLogin.addEventListener('click', () => {
+      hideOfflineOverlay();
+      isAutoReconnecting = false;
+      showNotice("Digite o PIN para conectar ao Host.", "info");
+    });
 
     function showNotice(msg, type = "error") {
       authMessage.className = type;
@@ -735,14 +1075,6 @@
           authMessage.textContent = `🔒 Bloqueado por excesso de tentativas. Tente novamente em ${remaining}s...`;
         }
       }, 1000);
-    }
-
-    function startPingLoop() {
-      setInterval(() => {
-        if (ws && ws.readyState === WebSocket.OPEN) {
-          ws.send(JSON.stringify({ type: 'ping', ts: performance.now() }));
-        }
-      }, 2000);
     }
 
     function sendQualityConfig() {
@@ -876,6 +1208,12 @@
     }
 
     function disconnectSession() {
+      userInitiatedDisconnect = true;
+      isSessionActive = false;
+      stopWatchdog();
+      stopPingLoop();
+      hideOfflineOverlay();
+
       if (ws) {
         try {
           if (ws.readyState === WebSocket.OPEN) {
@@ -887,6 +1225,7 @@
       pillStatusDot.classList.add('offline');
       fpsCount.textContent = '--';
       pingCount.textContent = '--';
+      canvas.classList.add('mode-paused');
       showNotice("✓ Sessão remota encerrada com sucesso.", "success");
     }
 
