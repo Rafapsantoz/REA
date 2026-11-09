@@ -108,3 +108,27 @@ export interface ImportedInvoice {
   totalAmount: number
   items: InvoiceItem[]
 }
+
+export type CashMovementType = 'sangria' | 'suprimento'
+
+export interface CashMovement {
+  id: string
+  type: CashMovementType
+  amount: number
+  description: string
+  createdAt: string
+}
+
+export interface CashShift {
+  id: string
+  openedAt: string
+  closedAt?: string
+  status: 'open' | 'closed'
+  initialFloat: number // Fundo de troco inicial colocado na gaveta
+  movements: CashMovement[] // Sangrias e suprimentos durante o dia
+  closingCashCounted?: number // Dinheiro contado fisicamente na gaveta
+  closingCashExpected?: number // Dinheiro esperado pelo sistema
+  closingDifference?: number // Diferença (sobra positiva ou quebra negativa)
+  notes?: string
+}
+

@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import type { Product, PaymentMethod, CartItem, Sale, Customer, Comanda } from '../types'
+import type { Product, PaymentMethod, CartItem, Sale, Customer, Comanda, CashShift } from '../types'
 import { formatCurrency, getNextDailyOrderNumber, peekNextDailyOrderNumber } from '../storage'
 import { 
   Plus, 
@@ -19,7 +19,8 @@ import {
   UtensilsCrossed,
   Clock,
   Save,
-  XCircle
+  XCircle,
+  Lock
 } from 'lucide-react'
 
 interface PDVViewProps {
@@ -33,6 +34,8 @@ interface PDVViewProps {
   comandas: Comanda[]
   onSaveComanda: (comanda: Comanda) => void
   onRemoveComanda: (comandaId: string) => void
+  currentShift?: CashShift | null
+  onOpenShiftClick?: () => void
 }
 
 export const PDVView: React.FC<PDVViewProps> = ({ 
@@ -45,7 +48,9 @@ export const PDVView: React.FC<PDVViewProps> = ({
   sales,
   comandas,
   onSaveComanda,
-  onRemoveComanda
+  onRemoveComanda,
+  currentShift,
+  onOpenShiftClick
 }) => {
   const [selectedCategory, setSelectedCategory] = useState<string>('todos')
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('pix')
@@ -280,6 +285,30 @@ export const PDVView: React.FC<PDVViewProps> = ({
 
       {/* Lado Esquerdo: Catálogo de Produtos e Fila de Comandas (7 ou 8 colunas) */}
       <div className="lg:col-span-7 xl:col-span-8 flex flex-col gap-3">
+        {/* Aviso amigável caso o Caixa esteja fechado */}
+        {!currentShift && onOpenShiftClick && (
+          <div className="bg-amber-500/10 dark:bg-amber-500/15 border-2 border-dashed border-amber-400 dark:border-amber-600/60 p-3.5 rounded-2xl flex items-center justify-between gap-3 text-amber-950 dark:text-amber-200">
+            <div className="flex items-center gap-3">
+              <span className="p-2 rounded-xl bg-amber-400 text-stone-950 shadow-xs">
+                <Lock className="w-4 h-4" />
+              </span>
+              <div>
+                <p className="font-black text-xs">Caixa Fechado no Momento</p>
+                <p className="text-[11px] text-amber-800 dark:text-amber-300">
+                  Defina o fundo de troco inicial para manter a conferência e o batimento de gaveta 100% exatos.
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={onOpenShiftClick}
+              className="px-3.5 py-2 bg-amber-500 hover:bg-amber-600 active:scale-95 text-stone-950 font-black rounded-xl text-xs shadow-xs cursor-pointer whitespace-nowrap shrink-0 transition-all"
+            >
+              Abrir Caixa Agora
+            </button>
+          </div>
+        )}
+
         {/* Fila Visual de Comandas Abertas / Comer no Local */}
         <div className="bg-white dark:bg-[#1a1613] p-3.5 rounded-2xl border-2 border-amber-300 dark:border-amber-800/80 shadow-xs">
           <div className="flex items-center justify-between pb-2 mb-2 border-b border-amber-200/80 dark:border-amber-900/60">

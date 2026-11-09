@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import type { Product, Sale, Expense, CartItem, Ingredient, Recipe, ImportedInvoice, Customer, PaymentMethod, Comanda } from './types'
+import type { Product, Sale, Expense, CartItem, Ingredient, Recipe, ImportedInvoice, Customer, PaymentMethod, Comanda, CashShift, CashMovementType } from './types'
 import {
   loadProducts,
   saveProducts,
@@ -18,6 +18,12 @@ import {
   saveComanda,
   removeComanda,
   markCreditAsPaid,
+  getCurrentShift,
+  openShift,
+  addShiftMovement,
+  closeShift,
+  loadShiftHistory,
+  formatCurrency,
 } from './storage'
 import { PDVView } from './components/PDVView'
 import { ExpensesView } from './components/ExpensesView'
@@ -34,7 +40,9 @@ import {
   ChefHat, 
   Sun, 
   Moon,
-  UtensilsCrossed 
+  UtensilsCrossed,
+  Lock,
+  Unlock
 } from 'lucide-react'
 
 type TabType = 'pdv' | 'expenses' | 'summary' | 'products' | 'costs'
@@ -45,6 +53,8 @@ export function App() {
   const [sales, setSales] = useState<Sale[]>([])
   const [expenses, setExpenses] = useState<Expense[]>([])
   const [comandas, setComandas] = useState<Comanda[]>(() => loadComandas())
+  const [currentShift, setCurrentShift] = useState<CashShift | null>(() => getCurrentShift())
+  const [shiftHistory, setShiftHistory] = useState<CashShift[]>(() => loadShiftHistory())
   const [cart, setCart] = useState<CartItem[]>(() => loadActiveCart())
   const [customers, setCustomers] = useState<Customer[]>(() => loadCustomers())
   const [ingredients, setIngredients] = useState<Ingredient[]>(() => loadIngredients())
@@ -140,11 +150,31 @@ export function App() {
     saveProducts(updatedProds)
   }
 
+  const handleOpenShift = (initialFloat: number, notes?: string) => {
+    const shift = openShift(initialFloat, notes)
+    setCurrentShift(shift)
+  }
+
+  const handleAddMovement = (type: CashMovementType, amount: number, description: string) => {
+    const updated = addShiftMovement(type, amount, description)
+    setCurrentShift(updated)
+  }
+
+  const handleCloseShift = (countedCash: number, expectedCash: number, notes?: string) => {
+    const result = closeShift(countedCash, expectedCash, notes)
+    if (result) {
+      setCurrentShift(null)
+      setShiftHistory(result.history)
+    }
+  }
+
   const handleRestoreData = (newProducts: Product[], newSales: Sale[], newExpenses: Expense[]) => {
     setProducts(newProducts)
     setSales(newSales)
     setExpenses(newExpenses)
     setComandas(loadComandas())
+    setCurrentShift(getCurrentShift())
+    setShiftHistory(loadShiftHistory())
   }
 
   const totalCartItems = cart.reduce((sum, item) => sum + item.quantity, 0)
@@ -246,8 +276,32 @@ export function App() {
             </button>
           </nav>
 
-          {/* Lado Direito: Alternador Claro/Escuro & Relógio com Moldura Dourada */}
+          {/* Lado Direito: Status do Caixa, Alternador Claro/Escuro & Relógio */}
           <div className="flex items-center gap-2">
+            {/* Indicador de Status do Caixa */}
+            <button
+              onClick={() => setActiveTab('summary')}
+              className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-black transition-all cursor-pointer shadow-xs border ${
+                currentShift
+                  ? 'bg-emerald-950/80 text-emerald-300 border-emerald-400/60 hover:bg-emerald-900/90'
+                  : 'bg-amber-950/70 text-amber-200 border-amber-400/50 hover:bg-amber-900/80'
+              }`}
+              title={currentShift ? `Caixa Aberto (Fundo: ${formatCurrency(currentShift.initialFloat)}) — Clique para gerenciar ou fechar` : 'Caixa Fechado — Clique para abrir o caixa do dia com fundo de troco'}
+            >
+              {currentShift ? (
+                <>
+                  <Unlock className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                  <span className="hidden sm:inline text-emerald-200">Caixa Aberto:</span>
+                  <span className="text-white font-black">{formatCurrency(currentShift.initialFloat)}</span>
+                </>
+              ) : (
+                <>
+                  <Lock className="w-3.5 h-3.5 text-amber-300 shrink-0" />
+                  <span>Caixa Fechado</span>
+                </>
+              )}
+            </button>
+
             <button
               onClick={toggleTheme}
               className="p-2.5 rounded-xl bg-red-950/70 dark:bg-black/70 hover:bg-red-900 text-amber-300 border border-amber-400/50 transition-all cursor-pointer shadow-xs active:scale-95"
@@ -278,6 +332,8 @@ export function App() {
             comandas={comandas}
             onSaveComanda={handleSaveComanda}
             onRemoveComanda={handleRemoveComanda}
+            currentShift={currentShift}
+            onOpenShiftClick={() => setActiveTab('summary')}
           />
         </div>
 
@@ -295,6 +351,11 @@ export function App() {
             expenses={expenses} 
             products={products}
             comandas={comandas}
+            currentShift={currentShift}
+            shiftHistory={shiftHistory}
+            onOpenShift={handleOpenShift}
+            onAddMovement={handleAddMovement}
+            onCloseShift={handleCloseShift}
             onRestoreData={handleRestoreData}
             onMarkCreditPaid={handleMarkCreditPaid}
           />

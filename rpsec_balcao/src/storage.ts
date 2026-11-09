@@ -8,7 +8,10 @@ import type {
   ImportedInvoice, 
   Customer, 
   PaymentMethod,
-  Comanda
+  Comanda,
+  CashShift,
+  CashMovement,
+  CashMovementType
 } from './types'
 
 const STORAGE_KEYS = {
@@ -22,6 +25,8 @@ const STORAGE_KEYS = {
   CUSTOMERS: 'rpsec_balcao_customers',
   COMANDAS: 'rpsec_balcao_comandas',
   DAILY_ORDER_COUNTER: 'rpsec_balcao_daily_order_counter',
+  CURRENT_SHIFT: 'rpsec_balcao_current_shift',
+  SHIFT_HISTORY: 'rpsec_balcao_shift_history',
 }
 
 export const INITIAL_PRODUCTS: Product[] = [
@@ -315,6 +320,89 @@ export function saveExpense(expense: Expense): Expense[] {
   return updated
 }
 
+export function getCurrentShift(): CashShift | null {
+  const data = localStorage.getItem(STORAGE_KEYS.CURRENT_SHIFT)
+  if (!data) return null
+  try {
+    const parsed = JSON.parse(data) as CashShift
+    return parsed && parsed.status === 'open' ? parsed : null
+  } catch {
+    return null
+  }
+}
+
+export function saveCurrentShift(shift: CashShift | null): void {
+  if (shift) {
+    localStorage.setItem(STORAGE_KEYS.CURRENT_SHIFT, JSON.stringify(shift))
+  } else {
+    localStorage.removeItem(STORAGE_KEYS.CURRENT_SHIFT)
+  }
+}
+
+export function openShift(initialFloat: number, notes?: string): CashShift {
+  const newShift: CashShift = {
+    id: `shift_${Date.now()}`,
+    openedAt: new Date().toISOString(),
+    status: 'open',
+    initialFloat: Math.max(0, initialFloat),
+    movements: [],
+    notes: notes?.trim() || undefined,
+  }
+  saveCurrentShift(newShift)
+  return newShift
+}
+
+export function addShiftMovement(type: CashMovementType, amount: number, description: string): CashShift | null {
+  const current = getCurrentShift()
+  if (!current) return null
+  const movement: CashMovement = {
+    id: `mov_${Date.now()}`,
+    type,
+    amount: Math.max(0, amount),
+    description: description.trim() || (type === 'sangria' ? 'Retirada de Dinheiro' : 'Entrada de Troco'),
+    createdAt: new Date().toISOString(),
+  }
+  const updated: CashShift = {
+    ...current,
+    movements: [...current.movements, movement],
+  }
+  saveCurrentShift(updated)
+  return updated
+}
+
+export function loadShiftHistory(): CashShift[] {
+  const data = localStorage.getItem(STORAGE_KEYS.SHIFT_HISTORY)
+  if (!data) return []
+  try {
+    return JSON.parse(data)
+  } catch {
+    return []
+  }
+}
+
+export function saveShiftHistory(history: CashShift[]): void {
+  localStorage.setItem(STORAGE_KEYS.SHIFT_HISTORY, JSON.stringify(history))
+}
+
+export function closeShift(countedCash: number, expectedCash: number, notes?: string): { closedShift: CashShift; history: CashShift[] } | null {
+  const current = getCurrentShift()
+  if (!current) return null
+  const diff = countedCash - expectedCash
+  const closed: CashShift = {
+    ...current,
+    status: 'closed',
+    closedAt: new Date().toISOString(),
+    closingCashCounted: countedCash,
+    closingCashExpected: expectedCash,
+    closingDifference: diff,
+    notes: notes?.trim() || current.notes,
+  }
+  saveCurrentShift(null)
+  const history = [closed, ...loadShiftHistory()]
+  saveShiftHistory(history)
+  return { closedShift: closed, history }
+}
+
 export function loadActiveCart(): CartItem[] {
   const data = localStorage.getItem(STORAGE_KEYS.ACTIVE_CART)
   if (!data) return []
@@ -462,17 +550,21 @@ export interface BackupData {
   expenses: Expense[]
   customers?: Customer[]
   comandas?: Comanda[]
+  currentShift?: CashShift | null
+  shiftHistory?: CashShift[]
 }
 
 export function exportBackupJSON(): string {
   const backup: BackupData = {
-    version: '1.2.0',
+    version: '1.3.0',
     exportedAt: new Date().toISOString(),
     products: loadProducts(),
     sales: loadSales(),
     expenses: loadExpenses(),
     customers: loadCustomers(),
     comandas: loadComandas(),
+    currentShift: getCurrentShift(),
+    shiftHistory: loadShiftHistory(),
   }
   return JSON.stringify(backup, null, 2)
 }
@@ -486,6 +578,8 @@ export function importBackupJSON(jsonStr: string): {
     expenses: Expense[]
     customers?: Customer[]
     comandas?: Comanda[]
+    currentShift?: CashShift | null
+    shiftHistory?: CashShift[]
   }
 } {
   try {
@@ -502,6 +596,12 @@ export function importBackupJSON(jsonStr: string): {
     if (Array.isArray(parsed.comandas)) {
       localStorage.setItem(STORAGE_KEYS.COMANDAS, JSON.stringify(parsed.comandas))
     }
+    if (parsed.currentShift !== undefined) {
+      saveCurrentShift(parsed.currentShift)
+    }
+    if (Array.isArray(parsed.shiftHistory)) {
+      saveShiftHistory(parsed.shiftHistory)
+    }
 
     return {
       success: true,
@@ -511,6 +611,8 @@ export function importBackupJSON(jsonStr: string): {
         expenses: parsed.expenses,
         customers: parsed.customers,
         comandas: parsed.comandas,
+        currentShift: parsed.currentShift,
+        shiftHistory: parsed.shiftHistory,
       },
     }
   } catch (err: unknown) {
