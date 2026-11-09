@@ -177,6 +177,106 @@
     --shadow-drag: 0 18px 36px -8px hsl(var(--shadow-color) / 0.75),
       0 6px 14px -6px hsl(var(--shadow-color) / 0.6);
   }
+
+  /* ============================================================
+     THEME ACCENT COLORS (Personalização de Tema)
+     ============================================================ */
+
+  /* Blue / Alpha Sistemas */
+  .theme-blue {
+    --primary: 221 83% 53%;
+    --primary-hover: 221 83% 46%;
+    --primary-active: 221 83% 40%;
+    --ring: 221 83% 53%;
+    --brand: 221 83% 53%;
+    --brand-from: 221 83% 53%;
+    --brand-to: 199 89% 48%;
+    --sidebar-primary: 221 83% 53%;
+    --sidebar-ring: 221 83% 53%;
+  }
+  .dark.theme-blue, .dark .theme-blue, [data-theme="dark"].theme-blue {
+    --primary: 217 91% 60%;
+    --primary-hover: 217 91% 54%;
+    --primary-active: 217 91% 48%;
+    --ring: 217 91% 65%;
+    --brand: 217 91% 60%;
+    --brand-from: 217 91% 60%;
+    --brand-to: 199 89% 55%;
+    --sidebar-primary: 217 91% 60%;
+    --sidebar-ring: 217 91% 65%;
+  }
+
+  /* Emerald / Financeiro / Verde */
+  .theme-emerald {
+    --primary: 158 64% 42%;
+    --primary-hover: 158 64% 36%;
+    --primary-active: 158 64% 30%;
+    --ring: 158 64% 42%;
+    --brand: 158 64% 42%;
+    --brand-from: 158 64% 42%;
+    --brand-to: 172 72% 38%;
+    --sidebar-primary: 158 64% 42%;
+    --sidebar-ring: 158 64% 42%;
+  }
+  .dark.theme-emerald, .dark .theme-emerald, [data-theme="dark"].theme-emerald {
+    --primary: 158 64% 48%;
+    --primary-hover: 158 64% 42%;
+    --primary-active: 158 64% 36%;
+    --ring: 158 64% 54%;
+    --brand: 158 64% 48%;
+    --brand-from: 158 64% 48%;
+    --brand-to: 172 72% 44%;
+    --sidebar-primary: 158 64% 48%;
+    --sidebar-ring: 158 64% 54%;
+  }
+
+  /* Amber / Laranja Quente */
+  .theme-amber {
+    --primary: 32 95% 46%;
+    --primary-hover: 32 95% 40%;
+    --primary-active: 32 95% 34%;
+    --ring: 32 95% 46%;
+    --brand: 32 95% 46%;
+    --brand-from: 32 95% 46%;
+    --brand-to: 45 93% 47%;
+    --sidebar-primary: 32 95% 46%;
+    --sidebar-ring: 32 95% 46%;
+  }
+  .dark.theme-amber, .dark .theme-amber, [data-theme="dark"].theme-amber {
+    --primary: 38 92% 52%;
+    --primary-hover: 38 92% 46%;
+    --primary-active: 38 92% 40%;
+    --ring: 38 92% 58%;
+    --brand: 38 92% 52%;
+    --brand-from: 38 92% 52%;
+    --brand-to: 45 93% 52%;
+    --sidebar-primary: 38 92% 52%;
+    --sidebar-ring: 38 92% 58%;
+  }
+
+  /* Rose / Carmesim RPsecti */
+  .theme-rose {
+    --primary: 346 77% 50%;
+    --primary-hover: 346 77% 44%;
+    --primary-active: 346 77% 38%;
+    --ring: 346 77% 50%;
+    --brand: 346 77% 50%;
+    --brand-from: 346 77% 50%;
+    --brand-to: 330 81% 60%;
+    --sidebar-primary: 346 77% 50%;
+    --sidebar-ring: 346 77% 50%;
+  }
+  .dark.theme-rose, .dark .theme-rose, [data-theme="dark"].theme-rose {
+    --primary: 346 77% 58%;
+    --primary-hover: 346 77% 52%;
+    --primary-active: 346 77% 46%;
+    --ring: 346 77% 64%;
+    --brand: 346 77% 58%;
+    --brand-from: 346 77% 58%;
+    --brand-to: 330 81% 65%;
+    --sidebar-primary: 346 77% 58%;
+    --sidebar-ring: 346 77% 64%;
+  }
 }
 
 @layer base {

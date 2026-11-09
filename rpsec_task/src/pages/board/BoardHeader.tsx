@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { categoryDotClass } from "@/lib/category-colors";
 import { cn } from "@/lib/utils";
+import { ThemeCustomizer } from "@/components/theme-customizer";
 import type { CategoriesDoapp } from "@/types/doapp";
 
 interface BoardHeaderProps {
@@ -67,7 +68,7 @@ export function BoardHeader({
       </div>
 
       <div className="flex items-center gap-2 md:ml-auto">
-        <div className="relative min-w-0 flex-1 md:w-[240px] md:flex-none">
+        <div className="relative min-w-0 flex-1 md:w-[220px] md:flex-none">
           <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             value={search}
@@ -77,6 +78,8 @@ export function BoardHeader({
             className="h-9 pl-9 text-xs"
           />
         </div>
+
+        <ThemeCustomizer />
 
         <Button
           type="button"

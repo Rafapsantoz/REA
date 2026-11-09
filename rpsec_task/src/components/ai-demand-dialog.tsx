@@ -10,10 +10,8 @@ import {
   RotateCcw,
   Code2,
   ArrowUpRight,
-  UserCheck,
-  CheckSquare,
-  Square,
-  Filter,
+  Plus,
+  Trash2,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -54,6 +52,12 @@ interface AiDemandDialogProps {
   onCreateDemand: (input: DemandInput) => Promise<void>;
 }
 
+export interface AttachedImage {
+  id: string;
+  dataUrl: string;
+  name: string;
+}
+
 type FilterView = "all" | "immediate" | "dev_queue";
 
 export function AiDemandDialog({
@@ -63,8 +67,7 @@ export function AiDemandDialog({
   onCreateDemand,
 }: AiDemandDialogProps) {
   const [text, setText] = useState("");
-  const [imageBase64, setImageBase64] = useState<string | null>(null);
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [attachedImages, setAttachedImages] = useState<AttachedImage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [extractedDemands, setExtractedDemands] = useState<ExtractedDemandItem[]>([]);
   const [modelUsed, setModelUsed] = useState<string | null>(null);
@@ -81,52 +84,75 @@ export function AiDemandDialog({
     }
   }, [open]);
 
-  // Captura paste de imagem na área de transferência (Ctrl+V)
+  // Captura paste de imagem na área de transferência (Ctrl+V) acumulando múltiplos prints!
   const handlePaste = (e: ClipboardEvent<HTMLTextAreaElement | HTMLDivElement>) => {
     const items = e.clipboardData?.items;
     if (!items) return;
 
+    let hasImage = false;
     for (let i = 0; i < items.length; i++) {
       if (items[i].type.startsWith("image/")) {
+        hasImage = true;
         const file = items[i].getAsFile();
         if (file) {
           const reader = new FileReader();
           reader.onload = (event) => {
             const result = event.target?.result as string;
-            setImageBase64(result);
-            setImagePreview(result);
-            toast.info("Imagem da área de transferência anexada.");
+            const newId = `img-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+            setAttachedImages((prev) => {
+              const nextIndex = prev.length + 1;
+              const nextList = [
+                ...prev,
+                { id: newId, dataUrl: result, name: `Print #${nextIndex}` },
+              ];
+              toast.info(`Print #${nextIndex} anexado com sucesso.`);
+              return nextList;
+            });
           };
           reader.readAsDataURL(file);
-          break;
         }
       }
+    }
+
+    if (hasImage) {
+      // Impede que o binário da imagem tente ser colado como caractere invisível no texto
+      e.preventDefault();
     }
   };
 
   const handleImageFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
 
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const result = event.target?.result as string;
-      setImageBase64(result);
-      setImagePreview(result);
-      toast.info("Imagem carregada com sucesso.");
-    };
-    reader.readAsDataURL(file);
+    Array.from(files).forEach((file, idx) => {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const result = event.target?.result as string;
+        const newId = `img-${Date.now()}-${idx}-${Math.random().toString(36).slice(2, 6)}`;
+        setAttachedImages((prev) => [
+          ...prev,
+          { id: newId, dataUrl: result, name: file.name || `Print #${prev.length + 1}` },
+        ]);
+      };
+      reader.readAsDataURL(file);
+    });
+
+    toast.info(`${files.length} imagem(ns) carregada(s).`);
+    if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
-  const removeImage = () => {
-    setImageBase64(null);
-    setImagePreview(null);
+  const removeSingleImage = (id: string) => {
+    setAttachedImages((prev) => prev.filter((img) => img.id !== id));
+  };
+
+  const clearAllImages = () => {
+    setAttachedImages([]);
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
   const handleProcess = async () => {
-    if (!text.trim() && !imageBase64) {
-      toast.error("Cole um texto de chamado ou dê Ctrl+V em um print para processar.");
+    if (!text.trim() && attachedImages.length === 0) {
+      toast.error("Cole um texto de chamado ou dê Ctrl+V em prints para processar.");
       return;
     }
 
@@ -134,7 +160,7 @@ export function AiDemandDialog({
     try {
       const result = await extractDemandsWithAi({
         text: text.trim(),
-        imageBase64: imageBase64 ?? undefined,
+        images: attachedImages.map((img) => ({ base64: img.dataUrl })),
         categories,
         customApiKey: apiKeyInput.trim(),
       });
@@ -231,7 +257,7 @@ export function AiDemandDialog({
 
       // Limpa e fecha
       setText("");
-      removeImage();
+      clearAllImages();
       setExtractedDemands([]);
       onOpenChange(false);
     } catch (err: unknown) {
@@ -277,7 +303,7 @@ export function AiDemandDialog({
               Adicionar com IA (Modo Serviço / Chamados)
             </DialogTitle>
             <DialogDescription className="text-xs text-muted-foreground mt-1">
-              Extrai chamados de suporte identificando o status original (Ação Imediata vs Fila Desenvolvimento).
+              Cole o texto do chamado ou pressione Ctrl+V para colar múltiplos prints do helpdesk.
             </DialogDescription>
           </div>
 
@@ -328,6 +354,7 @@ export function AiDemandDialog({
                     type="file"
                     ref={fileInputRef}
                     accept="image/*"
+                    multiple
                     onChange={handleImageFileChange}
                     className="hidden"
                   />
@@ -339,53 +366,89 @@ export function AiDemandDialog({
                     onClick={() => fileInputRef.current?.click()}
                   >
                     <ImageIcon className="size-3.5" />
-                    Carregar Print
+                    Carregar Print(s)
                   </Button>
                 </div>
               </div>
 
+              {/* Caixa de Texto Limpa, sem placeholders poluídos */}
               <Textarea
                 id="ai-input"
                 value={text}
                 onChange={(e) => setText(e.target.value)}
-                placeholder="Exemplo de entrada:
-Cole uma tabela de chamados, print com Ctrl+V ou texto como:
-148656 MOCMAQ - NF não respeita valor de parcelas (Status: Pendente Desenvolvimento)
-151255 CONCREPOOL - Problema com certificado NF-e travando emissão hoje (Status: Retorno Desenvolvimento)"
-                className="min-h-[140px] text-sm resize-y leading-relaxed font-sans"
+                placeholder="Cole aqui o texto dos chamados, logs de erro ou dê Ctrl+V para colar prints de tela..."
+                className="min-h-[100px] text-sm resize-none leading-relaxed font-sans focus-visible:ring-1 focus-visible:ring-primary focus-visible:border-primary transition-all"
               />
 
-              {imagePreview && (
-                <div className="relative inline-flex items-center gap-3 p-2 bg-muted/70 rounded-lg border border-border">
-                  <img
-                    src={imagePreview}
-                    alt="Print anexado"
-                    className="h-16 w-24 object-cover rounded border border-border"
-                  />
-                  <div className="text-xs">
-                    <p className="font-semibold text-foreground">Print Screen Anexado</p>
-                    <p className="text-muted-foreground">A IA analisará a grade de tickets e status com visão computacional.</p>
+              {/* Galeria de Múltiplos Prints Anexados */}
+              {attachedImages.length > 0 && (
+                <div className="space-y-2 p-3 bg-muted/40 rounded-xl border border-border">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                      <ImageIcon className="size-3.5 text-primary" />
+                      Prints Anexados ({attachedImages.length}):
+                    </span>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={clearAllImages}
+                      className="h-6 text-[11px] text-muted-foreground hover:text-destructive px-1.5 gap-1"
+                    >
+                      <Trash2 className="size-3" />
+                      Remover todos
+                    </Button>
                   </div>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="size-7 ml-auto text-muted-foreground hover:text-destructive"
-                    onClick={removeImage}
-                  >
-                    <X className="size-4" />
-                  </Button>
+
+                  <div className="flex items-center gap-2.5 overflow-x-auto pb-1 pt-1">
+                    {attachedImages.map((img, idx) => (
+                      <div
+                        key={img.id}
+                        className="relative group shrink-0 rounded-lg overflow-hidden border border-border bg-card shadow-xs"
+                      >
+                        <img
+                          src={img.dataUrl}
+                          alt={img.name}
+                          className="h-20 w-32 object-cover"
+                        />
+                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                          <button
+                            type="button"
+                            onClick={() => removeSingleImage(img.id)}
+                            className="p-1 rounded-full bg-destructive text-destructive-foreground hover:scale-110 transition-transform cursor-pointer"
+                            title="Remover este print"
+                          >
+                            <X className="size-3.5" />
+                          </button>
+                        </div>
+                        <span className="absolute bottom-1 left-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-background/90 text-foreground border border-border/60">
+                          #{idx + 1}
+                        </span>
+                      </div>
+                    ))}
+
+                    {/* Botão de adicionar mais prints */}
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="h-20 w-24 shrink-0 rounded-lg border border-dashed border-border hover:border-primary hover:bg-primary/5 flex flex-col items-center justify-center gap-1 text-muted-foreground hover:text-primary transition-all cursor-pointer text-[11px]"
+                    >
+                      <Plus className="size-4" />
+                      + Print
+                    </button>
+                  </div>
                 </div>
               )}
 
+              {/* Guia / Instruções sem poluir a caixa de texto */}
               <div className="rounded-lg bg-accent/40 border border-border p-3 text-xs text-muted-foreground flex items-start gap-2.5">
                 <Sparkles className="size-4 text-primary shrink-0 mt-0.5" />
-                <div>
-                  <p className="font-medium text-foreground mb-0.5">Triagem de Suporte com 1 Clique:</p>
+                <div className="space-y-1">
+                  <p className="font-semibold text-foreground">
+                    Suporte a Múltiplos Prints (Ctrl+V em sequência):
+                  </p>
                   <p>
-                    Pressione <kbd className="px-1 py-0.5 bg-muted rounded font-mono text-[10px]">PrintScreen</kbd> ou{" "}
-                    <kbd className="px-1 py-0.5 bg-muted rounded font-mono text-[10px]">Win+Shift+S</kbd> no helpdesk e cole aqui (<kbd className="px-1 py-0.5 bg-muted rounded font-mono text-[10px]">Ctrl+V</kbd>).
-                    A IA identifica a coluna <strong>Status</strong> e <strong>desmarca automaticamente</strong> chamados de <em>Encaminhar ao Desenvolvimento</em> e <em>Pendente Desenvolvimento</em> para não poluir suas tarefas de hoje!
+                    Você pode tirar print da parte de cima da tabela, dar <kbd className="px-1 py-0.5 bg-muted rounded font-mono text-[10px]">Ctrl+V</kbd>, depois rolar a tela do helpdesk, tirar outro print e dar <kbd className="px-1 py-0.5 bg-muted rounded font-mono text-[10px]">Ctrl+V</kbd> novamente. A IA analisará todos os prints juntos e unificará a lista de tickets!
                   </p>
                 </div>
               </div>
@@ -697,7 +760,7 @@ Cole uma tabela de chamados, print com Ctrl+V ou texto como:
               size="sm"
               className="gap-2 bg-primary text-primary-foreground font-medium shadow-sm hover:opacity-90"
               onClick={handleProcess}
-              disabled={isLoading || (!text.trim() && !imageBase64)}
+              disabled={isLoading || (!text.trim() && attachedImages.length === 0)}
             >
               {isLoading ? (
                 <>

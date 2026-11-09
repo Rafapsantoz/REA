@@ -35,16 +35,22 @@ export interface ExtractedDemandItem {
   urgencia: "Urgente" | "Alta" | "Normal" | "Baixa";
   cliente?: string;
   ticket_num?: string;
-  status_chamado?: string; // Status original no sistema de chamados (ex: Encaminhar ao Desenvolvimento, Pendente Desenvolvimento, Retorno Desenvolvimento, etc.)
-  is_dev_queue?: boolean; // True se for "Encaminhar ao Desenvolvimento" ou "Pendente Desenvolvimento"
+  status_chamado?: string;
+  is_dev_queue?: boolean;
   responsavel_tipo?: "Ação Imediata" | "Fila Dev" | "Pendente Cliente" | "Outro";
   motivo_horizon?: string;
   selected?: boolean;
 }
 
+export interface ImageAttachment {
+  base64: string;
+  mimeType?: string;
+}
+
 export interface ExtractOptions {
   text?: string;
   imageBase64?: string;
+  images?: ImageAttachment[];
   mimeType?: string;
   categories: CategoriesDoapp[];
   customApiKey?: string;
@@ -53,7 +59,7 @@ export interface ExtractOptions {
 export async function extractDemandsWithAi(
   options: ExtractOptions
 ): Promise<{ demands: ExtractedDemandItem[]; modelUsed: string }> {
-  const { text, imageBase64, mimeType = "image/jpeg", categories, customApiKey } = options;
+  const { text, imageBase64, images, mimeType = "image/jpeg", categories, customApiKey } = options;
 
   const apiKey = (customApiKey || getGeminiApiKey()).trim();
   if (!apiKey) {
@@ -78,6 +84,14 @@ export async function extractDemandsWithAi(
       /trabalho|suporte|serviço|servico/i.test(c.description)
     ) ?? categories[0];
 
+  // Agrupa todas as imagens (suporta múltiplos prints de tela simultâneos!)
+  const allImages: ImageAttachment[] = [];
+  if (images && images.length > 0) {
+    allImages.push(...images);
+  } else if (imageBase64) {
+    allImages.push({ base64: imageBase64, mimeType });
+  }
+
   const systemInstruction = `Você é o assistente inteligente de gestão e triagem de demandas e suporte técnico da RPsecti Soluções Inteligentes.
 Sua especialidade é extrair e estruturar ordens de serviço, chamados de helpdesk, mensagens de clientes e demandas técnicas de trabalho ("modo serviço").
 
@@ -98,7 +112,7 @@ Regras de Classificação e Extração:
    - "Atendimento Pausado"
    - "Em análise"
    - "Concluído"
-3. "is_dev_queue": Retorne true se o status for "Encaminhar ao Desenvolvimento" ou "Pendente Desenvolvimento" (chamados que dependem de desenvolvimento de software e NÃO de atendimento imediato do suporte no balcão).
+3. "is_dev_queue": Retorne true se o status for "Encaminhar ao Desenvolvimento" ou "Pendente Desenvolvimento" (chamados que dependem de desenvolvimento de software e NÃO de atendimento imediato do suporte).
 4. "urgencia": Classifique em "Urgente", "Alta", "Normal" ou "Baixa".
 5. "horizon":
    - "daily": Para hoje/imediato (somente chamados de AÇÃO IMEDIATA, urgente, retorno desenvolvimento que travou cliente, notas paradas).
@@ -111,7 +125,7 @@ Regras de Classificação e Extração:
 8. "cliente": Razão social ou nome do cliente/empresa.
 9. "ticket_num": Número do ticket/chamado se identificado (ex: "148656", "148887").
 10. "motivo_horizon": Breve explicação de 1 linha indicando o porquê da prioridade (ex: "Fila de desenvolvimento - aguarda correção de software").
-11. Pode retornar múltiplas demandas se houver múltiplos chamados no print ou texto!
+11. Pode retornar múltiplas demandas se houver múltiplos chamados no print ou texto! Se houver mais de uma imagem anexada, processe e una todos os chamados de TODAS as imagens anexadas sem duplicar!
 
 Retorne EXCLUSIVAMENTE um objeto JSON válido (sem markdown, sem blocos com crases):
 {
@@ -136,20 +150,20 @@ Retorne EXCLUSIVAMENTE um objeto JSON válido (sem markdown, sem blocos com cras
 
   if (text && text.trim()) {
     parts.push({
-      text: `${systemInstruction}\n\nConteúdo bruto do chamado / mensagem para processar:\n"""\n${text.trim()}\n"""`,
+      text: `${systemInstruction}\n\nConteúdo em texto dos chamados:\n"""\n${text.trim()}\n"""`,
     });
   } else {
     parts.push({
-      text: `${systemInstruction}\n\nAnalise a imagem da tela/tabela de tickets e extraia com exatidão cada demanda/chamado visível, capturando a coluna Status de cada linha.`,
+      text: `${systemInstruction}\n\nAnalise as ${allImages.length} imagem(ns) da tela/tabela de tickets e extraia com exatidão cada demanda/chamado visível, capturando a coluna Status de cada linha.`,
     });
   }
 
-  if (imageBase64) {
-    // Remove prefixo data:image/...;base64, se houver
-    const cleanB64 = imageBase64.replace(/^data:image\/[a-zA-Z]+;base64,/, "");
+  // Anexa todas as imagens na chamada do Gemini Vision
+  for (const img of allImages) {
+    const cleanB64 = img.base64.replace(/^data:image\/[a-zA-Z0-9+.-]+;base64,/, "");
     parts.push({
       inline_data: {
-        mime_type: mimeType,
+        mime_type: img.mimeType || "image/jpeg",
         data: cleanB64,
       },
     });
@@ -190,7 +204,6 @@ Retorne EXCLUSIVAMENTE um objeto JSON válido (sem markdown, sem blocos com cras
         continue;
       }
 
-      // Sanitiza caso venha com blocos de markdown
       const cleaned = rawText
         .replace(/^```(?:json)?\s*/i, "")
         .replace(/\s*```$/i, "")
@@ -202,18 +215,16 @@ Retorne EXCLUSIVAMENTE um objeto JSON válido (sem markdown, sem blocos com cras
         : parsed?.demands || parsed?.tickets || parsed?.items || [];
 
       if (!Array.isArray(rawDemands) || rawDemands.length === 0) {
-        throw new Error("A IA não identificou nenhuma demanda no texto ou imagem informada.");
+        throw new Error("A IA não identificou nenhuma demanda nas entradas informadas.");
       }
 
       const mapped: ExtractedDemandItem[] = rawDemands.map((item, idx) => {
-        // Encontra a categoria correspondente ou usa a de trabalho
         const catName = String(item.category || "").toLowerCase();
         const matchedCategory =
           categories.find((c) =>
             catName ? c.description.toLowerCase().includes(catName) : false
           ) || trabalhoCategory || categories[0];
 
-        // Análise do Status do Chamado
         const statusChamadoRaw = String(item.status_chamado || item.status || "").trim();
         const statusNorm = statusChamadoRaw.toUpperCase();
 
@@ -241,7 +252,6 @@ Retorne EXCLUSIVAMENTE um objeto JSON válido (sem markdown, sem blocos com cras
         else if (h === "long_term" || h === "longo_prazo") horizon = "long_term";
         else horizon = "daily";
 
-        // Regra do Usuário: Chamados de Fila Dev não devem ir para Daily (hoje)
         if (isDevQueue && horizon === "daily") {
           horizon = "weekly";
         }
@@ -275,7 +285,6 @@ Retorne EXCLUSIVAMENTE um objeto JSON válido (sem markdown, sem blocos com cras
           is_dev_queue: isDevQueue,
           responsavel_tipo: responsavelTipo,
           motivo_horizon: item.motivo_horizon || (isDevQueue ? "Fila de desenvolvimento (bloqueado para hoje)" : undefined),
-          // Regra principal: chamados de Fila Dev vêm DESMARCADOS por padrão para não sobrecarregar o hoje!
           selected: !isDevQueue,
         };
       });
