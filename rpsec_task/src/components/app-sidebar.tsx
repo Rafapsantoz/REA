@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import {
   Calendar as CalendarIcon,
@@ -124,12 +125,24 @@ export function SidebarPanel({
 
   return (
     <div className="flex h-full w-full flex-col bg-sidebar text-sidebar-foreground">
-      <div className="flex h-14 shrink-0 items-center gap-2.5 border-b border-sidebar-border px-4">
-        <div className="flex size-7 items-center justify-center rounded-md bg-gradient-brand text-brand-foreground">
+      <Link
+        to="/board"
+        onClick={() => {
+          onSelectView("all");
+          onSelectCategory("all");
+          onNavigate?.();
+        }}
+        className="flex h-14 shrink-0 items-center gap-2.5 border-b border-sidebar-border px-4 transition-colors hover:bg-sidebar-accent/50 group cursor-pointer"
+        title="Página Inicial - Todas as demandas"
+        aria-label="Página Inicial - Todas as demandas"
+      >
+        <div className="flex size-7 items-center justify-center rounded-md bg-gradient-brand text-brand-foreground shadow-xs group-hover:scale-105 transition-transform">
           <SquareKanban className="size-4" />
         </div>
-        <span className="text-[15px] font-semibold tracking-[-0.01em]">Momentum</span>
-      </div>
+        <span className="text-[15px] font-semibold tracking-[-0.01em] group-hover:text-primary transition-colors">
+          Momentum
+        </span>
+      </Link>
 
       <div className="flex min-h-0 flex-1 flex-col overflow-y-auto pb-3">
         <p className="px-4 pb-1.5 pt-5 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">

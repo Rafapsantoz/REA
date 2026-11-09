@@ -278,9 +278,9 @@ const Board = () => {
     activeCategoryId,
     userName: user?.name ?? "",
     onSelectView: (nextView: ViewKey) =>
-      updateParams({ view: nextView === "all" ? null : nextView }),
+      updateParams({ view: nextView === "all" ? null : nextView, q: null }),
     onSelectCategory: (categoryId: number | "all") =>
-      updateParams({ category: categoryId === "all" ? null : String(categoryId) }),
+      updateParams({ category: categoryId === "all" ? null : String(categoryId), q: null }),
     onCreateCategory: handleCreateCategory,
     onDeleteCategory: handleDeleteCategory,
     onLogout: () => {
