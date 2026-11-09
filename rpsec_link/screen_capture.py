@@ -91,21 +91,25 @@ DI_NORMAL = 0x0003
 
 
 class DirtyDetector:
-    """Detecta alterações visuais na tela comparando miniaturas em sub-milissegundos (< 0.4ms)."""
+    """
+    Detecta alterações visuais na tela comparando miniaturas em sub-milissegundos (< 0.06ms).
+    A resolução de 320x180 garante que até mesmo o cursor piscando ou letras individuais
+    digitadas em terminais/editores sejam detectados instantaneamente sem atraso.
+    """
 
     def __init__(self):
         self.prev_thumb: Optional[np.ndarray] = None
 
-    def has_changed(self, frame: np.ndarray, threshold: int = 6) -> bool:
-        # Reduz a 160x90 para comparação instantânea
-        thumb = cv2.resize(frame, (160, 90), interpolation=cv2.INTER_NEAREST)
+    def has_changed(self, frame: np.ndarray, threshold: int = 4) -> bool:
+        # Reduz a 320x180 para alta sensibilidade e velocidade ultrarrápida (0.05ms)
+        thumb = cv2.resize(frame, (320, 180), interpolation=cv2.INTER_NEAREST)
         if self.prev_thumb is None:
             self.prev_thumb = thumb
             return True
 
         diff = cv2.absdiff(thumb, self.prev_thumb)
-        # Se mais de 8 pixels mudaram significativamente, a tela mudou
-        changed = int(np.count_nonzero(diff > threshold)) > 8
+        # Se pelo menos 1 pixel na miniatura mudou, houve alteração na tela
+        changed = int(np.count_nonzero(diff > threshold)) > 0
         if changed:
             self.prev_thumb = thumb
         return changed

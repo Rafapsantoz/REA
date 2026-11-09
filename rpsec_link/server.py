@@ -208,9 +208,10 @@ async def websocket_endpoint(websocket: WebSocket, pin: str = Query("")):
     }))
 
     session_state = {
-        "quality": 65,
+        "quality": 55,
         "scale": 1.0,
         "fps": 25,
+        "interactive_boost": 0,
         "running": True
     }
 
@@ -220,8 +221,13 @@ async def websocket_endpoint(websocket: WebSocket, pin: str = Query("")):
             while session_state["running"]:
                 t_start = time.perf_counter()
 
-                # Força um frame a cada 1.5 segundos mesmo se a tela estiver parada
-                force_sync = (t_start - last_keyframe) >= 1.5
+                # Boost Interativo: se o usuário digitou ou clicou recentemente,
+                # força a captura e o envio do quadro imediatamente com prioridade máxima!
+                is_interactive = session_state["interactive_boost"] > 0
+                if is_interactive:
+                    session_state["interactive_boost"] -= 1
+
+                force_sync = is_interactive or ((t_start - last_keyframe) >= 1.5)
 
                 # Executa captura e compressão em thread separada para NUNCA bloquear inputs de mouse e teclado
                 frame_bytes = await asyncio.to_thread(
@@ -235,7 +241,7 @@ async def websocket_endpoint(websocket: WebSocket, pin: str = Query("")):
                     last_keyframe = t_start
                     await websocket.send_bytes(frame_bytes)
 
-                # Controle de taxa com sono mínimo adaptativo
+                # Controle de taxa com sono adaptativo
                 target_interval = 1.0 / session_state["fps"]
                 elapsed = time.perf_counter() - t_start
                 sleep_time = max(0.002, target_interval - elapsed)
@@ -254,27 +260,51 @@ async def websocket_endpoint(websocket: WebSocket, pin: str = Query("")):
                     input_ctrl.move_mouse(msg["x"], msg["y"])
 
                 elif mtype == "mouse_down":
+                    session_state["interactive_boost"] = 3
                     input_ctrl.mouse_down(msg["button"], msg.get("x"), msg.get("y"))
 
                 elif mtype == "mouse_up":
+                    session_state["interactive_boost"] = 3
                     input_ctrl.mouse_up(msg["button"], msg.get("x"), msg.get("y"))
 
                 elif mtype == "wheel":
+                    session_state["interactive_boost"] = 2
                     input_ctrl.mouse_wheel(msg.get("delta", 0))
 
                 elif mtype == "key_down":
-                    input_ctrl.key_down(msg.get("key", ""), msg.get("code", ""))
+                    session_state["interactive_boost"] = 3
+                    input_ctrl.key_down(msg.get("key", ""), msg.get("code", ""), int(msg.get("vk", 0)))
 
                 elif mtype == "key_up":
-                    input_ctrl.key_up(msg.get("key", ""), msg.get("code", ""))
+                    session_state["interactive_boost"] = 3
+                    input_ctrl.key_up(msg.get("key", ""), msg.get("code", ""), int(msg.get("vk", 0)))
 
                 elif mtype == "shortcut":
+                    session_state["interactive_boost"] = 3
                     input_ctrl.send_shortcut(msg.get("shortcut", ""))
 
                 elif mtype == "quality":
-                    session_state["quality"] = int(msg.get("quality", 65))
-                    session_state["scale"] = float(msg.get("scale", 1.0))
-                    session_state["fps"] = int(msg.get("fps", 25))
+                    profile = msg.get("profile")
+                    if profile == "turbo":
+                        session_state["quality"] = 70
+                        session_state["scale"] = 1.0
+                        session_state["fps"] = 30
+                    elif profile == "balanced":
+                        session_state["quality"] = 55
+                        session_state["scale"] = 1.0
+                        session_state["fps"] = 25
+                    elif profile == "weak":
+                        session_state["quality"] = 40
+                        session_state["scale"] = 0.75
+                        session_state["fps"] = 18
+                    elif profile == "ultra":
+                        session_state["quality"] = 30
+                        session_state["scale"] = 0.60
+                        session_state["fps"] = 12
+                    else:
+                        session_state["quality"] = int(msg.get("quality", session_state["quality"]))
+                        session_state["scale"] = float(msg.get("scale", session_state["scale"]))
+                        session_state["fps"] = int(msg.get("fps", session_state["fps"]))
 
                 elif mtype == "ping":
                     await websocket.send_text(json.dumps({"type": "pong", "ts": msg.get("ts")}))

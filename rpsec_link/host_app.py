@@ -41,7 +41,7 @@ class HostApp(ctk.CTk):
         super().__init__()
 
         self.title("RPsec Link — Host Agent")
-        self.geometry("500x660")
+        self.geometry("500x700")
         self.resizable(False, False)
 
         # Configura cores de fundo da janela principal
@@ -298,7 +298,21 @@ class HostApp(ctk.CTk):
         )
         # Inicialmente oculto até haver cliente conectado
 
-        # 6. Rodapé: Minimizar
+        # 6. Rodapé: Abrir Cliente Desktop & Minimizar
+        btn_client = ctk.CTkButton(
+            self,
+            text="💻 Conectar a Outro Host (Cliente Nativo)",
+            font=ctk.CTkFont(size=12, weight="bold"),
+            fg_color=("#e2e8f0", "#1e293b"),
+            hover_color=("#cbd5e1", "#334155"),
+            text_color=("#0f172a", "#f8fafc"),
+            border_width=1,
+            border_color=("#cbd5e1", "#475569"),
+            height=36,
+            command=self._launch_client
+        )
+        btn_client.pack(fill="x", padx=24, pady=(8, 4))
+
         btn_min = ctk.CTkButton(
             self,
             text="Minimizar para Segundo Plano",
@@ -308,7 +322,14 @@ class HostApp(ctk.CTk):
             height=30,
             command=self.iconify
         )
-        btn_min.pack(pady=(10, 0))
+        btn_min.pack(pady=(2, 10))
+
+    def _launch_client(self):
+        """Abre o cliente nativo do RPsec Link em processo independente."""
+        import subprocess
+        client_script = BASE_DIR / "client_app.py"
+        python_exe = sys.executable
+        subprocess.Popen([python_exe, str(client_script)], cwd=str(BASE_DIR))
 
     def _toggle_theme(self):
         """Alterna entre Tema Escuro e Claro com botão único estilizado."""

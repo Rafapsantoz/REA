@@ -210,17 +210,17 @@ class InputController:
         amt = int(delta_y * 1.5)
         u32.mouse_event(MOUSEEVENTF_WHEEL, 0, 0, amt, 0)
 
-    def key_down(self, key: str, code: str = ""):
+    def key_down(self, key: str, code: str = "", vk: int = 0):
         """Pressiona uma tecla usando SendInput de alta precisão."""
-        self._send_key_event(key, code, is_up=False)
+        self._send_key_event(key, code, is_up=False, direct_vk=vk)
 
-    def key_up(self, key: str, code: str = ""):
+    def key_up(self, key: str, code: str = "", vk: int = 0):
         """Libera uma tecla usando SendInput."""
-        self._send_key_event(key, code, is_up=True)
+        self._send_key_event(key, code, is_up=True, direct_vk=vk)
 
-    def _send_key_event(self, key: str, code: str, is_up: bool):
+    def _send_key_event(self, key: str, code: str, is_up: bool, direct_vk: int = 0):
         self._ensure_desktop()
-        vk = CODE_TO_VK.get(code) or CODE_TO_VK.get(key)
+        vk = direct_vk if direct_vk > 0 else (CODE_TO_VK.get(code) or CODE_TO_VK.get(key))
 
         if vk:
             scan = u32.MapVirtualKeyW(vk, 0)

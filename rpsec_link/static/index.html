@@ -433,11 +433,12 @@
         <option value="original">Resolução 1:1 Nativa</option>
       </select>
 
-      <!-- Qualidade do Stream -->
-      <select id="qualitySelect" class="tb-select" title="Qualidade da Transmissão">
-        <option value="high">Alta (75% • 30 FPS)</option>
-        <option value="medium" selected>Média (65% • 25 FPS)</option>
-        <option value="fast">Rápida (45% • 15 FPS)</option>
+      <!-- Perfil de Rede / Qualidade -->
+      <select id="qualitySelect" class="tb-select" title="Perfil de Rede e Qualidade">
+        <option value="turbo">🚀 Turbo (Rede Local • 30 FPS)</option>
+        <option value="balanced" selected>⚡ Equilibrado (Wi-Fi Padrão • 25 FPS)</option>
+        <option value="weak">🌐 Rede Fraca (4G / Instável • 18 FPS)</option>
+        <option value="ultra">🪶 Ultra-Econômico (Lenta • 12 FPS)</option>
       </select>
 
       <!-- Alternador de Tema -->
@@ -740,14 +741,8 @@
 
     function sendQualityConfig() {
       if (!ws || ws.readyState !== WebSocket.OPEN) return;
-      const val = qualitySelect.value;
-      let quality = 65, scale = 1.0, fps = 25;
-      if (val === 'high') {
-        quality = 75; scale = 1.0; fps = 30;
-      } else if (val === 'fast') {
-        quality = 45; scale = 0.8; fps = 15;
-      }
-      ws.send(JSON.stringify({ type: 'quality', quality, scale, fps }));
+      const profile = qualitySelect.value;
+      ws.send(JSON.stringify({ type: 'quality', profile }));
     }
     qualitySelect.addEventListener('change', sendQualityConfig);
 
