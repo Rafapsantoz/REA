@@ -230,7 +230,14 @@ export function saveComanda(comanda: Comanda): Comanda[] {
     updated = [...current]
     updated[existsIndex] = comanda
   } else {
-    updated = [comanda, ...current]
+    // Garantia absoluta contra números duplicados em comandas simultâneas
+    const existingNumbers = new Set(current.map(c => c.number).filter(n => typeof n === 'number' && !isNaN(n)))
+    let finalNumber = comanda.number
+    if (!finalNumber || existingNumbers.has(finalNumber)) {
+      finalNumber = Math.max(0, ...Array.from(existingNumbers)) + 1
+    }
+    const safeComanda = { ...comanda, number: finalNumber }
+    updated = [safeComanda, ...current]
   }
   saveComandas(updated)
   return updated

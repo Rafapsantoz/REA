@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import type { Product, PaymentMethod, CartItem, Sale, Customer, Comanda, CashShift } from '../types'
+import type { Product, PaymentMethod, CartItem, Sale, Customer, Comanda, CashShift, CashMovementType } from '../types'
 import { formatCurrency, getNextDailyOrderNumber, peekNextDailyOrderNumber } from '../storage'
 import { 
   Plus, 
@@ -20,7 +20,10 @@ import {
   Clock,
   Save,
   XCircle,
-  Lock
+  Lock,
+  Unlock,
+  ArrowDownRight,
+  Share2
 } from 'lucide-react'
 
 interface PDVViewProps {
@@ -35,7 +38,9 @@ interface PDVViewProps {
   onSaveComanda: (comanda: Comanda) => void
   onRemoveComanda: (comandaId: string) => void
   currentShift?: CashShift | null
-  onOpenShiftClick?: () => void
+  onOpenShift?: (initialFloat: number, notes?: string) => void
+  onAddMovement?: (type: CashMovementType, amount: number, description: string) => void
+  onCloseShift?: (countedCash: number, expectedCash: number, notes?: string, extraData?: { cashSalesTotal?: number; totalSalesAmount?: number }) => void
 }
 
 export const PDVView: React.FC<PDVViewProps> = ({ 
@@ -50,8 +55,135 @@ export const PDVView: React.FC<PDVViewProps> = ({
   onSaveComanda,
   onRemoveComanda,
   currentShift,
-  onOpenShiftClick
+  onOpenShift,
+  onAddMovement,
+  onCloseShift
 }) => {
+  // Estados dos Modais Rápidos de Caixa no PDV (3 botões solicitados)
+  const [showOpenShiftModal, setShowOpenShiftModal] = useState<boolean>(false)
+  const [openShiftFloatInput, setOpenShiftFloatInput] = useState<string>('50')
+  const [openShiftNotesInput, setOpenShiftNotesInput] = useState<string>('')
+
+  const [showSangriaModal, setShowSangriaModal] = useState<boolean>(false)
+  const [sangriaAmountInput, setSangriaAmountInput] = useState<string>('')
+  const [sangriaReasonInput, setSangriaReasonInput] = useState<string>('Entrega de Gás')
+
+  const [showCloseShiftModal, setShowCloseShiftModal] = useState<boolean>(false)
+  const [closeCountedInput, setCloseCountedInput] = useState<string>('')
+  const [closeNotesInput, setCloseNotesInput] = useState<string>('')
+  const [closedShiftReceipt, setClosedShiftReceipt] = useState<CashShift | null>(null)
+  // Cálculos da Gaveta em Tempo Real no PDV
+  const todayStr = new Date().toISOString().split('T')[0]
+  const cashSalesTotal = sales
+    .filter(s => {
+      if (s.paymentMethod === 'dinheiro' && s.createdAt.startsWith(todayStr)) return true
+      if (s.paymentMethod === 'fiado' && s.isCreditPaid && s.creditPaidMethod === 'dinheiro') {
+        const paidDate = s.creditPaidAt ? s.creditPaidAt.split('T')[0] : s.createdAt.split('T')[0]
+        return paidDate === todayStr
+      }
+      return false
+    })
+    .reduce((sum, s) => sum + s.totalAmount, 0)
+
+  const initialFloat = currentShift ? currentShift.initialFloat : 0
+  const sangriasTotal = currentShift 
+    ? currentShift.movements.filter(m => m.type === 'sangria').reduce((s, m) => s + m.amount, 0) 
+    : 0
+  const suprimentosTotal = currentShift 
+    ? currentShift.movements.filter(m => m.type === 'suprimento').reduce((s, m) => s + m.amount, 0) 
+    : 0
+  const expectedDrawerCash = initialFloat + cashSalesTotal + suprimentosTotal - sangriasTotal
+
+  const closeCountedNum = parseFloat(closeCountedInput.replace(',', '.'))
+  const isCloseCountedValid = !isNaN(closeCountedNum) && closeCountedNum >= 0
+  const closeDiff = isCloseCountedValid ? closeCountedNum - expectedDrawerCash : 0
+
+  const handleConfirmOpenShift = () => {
+    const floatNum = parseFloat(openShiftFloatInput.replace(',', '.'))
+    if (isNaN(floatNum) || floatNum < 0) return
+    if (onOpenShift) {
+      onOpenShift(floatNum, openShiftNotesInput || undefined)
+    }
+    setShowOpenShiftModal(false)
+    setOpenShiftFloatInput('50')
+    setOpenShiftNotesInput('')
+    setShowSuccessToast({
+      title: 'Caixa Aberto!',
+      subtitle: `Fundo de troco inicial: ${formatCurrency(floatNum)}.`,
+    })
+  }
+
+  const handleConfirmSangria = () => {
+    const amount = parseFloat(sangriaAmountInput.replace(',', '.'))
+    if (isNaN(amount) || amount <= 0) return
+    if (onAddMovement) {
+      onAddMovement('sangria', amount, sangriaReasonInput || 'Retirada da Gaveta')
+    }
+    setShowSangriaModal(false)
+    setSangriaAmountInput('')
+    setShowSuccessToast({
+      title: 'Sangria Realizada!',
+      subtitle: `Retirada de ${formatCurrency(amount)} registrada no caixa.`,
+    })
+  }
+
+  const handleConfirmCloseShift = () => {
+    if (!isCloseCountedValid) return
+    const todaySales = sales.filter(s => s.createdAt.startsWith(todayStr))
+    const totalSalesAmount = todaySales.reduce((sum, s) => sum + s.totalAmount, 0)
+    if (onCloseShift) {
+      onCloseShift(closeCountedNum, expectedDrawerCash, closeNotesInput || undefined, {
+        cashSalesTotal,
+        totalSalesAmount,
+      })
+    }
+    if (currentShift) {
+      setClosedShiftReceipt({
+        ...currentShift,
+        status: 'closed',
+        closedAt: new Date().toISOString(),
+        closingCashCounted: closeCountedNum,
+        closingCashExpected: expectedDrawerCash,
+        closingDifference: closeDiff,
+        cashSalesTotal,
+        totalSalesAmount,
+        notes: closeNotesInput || undefined,
+      })
+    }
+    setShowCloseShiftModal(false)
+    setCloseCountedInput('')
+    setCloseNotesInput('')
+  }
+
+  const generateWhatsAppReceiptText = (receipt: CashShift) => {
+    const todaySales = sales.filter(s => s.createdAt.startsWith(todayStr))
+    const totalSalesAmount = todaySales.reduce((sum, s) => sum + s.totalAmount, 0)
+    const formattedDate = new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' })
+    const sangrias = receipt.movements.filter(m => m.type === 'sangria').reduce((s, m) => s + m.amount, 0)
+    const suprimentos = receipt.movements.filter(m => m.type === 'suprimento').reduce((s, m) => s + m.amount, 0)
+
+    let msg = `📊 *FECHAMENTO DIÁRIO — RPSEC BALCÃO*\n`
+    msg += `🗓 *Data:* ${formattedDate}\n`
+    msg += `⏰ *Abertura:* ${new Date(receipt.openedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
+    if (receipt.closedAt) {
+      msg += ` | *Fechamento:* ${new Date(receipt.closedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
+    }
+    msg += `\n\n💰 *Entradas Totais:* ${formatCurrency(totalSalesAmount)} (${todaySales.length} vendas)\n\n`
+    msg += `💵 *--- CONFERÊNCIA DA GAVETA (DINHEIRO) ---*\n`
+    msg += `(+) Fundo de Troco Inicial: ${formatCurrency(receipt.initialFloat)}\n`
+    msg += `(+) Vendas em Dinheiro: ${formatCurrency(receipt.cashSalesTotal || 0)}\n`
+    if (suprimentos > 0) msg += `(+) Troco Adicionado (Suprimento): +${formatCurrency(suprimentos)}\n`
+    if (sangrias > 0) msg += `(-) Retiradas da Gaveta (Sangria): -${formatCurrency(sangrias)}\n`
+    msg += `(=) *Dinheiro Esperado na Gaveta:* ${formatCurrency(receipt.closingCashExpected || 0)}\n`
+    msg += `🔎 *Dinheiro Contado na Gaveta:* ${formatCurrency(receipt.closingCashCounted || 0)}\n`
+    const diff = receipt.closingDifference || 0
+    if (diff === 0) msg += `✅ *Batimento:* Caixa bateu 100%! (Diferença: R$ 0,00)\n`
+    else if (diff > 0) msg += `🟢 *Batimento:* Sobra de Caixa: +${formatCurrency(diff)}\n`
+    else msg += `⚠️ *Batimento:* Falta de Troco: ${formatCurrency(diff)}\n`
+    msg += `\n_RPsec Balcão — Gestão Inteligente de Salgaderia_`
+    return msg
+  }
+
   const [selectedCategory, setSelectedCategory] = useState<string>('todos')
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('pix')
   const [cashGiven, setCashGiven] = useState<string>('')
@@ -271,7 +403,105 @@ export const PDVView: React.FC<PDVViewProps> = ({
   }
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 h-full">
+    <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6 h-full">
+      {/* BARRA SUPERIOR DE OPERAÇÕES DO CAIXA: 3 BOTÕES CLAROS E DIRETOS */}
+      <div className="col-span-1 lg:col-span-12 bg-white dark:bg-[#1a1613] p-3 sm:p-4 rounded-2xl border-2 border-amber-300 dark:border-amber-900/60 shadow-xs flex flex-wrap items-center justify-between gap-3">
+        {/* Status do Caixa */}
+        <div className="flex items-center gap-3">
+          <div className={`w-11 h-11 rounded-2xl flex items-center justify-center font-black shadow-xs shrink-0 ${
+            currentShift 
+              ? 'bg-emerald-500 text-white' 
+              : 'bg-amber-500 text-stone-950'
+          }`}>
+            {currentShift ? <Unlock className="w-6 h-6" /> : <Lock className="w-6 h-6" />}
+          </div>
+          <div>
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className={`w-2.5 h-2.5 rounded-full ${currentShift ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'}`} />
+              <h2 className="font-black text-base sm:text-lg text-stone-900 dark:text-stone-100">
+                {currentShift ? 'Caixa Aberto' : 'Caixa Fechado'}
+              </h2>
+              {currentShift && (
+                <span className="bg-emerald-100 dark:bg-emerald-950/70 text-emerald-800 dark:text-emerald-300 font-black text-xs px-2.5 py-0.5 rounded-full border border-emerald-300 dark:border-emerald-800">
+                  Fundo: {formatCurrency(currentShift.initialFloat)}
+                </span>
+              )}
+            </div>
+            <p className="text-xs text-stone-500 dark:text-stone-400">
+              {currentShift 
+                ? `Aberto às ${new Date(currentShift.openedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} • Gaveta pronta para vendas e trocos`
+                : 'Abra o caixa informando o troco inicial para começar o dia'}
+            </p>
+          </div>
+        </div>
+
+        {/* Os 3 Botões de Ação Simples */}
+        <div className="flex items-center gap-2 flex-wrap">
+          {/* Botão 1: Abrir o Caixa */}
+          {!currentShift ? (
+            <button
+              type="button"
+              onClick={() => setShowOpenShiftModal(true)}
+              className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-sm shadow-md flex items-center gap-2 transition-all cursor-pointer active:scale-95"
+            >
+              <Unlock className="w-4 h-4" />
+              🟢 Abrir o Caixa
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => {
+                setShowSuccessToast({
+                  title: 'Caixa Aberto!',
+                  subtitle: `Fundo atual de troco: ${formatCurrency(currentShift.initialFloat)}.`,
+                })
+              }}
+              className="px-3.5 py-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400 font-black text-xs flex items-center gap-1.5 border border-emerald-300 dark:border-emerald-800 cursor-pointer hover:bg-emerald-100"
+            >
+              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
+              Caixa Aberto
+            </button>
+          )}
+
+          {/* Botão 2: Sangria (Retirar Dinheiro) */}
+          <button
+            type="button"
+            onClick={() => {
+              if (!currentShift) {
+                setShowOpenShiftModal(true)
+                return
+              }
+              setShowSangriaModal(true)
+            }}
+            className="px-4 py-2.5 rounded-xl bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 dark:hover:bg-rose-900/60 border-2 border-rose-400 dark:border-rose-600/80 text-rose-700 dark:text-rose-300 font-black text-sm shadow-xs flex items-center gap-2 transition-all cursor-pointer active:scale-95"
+          >
+            <ArrowDownRight className="w-4 h-4 text-rose-600 dark:text-rose-400" />
+            💸 Sangria (Retirar)
+          </button>
+
+          {/* Botão 3: Fechar o Caixa */}
+          <button
+            type="button"
+            onClick={() => {
+              if (!currentShift) {
+                alert('O caixa já está fechado!')
+                return
+              }
+              setShowCloseShiftModal(true)
+            }}
+            disabled={!currentShift}
+            className={`px-4 py-2.5 rounded-xl font-black text-sm shadow-xs flex items-center gap-2 transition-all ${
+              currentShift
+                ? 'bg-amber-400 hover:bg-amber-500 text-stone-950 border-2 border-amber-500 cursor-pointer active:scale-95'
+                : 'bg-stone-200 dark:bg-stone-800 text-stone-400 dark:text-stone-600 border border-stone-300 dark:border-stone-700 cursor-not-allowed opacity-60'
+            }`}
+          >
+            <Lock className="w-4 h-4" />
+            🔴 Fechar o Caixa
+          </button>
+        </div>
+      </div>
+
       {/* Toast de Sucesso */}
       {showSuccessToast && (
         <div className="fixed top-6 right-6 z-50 flex items-center gap-3 bg-emerald-600 text-white px-6 py-4 rounded-2xl shadow-2xl animate-bounce">
@@ -285,29 +515,7 @@ export const PDVView: React.FC<PDVViewProps> = ({
 
       {/* Lado Esquerdo: Catálogo de Produtos e Fila de Comandas (7 ou 8 colunas) */}
       <div className="lg:col-span-7 xl:col-span-8 flex flex-col gap-3">
-        {/* Aviso amigável caso o Caixa esteja fechado */}
-        {!currentShift && onOpenShiftClick && (
-          <div className="bg-amber-500/10 dark:bg-amber-500/15 border-2 border-dashed border-amber-400 dark:border-amber-600/60 p-3.5 rounded-2xl flex items-center justify-between gap-3 text-amber-950 dark:text-amber-200">
-            <div className="flex items-center gap-3">
-              <span className="p-2 rounded-xl bg-amber-400 text-stone-950 shadow-xs">
-                <Lock className="w-4 h-4" />
-              </span>
-              <div>
-                <p className="font-black text-xs">Caixa Fechado no Momento</p>
-                <p className="text-[11px] text-amber-800 dark:text-amber-300">
-                  Defina o fundo de troco inicial para manter a conferência e o batimento de gaveta 100% exatos.
-                </p>
-              </div>
-            </div>
-            <button
-              type="button"
-              onClick={onOpenShiftClick}
-              className="px-3.5 py-2 bg-amber-500 hover:bg-amber-600 active:scale-95 text-stone-950 font-black rounded-xl text-xs shadow-xs cursor-pointer whitespace-nowrap shrink-0 transition-all"
-            >
-              Abrir Caixa Agora
-            </button>
-          </div>
-        )}
+
 
         {/* Fila Visual de Comandas Abertas / Comer no Local */}
         <div className="bg-white dark:bg-[#1a1613] p-3.5 rounded-2xl border-2 border-amber-300 dark:border-amber-800/80 shadow-xs">
@@ -337,10 +545,10 @@ export const PDVView: React.FC<PDVViewProps> = ({
               <button
                 type="button"
                 onClick={() => setShowComandaModal(true)}
-                className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-stone-950 font-black text-xs flex items-center gap-1.5 transition-all shadow-xs cursor-pointer active:scale-95"
+                className="px-3.5 py-1.5 rounded-xl bg-amber-400 hover:bg-amber-500 text-stone-950 font-black text-xs flex items-center gap-1.5 transition-all shadow-xs cursor-pointer active:scale-95 border border-amber-300"
               >
-                <Plus className="w-3.5 h-3.5" />
-                Guardar este Carrinho na Fila
+                <UtensilsCrossed className="w-3.5 h-3.5" />
+                + Novo Consumo Local
               </button>
             )}
           </div>
@@ -787,25 +995,25 @@ export const PDVView: React.FC<PDVViewProps> = ({
             </div>
           )}
 
-          {/* Botão de Guardar Comanda ou Atualizar (Consumo no Local) */}
+          {/* Botão 1: Consumo Local (Mesa / Balcão) — SÓLIDO, TÁTIL E EVIDENTE */}
           {cart.length > 0 && (
             !activeComanda ? (
               <button
                 type="button"
                 onClick={() => setShowComandaModal(true)}
-                className="w-full py-2.5 px-3 rounded-xl bg-amber-500/15 dark:bg-amber-950/40 hover:bg-amber-500/25 border-2 border-amber-400 dark:border-amber-600 text-amber-950 dark:text-amber-200 font-black text-xs sm:text-sm flex items-center justify-center gap-2 transition-all cursor-pointer shadow-xs active:scale-98"
+                className="w-full py-3.5 px-4 rounded-2xl bg-amber-400 hover:bg-amber-500 active:scale-98 text-stone-950 font-black text-base shadow-md border-2 border-amber-300 dark:border-amber-400 flex items-center justify-center gap-2.5 transition-all cursor-pointer"
               >
-                <UtensilsCrossed className="w-4 h-4 text-amber-600 dark:text-amber-400" />
-                🍽️ Comer no Local / Guardar na Fila de Comanda
+                <UtensilsCrossed className="w-5 h-5 text-stone-950 shrink-0" />
+                <span>🍽️ CONSUMO LOCAL (Abrir Comanda)</span>
               </button>
             ) : (
               <button
                 type="button"
                 onClick={handleUpdateExistingComanda}
-                className="w-full py-2.5 px-3 rounded-xl bg-amber-500/15 dark:bg-amber-950/40 hover:bg-amber-500/25 border-2 border-amber-400 dark:border-amber-600 text-amber-950 dark:text-amber-200 font-black text-xs sm:text-sm flex items-center justify-center gap-2 transition-all cursor-pointer shadow-xs active:scale-98"
+                className="w-full py-3.5 px-4 rounded-2xl bg-amber-400 hover:bg-amber-500 active:scale-98 text-stone-950 font-black text-base shadow-md border-2 border-amber-300 dark:border-amber-400 flex items-center justify-center gap-2.5 transition-all cursor-pointer"
               >
-                <Save className="w-4 h-4 text-amber-600 dark:text-amber-400" />
-                💾 Salvar Alterações na Comanda (Cliente continua comendo)
+                <Save className="w-5 h-5 text-stone-950 shrink-0" />
+                <span>💾 ATUALIZAR CONSUMO LOCAL</span>
               </button>
             )
           )}
@@ -916,6 +1124,417 @@ export const PDVView: React.FC<PDVViewProps> = ({
                 className="flex-2 py-3 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-black text-sm rounded-xl cursor-pointer shadow-md transition-all active:scale-95"
               >
                 Guardar Comanda
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL 1: Abertura de Caixa Rápida no PDV */}
+      {showOpenShiftModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-fadeIn">
+          <div className="bg-white dark:bg-[#1c1815] w-full max-w-md rounded-2xl border-2 border-emerald-400 p-6 shadow-2xl flex flex-col gap-4">
+            <div className="flex items-center justify-between pb-3 border-b border-stone-200 dark:border-stone-800">
+              <div className="flex items-center gap-2.5">
+                <span className="p-2 rounded-xl bg-emerald-500 text-white font-black">
+                  <Unlock className="w-5 h-5" />
+                </span>
+                <div>
+                  <h3 className="font-black text-lg text-stone-900 dark:text-stone-100">
+                    Abertura de Caixa
+                  </h3>
+                  <p className="text-xs text-stone-500 dark:text-stone-400">
+                    Defina o fundo de troco inicial da gaveta
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowOpenShiftModal(false)}
+                className="text-stone-400 hover:text-stone-600 dark:hover:text-stone-200 font-black text-lg cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Sugestões Rápidas de 1 Toque */}
+            <div>
+              <span className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-wider block mb-2">
+                Valores Rápidos de Troco:
+              </span>
+              <div className="grid grid-cols-3 gap-2">
+                {[0, 30, 50, 100, 150, 200].map(val => (
+                  <button
+                    key={val}
+                    type="button"
+                    onClick={() => setOpenShiftFloatInput(val.toString())}
+                    className={`py-2.5 px-2 rounded-xl font-black text-xs transition-all border cursor-pointer text-center active:scale-95 ${
+                      openShiftFloatInput === val.toString()
+                        ? 'bg-emerald-500 text-white border-emerald-600 shadow-sm'
+                        : 'bg-stone-100 dark:bg-stone-800 hover:bg-emerald-100 text-stone-800 dark:text-stone-200 border-stone-200 dark:border-stone-700'
+                    }`}
+                  >
+                    {val === 0 ? 'Sem Troco (R$ 0)' : `R$ ${val},00`}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Input de Valor */}
+            <div>
+              <label className="text-xs font-bold text-stone-700 dark:text-stone-300 uppercase tracking-wider block mb-1">
+                Ou digite o valor exato (R$):
+              </label>
+              <div className="relative">
+                <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-stone-400 font-bold text-base">R$</span>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  placeholder="0,00"
+                  value={openShiftFloatInput}
+                  onChange={e => setOpenShiftFloatInput(e.target.value)}
+                  className="w-full bg-white dark:bg-stone-900 border-2 border-stone-300 dark:border-stone-700 rounded-xl pl-10 pr-4 py-2.5 text-base font-black text-stone-900 dark:text-stone-100 focus:outline-emerald-500"
+                  autoFocus
+                />
+              </div>
+            </div>
+
+            {/* Observações Opcionais */}
+            <div>
+              <label className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-wider block mb-1">
+                Observações de Abertura (Opcional):
+              </label>
+              <input
+                type="text"
+                placeholder="Ex: Notas miúdas de 2 e 5 reais + moedas"
+                value={openShiftNotesInput}
+                onChange={e => setOpenShiftNotesInput(e.target.value)}
+                className="w-full bg-white dark:bg-stone-900 border border-stone-300 dark:border-stone-700 rounded-xl px-3.5 py-2 text-xs font-bold text-stone-900 dark:text-stone-100 focus:outline-emerald-500"
+              />
+            </div>
+
+            <div className="flex items-center gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setShowOpenShiftModal(false)}
+                className="flex-1 py-3 bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 font-bold text-sm rounded-xl cursor-pointer hover:bg-stone-200 dark:hover:bg-stone-700 transition-all"
+              >
+                Voltar
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmOpenShift}
+                className="flex-2 py-3 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-black text-sm rounded-xl cursor-pointer shadow-md transition-all active:scale-95"
+              >
+                ABRIR CAIXA AGORA
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL 2: Sangria Rápida no PDV (Retirar Dinheiro) */}
+      {showSangriaModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-fadeIn">
+          <div className="bg-white dark:bg-[#1c1815] w-full max-w-md rounded-2xl border-2 border-rose-400 p-6 shadow-2xl flex flex-col gap-4">
+            <div className="flex items-center justify-between pb-3 border-b border-stone-200 dark:border-stone-800">
+              <div className="flex items-center gap-2">
+                <span className="p-2 rounded-xl bg-rose-500 text-white font-black">
+                  <ArrowDownRight className="w-5 h-5" />
+                </span>
+                <div>
+                  <h3 className="font-black text-lg text-stone-900 dark:text-stone-100">
+                    Sangria (Retirar Dinheiro)
+                  </h3>
+                  <p className="text-xs text-stone-500 dark:text-stone-400">
+                    O caixa continua aberto vendendo normalmente
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowSangriaModal(false)}
+                className="text-stone-400 hover:text-stone-600 dark:hover:text-stone-200 font-black text-lg cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Motivos Rápidos */}
+            <div>
+              <span className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-wider block mb-2">
+                Motivo da Retirada:
+              </span>
+              <div className="grid grid-cols-2 gap-2">
+                {['Entrega de Gás', 'Pagamento Fornecedor', 'Sangria de Segurança', 'Outro Motivo'].map(r => (
+                  <button
+                    key={r}
+                    type="button"
+                    onClick={() => setSangriaReasonInput(r)}
+                    className={`py-2 px-2.5 rounded-xl font-bold text-xs transition-all border cursor-pointer text-center ${
+                      sangriaReasonInput === r
+                        ? 'bg-rose-500 text-white border-rose-600 shadow-xs'
+                        : 'bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 border-stone-200 dark:border-stone-700 hover:bg-stone-200'
+                    }`}
+                  >
+                    {r}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Input de Valor */}
+            <div>
+              <label className="text-xs font-bold text-stone-700 dark:text-stone-300 uppercase tracking-wider block mb-1">
+                Valor Retirado da Gaveta (R$):
+              </label>
+              <div className="relative">
+                <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-stone-400 font-bold text-base">R$</span>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  placeholder="0,00"
+                  value={sangriaAmountInput}
+                  onChange={e => setSangriaAmountInput(e.target.value)}
+                  className="w-full bg-white dark:bg-stone-900 border-2 border-stone-300 dark:border-stone-700 rounded-xl pl-10 pr-4 py-2.5 text-base font-black text-stone-900 dark:text-stone-100 focus:outline-rose-500"
+                  autoFocus
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setShowSangriaModal(false)}
+                className="flex-1 py-3 bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 font-bold text-sm rounded-xl cursor-pointer hover:bg-stone-200 dark:hover:bg-stone-700 transition-all"
+              >
+                Voltar
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmSangria}
+                disabled={!sangriaAmountInput || parseFloat(sangriaAmountInput) <= 0}
+                className="flex-2 py-3 bg-rose-600 hover:bg-rose-700 text-white font-black text-sm rounded-xl cursor-pointer shadow-md transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                CONFIRMAR SANGRIA
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL 3: Fechamento de Caixa no PDV (Batimento Cego & WhatsApp) */}
+      {showCloseShiftModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-fadeIn">
+          <div className="bg-white dark:bg-[#1c1815] w-full max-w-lg rounded-2xl border-2 border-amber-400 p-6 shadow-2xl flex flex-col gap-4">
+            <div className="flex items-center justify-between pb-3 border-b border-stone-200 dark:border-stone-800">
+              <div className="flex items-center gap-2.5">
+                <span className="p-2 rounded-xl bg-amber-500 text-stone-950 font-black">
+                  <Lock className="w-5 h-5" />
+                </span>
+                <div>
+                  <h3 className="font-black text-lg text-stone-900 dark:text-stone-100">
+                    Fechamento de Caixa do Dia
+                  </h3>
+                  <p className="text-xs text-stone-500 dark:text-stone-400">
+                    Conferência e batimento físico da gaveta
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowCloseShiftModal(false)}
+                className="text-stone-400 hover:text-stone-600 dark:hover:text-stone-200 font-black text-lg cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Resumo da Gaveta Matemática */}
+            <div className="bg-amber-50/60 dark:bg-stone-900 p-3.5 rounded-xl border border-amber-200 dark:border-amber-900/40 space-y-1.5 text-xs">
+              <div className="flex justify-between font-bold text-stone-600 dark:text-stone-300">
+                <span>(+) Fundo Inicial:</span>
+                <span>{formatCurrency(initialFloat)}</span>
+              </div>
+              <div className="flex justify-between font-bold text-emerald-600">
+                <span>(+) Vendas em Dinheiro:</span>
+                <span>+{formatCurrency(cashSalesTotal)}</span>
+              </div>
+              {suprimentosTotal > 0 && (
+                <div className="flex justify-between font-bold text-teal-600">
+                  <span>(+) Entradas de Troco:</span>
+                  <span>+{formatCurrency(suprimentosTotal)}</span>
+                </div>
+              )}
+              {sangriasTotal > 0 && (
+                <div className="flex justify-between font-bold text-rose-600">
+                  <span>(-) Sangrias (Retiradas):</span>
+                  <span>-{formatCurrency(sangriasTotal)}</span>
+                </div>
+              )}
+              <div className="flex justify-between font-black text-sm pt-1.5 border-t border-amber-200 dark:border-stone-800 text-stone-900 dark:text-stone-100">
+                <span>(=) Dinheiro Esperado na Gaveta:</span>
+                <span className="text-amber-800 dark:text-amber-300">{formatCurrency(expectedDrawerCash)}</span>
+              </div>
+            </div>
+
+            {/* Campo da Contagem Física */}
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <label className="text-xs font-bold text-stone-700 dark:text-stone-300 uppercase tracking-wider">
+                  Quanto dinheiro físico tem na gaveta? *
+                </label>
+                <button
+                  type="button"
+                  onClick={() => setCloseCountedInput(expectedDrawerCash.toFixed(2))}
+                  className="text-xs font-black text-amber-800 dark:text-amber-300 hover:underline cursor-pointer flex items-center gap-1"
+                >
+                  ⚡ Copiar Esperado
+                </button>
+              </div>
+              <div className="relative">
+                <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-stone-400 font-bold text-base">R$</span>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  placeholder="0,00"
+                  value={closeCountedInput}
+                  onChange={e => setCloseCountedInput(e.target.value)}
+                  className="w-full bg-white dark:bg-stone-900 border-2 border-stone-300 dark:border-stone-700 rounded-xl pl-10 pr-4 py-2.5 text-lg font-black text-stone-900 dark:text-stone-100 focus:outline-amber-500"
+                  autoFocus
+                />
+              </div>
+            </div>
+
+            {/* Diagnóstico Imediato de Cores */}
+            {isCloseCountedValid && (
+              <div className={`p-3 rounded-xl border text-xs font-black flex items-center justify-between ${
+                closeDiff === 0
+                  ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800'
+                  : closeDiff > 0
+                  ? 'bg-sky-50 dark:bg-sky-950/40 text-sky-800 dark:text-sky-300 border-sky-300 dark:border-sky-800'
+                  : 'bg-rose-50 dark:bg-rose-950/40 text-rose-800 dark:text-rose-300 border-rose-300 dark:border-rose-800'
+              }`}>
+                <span>Resultado do Batimento:</span>
+                <span>
+                  {closeDiff === 0 
+                    ? '✓ Caixa Bateu 100% (R$ 0,00)' 
+                    : closeDiff > 0 
+                    ? `+${formatCurrency(closeDiff)} (Sobra de Caixa)` 
+                    : `${formatCurrency(closeDiff)} (Quebra / Falta de Troco)`}
+                </span>
+              </div>
+            )}
+
+            {/* Observações de Fechamento */}
+            <div>
+              <label className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-wider block mb-1">
+                Observações Finais (Opcional):
+              </label>
+              <input
+                type="text"
+                placeholder="Ex: Tudo conferido com a mãe"
+                value={closeNotesInput}
+                onChange={e => setCloseNotesInput(e.target.value)}
+                className="w-full bg-white dark:bg-stone-900 border border-stone-300 dark:border-stone-700 rounded-xl px-3.5 py-2 text-xs font-bold text-stone-900 dark:text-stone-100 focus:outline-amber-500"
+              />
+            </div>
+
+            <div className="flex items-center gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setShowCloseShiftModal(false)}
+                className="flex-1 py-3 bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 font-bold text-sm rounded-xl cursor-pointer hover:bg-stone-200 dark:hover:bg-stone-700 transition-all"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmCloseShift}
+                disabled={!isCloseCountedValid}
+                className="flex-2 py-3 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-stone-950 font-black text-sm rounded-xl cursor-pointer shadow-md transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                CONFIRMAR E FECHAR CAIXA
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL 4: Comprovante de Fechamento & Envio no WhatsApp */}
+      {closedShiftReceipt && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-xs p-4 animate-fadeIn">
+          <div className="bg-white dark:bg-[#1c1815] w-full max-w-lg rounded-2xl border-2 border-emerald-400 p-6 shadow-2xl flex flex-col gap-4 text-center">
+            <div className="w-16 h-16 rounded-3xl bg-emerald-100 dark:bg-emerald-950/70 text-emerald-600 mx-auto flex items-center justify-center shadow-xs">
+              <CheckCircle2 className="w-10 h-10" />
+            </div>
+
+            <div>
+              <span className="text-xs uppercase font-black text-emerald-700 dark:text-emerald-400 tracking-wider">
+                Turno Concluído com Sucesso
+              </span>
+              <h2 className="text-2xl font-black text-stone-900 dark:text-stone-100 mt-0.5">
+                Caixa do Dia Fechado!
+              </h2>
+              <p className="text-xs text-stone-500 dark:text-stone-400">
+                O caixa foi arquivado no histórico. O extrato está pronto para enviar no WhatsApp.
+              </p>
+            </div>
+
+            {/* Resumo Rápido */}
+            <div className="bg-stone-50 dark:bg-stone-900 p-4 rounded-xl border border-stone-200 dark:border-stone-800 text-left text-xs space-y-1.5">
+              <div className="flex justify-between font-bold">
+                <span className="text-stone-500">Fundo Inicial:</span>
+                <span className="text-stone-900 dark:text-stone-100">{formatCurrency(closedShiftReceipt.initialFloat)}</span>
+              </div>
+              <div className="flex justify-between font-bold">
+                <span className="text-stone-500">Vendas em Dinheiro:</span>
+                <span className="text-emerald-600">{formatCurrency(closedShiftReceipt.cashSalesTotal || 0)}</span>
+              </div>
+              <div className="flex justify-between font-bold">
+                <span className="text-stone-500">Dinheiro Esperado na Gaveta:</span>
+                <span className="text-stone-900 dark:text-stone-100 font-black">{formatCurrency(closedShiftReceipt.closingCashExpected || 0)}</span>
+              </div>
+              <div className="flex justify-between font-bold">
+                <span className="text-stone-500">Dinheiro Físico Contado:</span>
+                <span className="text-stone-900 dark:text-stone-100 font-black">{formatCurrency(closedShiftReceipt.closingCashCounted || 0)}</span>
+              </div>
+              <div className="flex justify-between font-black pt-1 border-t border-stone-200 dark:border-stone-800 text-sm">
+                <span>Resultado do Batimento:</span>
+                <span className={
+                  (closedShiftReceipt.closingDifference || 0) === 0
+                    ? 'text-emerald-600'
+                    : (closedShiftReceipt.closingDifference || 0) > 0
+                    ? 'text-sky-600'
+                    : 'text-rose-600'
+                }>
+                  {(closedShiftReceipt.closingDifference || 0) === 0 
+                    ? '✓ Caixa Bateu 100%' 
+                    : (closedShiftReceipt.closingDifference || 0) > 0
+                    ? `+${formatCurrency(closedShiftReceipt.closingDifference || 0)} (Sobra)`
+                    : `${formatCurrency(closedShiftReceipt.closingDifference || 0)} (Falta)`}
+                </span>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setClosedShiftReceipt(null)}
+                className="flex-1 py-3 bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 font-bold text-sm rounded-xl cursor-pointer hover:bg-stone-200 dark:hover:bg-stone-700 transition-all"
+              >
+                Concluir
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const txt = encodeURIComponent(generateWhatsAppReceiptText(closedShiftReceipt))
+                  window.open(`https://api.whatsapp.com/send?text=${txt}`, '_blank')
+                }}
+                className="flex-2 py-3 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-black text-sm rounded-xl cursor-pointer shadow-md transition-all active:scale-95 flex items-center justify-center gap-1.5"
+              >
+                <Share2 className="w-4 h-4" />
+                Enviar Extrato no WhatsApp
               </button>
             </div>
           </div>

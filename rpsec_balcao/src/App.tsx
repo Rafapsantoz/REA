@@ -338,7 +338,9 @@ export function App() {
             onSaveComanda={handleSaveComanda}
             onRemoveComanda={handleRemoveComanda}
             currentShift={currentShift}
-            onOpenShiftClick={() => setActiveTab('summary')}
+            onOpenShift={handleOpenShift}
+            onAddMovement={handleAddMovement}
+            onCloseShift={handleCloseShift}
           />
         </div>
 

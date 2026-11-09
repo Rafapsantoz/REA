@@ -692,6 +692,14 @@ html_content = """<!DOCTYPE html>
   <h1>🛒 O PDV / Balcão: Vendas em Alta Velocidade</h1>
   <p>A tela de vendas foi otimizada para toque rápido (touchscreen de tablet ou notebook). O atendente toca nos salgados com a mão direita e escolhe o pagamento com a mão esquerda.</p>
 
+  <h2>Barra de Caixa no Topo do Balcão (3 Botões Rápidos)</h2>
+  <p>Para manter o fluxo da salgaderia ágil e sem distrações, o atendente tem acesso imediato a 3 botões essenciais no topo do PDV:</p>
+  <ul>
+    <li><strong>🟢 Abrir o Caixa:</strong> Define o fundo de troco inicial (R$ 30, R$ 50, R$ 100...) em um único clique assim que o dia começa.</li>
+    <li><strong>💸 Sangria (Retirar):</strong> Registra retiradas instantâneas em dinheiro (ex.: pagar botijão de gás ou fornecedor) sem sair da tela.</li>
+    <li><strong>🔴 Fechar o Caixa:</strong> Abre o batimento de gaveta na hora, compara o dinheiro esperado com o dinheiro físico contado e gera o extrato formatado para envio no WhatsApp.</li>
+  </ul>
+
   <h2>Componentes da Interface de Vendas</h2>
   <table class="custom-table avoid-break">
     <thead>
@@ -702,6 +710,11 @@ html_content = """<!DOCTYPE html>
       </tr>
     </thead>
     <tbody>
+      <tr>
+        <td><strong>Barra Superior de Caixa</strong></td>
+        <td>Controle do turno no topo da tela</td>
+        <td>3 Botões diretos: <strong>🟢 Abrir Caixa</strong>, <strong>💸 Sangria</strong> e <strong>🔴 Fechar Caixa</strong> sem sair do balcão.</td>
+      </tr>
       <tr>
         <td><strong>Filtros de Categoria</strong></td>
         <td>Separa itens para visualização limpa</td>
@@ -768,8 +781,8 @@ html_content = """<!DOCTYPE html>
     <div class="step-item">
       <div class="step-num">2</div>
       <div class="step-details">
-        <h4>Toque em "Comer no Local / Guardar Comanda"</h4>
-        <p>Aparece uma janela rápida para você identificar o cliente. O sistema já sugere atalhos de 1 toque: <em>Mesa 1</em>, <em>Mesa 2</em>, <em>Mesa 3</em>, <em>Balcão</em> ou campo livre para apelidos (ex.: "Rapaz de Boné Azul").</p>
+        <h4>Toque no botão "🍽️ CONSUMO LOCAL (Abrir Comanda)"</h4>
+        <p>Localizado em destaque amarelo tátil no rodapé do carrinho, logo acima de <strong>FINALIZAR VENDA</strong>. Abre uma janela rápida com atalhos de 1 toque: <em>Mesa 1</em>, <em>Mesa 2</em>, <em>Mesa 3</em>, <em>Mesa 4</em>, <em>Balcão</em> ou campo livre para apelidos (ex.: "Rapaz de Boné Azul").</p>
       </div>
     </div>
     <div class="step-item">
