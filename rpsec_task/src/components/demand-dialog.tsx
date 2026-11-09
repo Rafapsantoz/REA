@@ -156,11 +156,11 @@ export function DemandDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-[520px] sm:rounded-xl">
         <DialogHeader>
-          <DialogTitle>{demand ? "Editar Demanda" : "Nova Demanda"}</DialogTitle>
+          <DialogTitle>{demand ? "Editar Tarefa" : "Nova Tarefa"}</DialogTitle>
           <DialogDescription>
             {demand
-              ? "Atualize os detalhes, prioridade ou prazo da demanda."
-              : "Cadastre um novo chamado ou pendência e posicione no seu quadro."}
+              ? "Atualize os detalhes, prioridade ou prazo da tarefa."
+              : "Cadastre uma nova tarefa ou chamado e posicione no seu quadro."}
           </DialogDescription>
         </DialogHeader>
 
@@ -357,7 +357,7 @@ export function DemandDialog({
             </Button>
             <Button type="submit" disabled={isSubmitting}>
               {isSubmitting && <Loader2 className="size-4 animate-spin mr-2" />}
-              {demand ? "Salvar alterações" : "Criar Demanda"}
+              {demand ? "Salvar alterações" : "Criar Tarefa"}
             </Button>
           </DialogFooter>
         </form>

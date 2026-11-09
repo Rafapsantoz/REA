@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   Calendar as CalendarIcon,
   CalendarDays,
@@ -85,8 +86,26 @@ export function SidebarPanel({
   onLogout,
   onNavigate,
 }: SidebarPanelProps) {
+  const { t } = useTranslation();
   const [isAdding, setIsAdding] = useState(false);
   const [draftName, setDraftName] = useState("");
+
+  const getViewLabel = (val: ViewKey) => {
+    switch (val) {
+      case "all":
+        return t("sidebar.all", "Todas as demandas");
+      case "daily":
+        return t("sidebar.daily", "Hoje (Daily)");
+      case "weekly":
+        return t("sidebar.weekly", "Esta Semana (Weekly)");
+      case "monthly":
+        return t("sidebar.monthly", "Este Mês (Monthly)");
+      case "long_term":
+        return t("sidebar.longTerm", "Longo Prazo");
+      default:
+        return val;
+    }
+  };
 
   const initials = userName
     .split(" ")
@@ -114,7 +133,7 @@ export function SidebarPanel({
 
       <div className="flex min-h-0 flex-1 flex-col overflow-y-auto pb-3">
         <p className="px-4 pb-1.5 pt-5 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
-          Views
+          {t("sidebar.views", "VISUALIZAÇÕES")}
         </p>
         <nav className="flex flex-col gap-0.5 px-2">
           {VIEWS.map((view) => {
@@ -132,7 +151,7 @@ export function SidebarPanel({
                 }}
               >
                 <Icon className="size-4 shrink-0" />
-                <span className="truncate">{view.label}</span>
+                <span className="truncate">{getViewLabel(view.value)}</span>
                 <CountBadge count={counts.views[view.value]} active={active} />
               </button>
             );
@@ -140,7 +159,7 @@ export function SidebarPanel({
         </nav>
 
         <p className="px-4 pb-1.5 pt-5 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
-          Categories
+          {t("sidebar.categories", "CATEGORIAS")}
         </p>
         <div className="flex flex-col gap-0.5 px-2">
           <button
@@ -156,7 +175,7 @@ export function SidebarPanel({
             }}
           >
             <Layers className="size-4 shrink-0" />
-            <span className="truncate">All categories</span>
+            <span className="truncate">{t("sidebar.allCategories", "Todas as categorias")}</span>
             <CountBadge
               count={Object.values(counts.categories).reduce(
                 (total, value) => total + value,
@@ -220,13 +239,13 @@ export function SidebarPanel({
                     setDraftName("");
                   }
                 }}
-                placeholder="Category name"
-                aria-label="New category name"
+                placeholder={t("sidebar.categoryPlaceholder", "Nome da categoria")}
+                aria-label={t("sidebar.categoryPlaceholder", "Nome da categoria")}
                 className="h-8 w-full rounded-sm border border-input bg-background px-2 text-[13px] text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring"
               />
               <button
                 type="button"
-                aria-label="Save category"
+                aria-label="Salvar"
                 onClick={() => void handleCreate()}
                 className="inline-flex size-7 shrink-0 items-center justify-center rounded-md text-primary hover:bg-sidebar-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring"
               >
@@ -234,7 +253,7 @@ export function SidebarPanel({
               </button>
               <button
                 type="button"
-                aria-label="Cancel"
+                aria-label="Cancelar"
                 onClick={() => {
                   setIsAdding(false);
                   setDraftName("");
@@ -251,7 +270,7 @@ export function SidebarPanel({
               onClick={() => setIsAdding(true)}
             >
               <Plus className="size-4" />
-              New category
+              {t("sidebar.newCategory", "Nova categoria")}
             </button>
           )}
         </div>
@@ -266,7 +285,7 @@ export function SidebarPanel({
         </span>
         <button
           type="button"
-          aria-label="Sign out"
+          aria-label={t("sidebar.signOut", "Sair")}
           onClick={onLogout}
           className="inline-flex size-8 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors duration-fast ease-standard hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring motion-reduce:transition-none"
         >

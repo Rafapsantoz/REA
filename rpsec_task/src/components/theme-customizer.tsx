@@ -27,13 +27,6 @@ export function ThemeCustomizer() {
           ) : (
             <Laptop className="size-4" />
           )}
-          {/* Indicador sutil da cor ativa */}
-          <span
-            className="absolute bottom-1.5 right-1.5 size-2 rounded-full border border-background"
-            style={{
-              backgroundColor: colors.find((c) => c.id === color)?.dotColor || "#7c3aed",
-            }}
-          />
         </Button>
       </PopoverTrigger>
 

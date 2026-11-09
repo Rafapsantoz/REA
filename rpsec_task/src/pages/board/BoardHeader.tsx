@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Columns3, Flame, Menu, Plus, Search, Sparkles, Trash2, X } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,6 +18,7 @@ import {
 import { categoryDotClass } from "@/lib/category-colors";
 import { cn } from "@/lib/utils";
 import { ThemeCustomizer } from "@/components/theme-customizer";
+import { LanguageSwitcher } from "@/components/language-switcher";
 import type { CategoriesDoapp } from "@/types/doapp";
 import type { KanbanGroupBy } from "@/components/kanban/kanban-board";
 
@@ -49,6 +51,7 @@ export function BoardHeader({
   onClearAllDemands,
   totalDemandsCount = 0,
 }: BoardHeaderProps) {
+  const { t } = useTranslation();
   const [clearDialogOpen, setClearDialogOpen] = useState(false);
   const [isClearing, setIsClearing] = useState(false);
 
@@ -115,7 +118,7 @@ export function BoardHeader({
             title="Quadro com colunas de Status (Pendente, Em Progresso, Concluído)"
           >
             <Columns3 className="size-3.5" />
-            <span>Por Status</span>
+            <span>{t("header.byStatus", "Por Status")}</span>
           </button>
           <button
             type="button"
@@ -129,7 +132,7 @@ export function BoardHeader({
             title="Quadro com colunas de Prioridade (Urgente, Alta, Normal, Baixa). Arraste para mudar a prioridade!"
           >
             <Flame className="size-3.5 text-rose-500" />
-            <span>Por Prioridade</span>
+            <span>{t("header.byPriority", "Por Prioridade")}</span>
           </button>
         </div>
       </div>
@@ -148,7 +151,7 @@ export function BoardHeader({
             onClick={() => onGroupByChange("status")}
           >
             <Columns3 className="size-3.5" />
-            <span>Status</span>
+            <span>{t("header.byStatus", "Status")}</span>
           </button>
           <button
             type="button"
@@ -161,21 +164,25 @@ export function BoardHeader({
             onClick={() => onGroupByChange("priority")}
           >
             <Flame className="size-3.5 text-rose-500" />
-            <span>Prioridade</span>
+            <span>{t("header.byPriority", "Prioridade")}</span>
           </button>
         </div>
 
-        <div className="relative min-w-0 flex-1 md:w-[200px] md:flex-none">
+        <div className="relative min-w-0 flex-1 md:w-[180px] md:flex-none">
           <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             value={search}
             onChange={(event) => onSearchChange(event.target.value)}
-            placeholder="Pesquisar chamados..."
+            placeholder={t("header.searchPlaceholder", "Pesquisar chamados...")}
             aria-label="Pesquisar chamados"
             className="h-9 pl-9 text-xs"
           />
         </div>
 
+        {/* Seletor de Idioma (PT / EN) */}
+        <LanguageSwitcher />
+
+        {/* Personalizador de Tema e Cor (sem a bolinha azul) */}
         <ThemeCustomizer />
 
         {onClearAllDemands && totalDemandsCount > 0 && (
@@ -186,26 +193,32 @@ export function BoardHeader({
                 variant="ghost"
                 size="icon"
                 className="size-9 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-                title="Limpar todas as demandas do quadro (iniciar do zero)"
+                title={t("header.clearBoard", "Limpar quadro de demandas")}
               >
                 <Trash2 className="size-4" />
               </Button>
             </AlertDialogTrigger>
             <AlertDialogContent>
               <AlertDialogHeader>
-                <AlertDialogTitle>Limpar quadro de demandas?</AlertDialogTitle>
+                <AlertDialogTitle>{t("header.clearBoardTitle", "Limpar quadro de demandas?")}</AlertDialogTitle>
                 <AlertDialogDescription>
-                  Isso removerá as {totalDemandsCount} demandas cadastradas para você iniciar o dia com a base limpa e pronta para os novos chamados.
+                  {t(
+                    "header.clearBoardDesc",
+                    "Isso removerá as {{count}} demandas cadastradas para você iniciar o dia com a base limpa e pronta para os novos chamados.",
+                    { count: totalDemandsCount },
+                  )}
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
-                <AlertDialogCancel disabled={isClearing}>Cancelar</AlertDialogCancel>
+                <AlertDialogCancel disabled={isClearing}>
+                  {t("header.cancel", "Cancelar")}
+                </AlertDialogCancel>
                 <AlertDialogAction
                   onClick={handleConfirmClear}
                   disabled={isClearing}
                   className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                 >
-                  {isClearing ? "Limpando..." : "Sim, Limpar Base"}
+                  {isClearing ? "Limpando..." : t("header.clearBoardConfirm", "Sim, Limpar Base")}
                 </AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>
@@ -220,13 +233,12 @@ export function BoardHeader({
           title="Adicionar chamado colando texto ou print de tela"
         >
           <Sparkles className="size-3.5" />
-          <span className="hidden sm:inline">Adicionar com IA</span>
-          <span className="sm:hidden">IA</span>
+          <span>{t("header.addWithAi", "Adicionar com IA")}</span>
         </Button>
 
         <Button type="button" className="h-9 shrink-0 gap-1.5 text-xs px-3" onClick={onCreate}>
           <Plus className="size-4" />
-          Nova demanda
+          <span>{t("header.newTask", "Nova Tarefa")}</span>
         </Button>
       </div>
     </header>

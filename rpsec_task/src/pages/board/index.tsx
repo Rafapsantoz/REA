@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Flame, Inbox, Sparkles } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 import { SidebarPanel, type CategoryActionResult } from "@/components/app-sidebar";
 import { DemandDialog } from "@/components/demand-dialog";
@@ -65,15 +66,20 @@ function BoardSkeleton() {
 }
 
 function EmptyBoard({ onCreate, onOpenAi }: { onCreate: () => void; onOpenAi: () => void }) {
+  const { t } = useTranslation();
+
   return (
     <div className="flex flex-col items-center justify-center gap-4 rounded-xl border border-dashed border-border px-6 py-16 text-center">
       <Inbox className="size-10 text-muted-foreground/40" />
       <div className="flex flex-col gap-2">
         <h2 className="text-lg font-semibold tracking-[-0.01em] text-foreground">
-          Seu quadro de demandas está limpo e pronto!
+          {t("empty.title", "Seu quadro de demandas está limpo e pronto!")}
         </h2>
         <p className="max-w-[48ch] text-sm leading-relaxed text-muted-foreground">
-          A base foi limpa para você lançar os casos reais de trabalho hoje. Cole prints com <strong>Ctrl+V</strong> no botão de IA ou cadastre manualmente.
+          {t(
+            "empty.desc",
+            "A base foi limpa para você lançar os casos reais de trabalho hoje. Cole prints com Ctrl+V no botão de IA ou cadastre manualmente.",
+          )}
         </p>
       </div>
       <div className="flex items-center gap-3">
@@ -84,10 +90,10 @@ function EmptyBoard({ onCreate, onOpenAi }: { onCreate: () => void; onOpenAi: ()
           onClick={onOpenAi}
         >
           <Sparkles className="size-4" />
-          Adicionar Chamados com IA
+          {t("empty.addWithAi", "Adicionar com IA")}
         </Button>
         <Button type="button" onClick={onCreate}>
-          Nova Demanda Manual
+          {t("empty.newTask", "Nova Tarefa")}
         </Button>
       </div>
     </div>
@@ -95,6 +101,7 @@ function EmptyBoard({ onCreate, onOpenAi }: { onCreate: () => void; onOpenAi: ()
 }
 
 const Board = () => {
+  const { t } = useTranslation();
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -179,8 +186,22 @@ const Board = () => {
       ? null
       : categories.find((category) => category.id === activeCategoryId) ?? null;
 
-  const viewLabel =
-    VIEWS.find((option) => option.value === view)?.label ?? "Todas as demandas";
+  const viewLabel = useMemo(() => {
+    switch (view) {
+      case "all":
+        return t("sidebar.all", "Todas as demandas");
+      case "daily":
+        return t("sidebar.daily", "Hoje (Daily)");
+      case "weekly":
+        return t("sidebar.weekly", "Esta Semana (Weekly)");
+      case "monthly":
+        return t("sidebar.monthly", "Este Mês (Monthly)");
+      case "long_term":
+        return t("sidebar.longTerm", "Longo Prazo");
+      default:
+        return t("sidebar.all", "Todas as demandas");
+    }
+  }, [view, t]);
 
   const updateParams = (changes: Record<string, string | null>) => {
     const next = new URLSearchParams(searchParams);

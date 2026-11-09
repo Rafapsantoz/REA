@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { useDroppable } from "@dnd-kit/core";
 import { Plus } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 import { DemandCard } from "@/components/kanban/demand-card";
 import type { LaneDefinition, PriorityLaneDefinition } from "@/components/kanban/lanes";
@@ -46,6 +47,30 @@ export function KanbanColumn({
   );
 
   const LaneIcon = lane.icon;
+  const { t } = useTranslation();
+
+  const laneTitle = useMemo(() => {
+    switch (lane.key) {
+      case "pending":
+        return t("lanes.pending", "Pendente");
+      case "in_progress":
+        return t("lanes.inProgress", "Em Progresso");
+      case "done":
+        return t("lanes.done", "Concluído");
+      case "overdue":
+        return t("lanes.overdue", "Atrasado");
+      case "urgent":
+        return t("lanes.urgent", "Urgente (Hoje)");
+      case "high":
+        return t("lanes.high", "Alta Prioridade");
+      case "normal":
+        return t("lanes.normal", "Normal / Média");
+      case "low":
+        return t("lanes.low", "Baixa / Standby");
+      default:
+        return lane.label;
+    }
+  }, [lane.key, lane.label, t]);
 
   return (
     <section
@@ -68,7 +93,7 @@ export function KanbanColumn({
             lane.style.title,
           )}
         >
-          {lane.label}
+          {laneTitle}
         </h2>
         <span
           className={cn(
