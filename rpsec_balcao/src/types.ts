@@ -129,6 +129,8 @@ export interface CashShift {
   closingCashCounted?: number // Dinheiro contado fisicamente na gaveta
   closingCashExpected?: number // Dinheiro esperado pelo sistema
   closingDifference?: number // Diferença (sobra positiva ou quebra negativa)
+  cashSalesTotal?: number // Total de vendas em dinheiro durante o turno
+  totalSalesAmount?: number // Total geral vendido no turno
   notes?: string
 }
 

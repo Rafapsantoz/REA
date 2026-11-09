@@ -384,7 +384,12 @@ export function saveShiftHistory(history: CashShift[]): void {
   localStorage.setItem(STORAGE_KEYS.SHIFT_HISTORY, JSON.stringify(history))
 }
 
-export function closeShift(countedCash: number, expectedCash: number, notes?: string): { closedShift: CashShift; history: CashShift[] } | null {
+export function closeShift(
+  countedCash: number, 
+  expectedCash: number, 
+  notes?: string,
+  extraData?: { cashSalesTotal?: number; totalSalesAmount?: number }
+): { closedShift: CashShift; history: CashShift[] } | null {
   const current = getCurrentShift()
   if (!current) return null
   const diff = countedCash - expectedCash
@@ -395,6 +400,8 @@ export function closeShift(countedCash: number, expectedCash: number, notes?: st
     closingCashCounted: countedCash,
     closingCashExpected: expectedCash,
     closingDifference: diff,
+    cashSalesTotal: extraData?.cashSalesTotal,
+    totalSalesAmount: extraData?.totalSalesAmount,
     notes: notes?.trim() || current.notes,
   }
   saveCurrentShift(null)

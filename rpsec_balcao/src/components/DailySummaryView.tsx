@@ -45,7 +45,7 @@ interface DailySummaryViewProps {
   shiftHistory: CashShift[]
   onOpenShift: (initialFloat: number, notes?: string) => void
   onAddMovement: (type: CashMovementType, amount: number, description: string) => void
-  onCloseShift: (countedCash: number, expectedCash: number, notes?: string) => void
+  onCloseShift: (countedCash: number, expectedCash: number, notes?: string, extraData?: { cashSalesTotal?: number; totalSalesAmount?: number }) => void
   onRestoreData?: (products: Product[], sales: Sale[], expenses: Expense[]) => void
   onMarkCreditPaid?: (saleId: string, method: PaymentMethod) => void
 }
@@ -99,13 +99,27 @@ export const DailySummaryView: React.FC<DailySummaryViewProps> = ({
   // Saldo Líquido
   const netBalance = totalSalesAmount - totalExpensesAmount
 
-  // Quebra por pagamento
-  const cashTotal = todaySales
-    .filter(s => s.paymentMethod === 'dinheiro' || (s.paymentMethod === 'fiado' && s.isCreditPaid && s.creditPaidMethod === 'dinheiro'))
+  // Quebra por pagamento (inclui vendas diretas e recebimentos de fiado ocorridos hoje)
+  const cashTotal = sales
+    .filter(s => {
+      if (s.paymentMethod === 'dinheiro' && s.createdAt.startsWith(todayStr)) return true
+      if (s.paymentMethod === 'fiado' && s.isCreditPaid && s.creditPaidMethod === 'dinheiro') {
+        const paidDate = s.creditPaidAt ? s.creditPaidAt.split('T')[0] : s.createdAt.split('T')[0]
+        return paidDate === todayStr
+      }
+      return false
+    })
     .reduce((sum, s) => sum + s.totalAmount, 0)
 
-  const pixTotal = todaySales
-    .filter(s => s.paymentMethod === 'pix' || (s.paymentMethod === 'fiado' && s.isCreditPaid && s.creditPaidMethod === 'pix'))
+  const pixTotal = sales
+    .filter(s => {
+      if (s.paymentMethod === 'pix' && s.createdAt.startsWith(todayStr)) return true
+      if (s.paymentMethod === 'fiado' && s.isCreditPaid && s.creditPaidMethod === 'pix') {
+        const paidDate = s.creditPaidAt ? s.creditPaidAt.split('T')[0] : s.createdAt.split('T')[0]
+        return paidDate === todayStr
+      }
+      return false
+    })
     .reduce((sum, s) => sum + s.totalAmount, 0)
 
   const cardDebitTotal = todaySales
@@ -161,7 +175,7 @@ export const DailySummaryView: React.FC<DailySummaryViewProps> = ({
 
   const handleConfirmCloseShift = () => {
     if (!isCountedValid) return
-    onCloseShift(countedNum, expectedDrawerCash, closingNotes)
+    onCloseShift(countedNum, expectedDrawerCash, closingNotes, { cashSalesTotal: cashTotal, totalSalesAmount })
     if (currentShift) {
       setClosedShiftReceipt({
         ...currentShift,
@@ -170,6 +184,8 @@ export const DailySummaryView: React.FC<DailySummaryViewProps> = ({
         closingCashCounted: countedNum,
         closingCashExpected: expectedDrawerCash,
         closingDifference: countedDifference,
+        cashSalesTotal: cashTotal,
+        totalSalesAmount: totalSalesAmount,
         notes: closingNotes,
       })
     }
@@ -214,16 +230,27 @@ export const DailySummaryView: React.FC<DailySummaryViewProps> = ({
       msg += `🍽️ *Comandas Abertas no Local:* ${comandas.length} em consumo agora\n`
     }
 
-    // Extrato da Gaveta Física
+    // Extrato da Gaveta Física (usa dados do turno histórico ou do turno em aberto)
+    const shiftInitial = shift ? shift.initialFloat : initialFloat
+    const shiftSangrias = shift 
+      ? shift.movements.filter(m => m.type === 'sangria').reduce((s, m) => s + m.amount, 0) 
+      : sangriasTotal
+    const shiftSuprimentos = shift 
+      ? shift.movements.filter(m => m.type === 'suprimento').reduce((s, m) => s + m.amount, 0) 
+      : suprimentosTotal
+    const shiftCashSales = shift?.cashSalesTotal !== undefined ? shift.cashSalesTotal : cashTotal
+    const shiftExpected = shift?.closingCashExpected !== undefined ? shift.closingCashExpected : expectedDrawerCash
+    const shiftCounted = shift?.closingCashCounted !== undefined ? shift.closingCashCounted : (isCountedValid ? countedNum : undefined)
+
     msg += `\n💵 *--- CONFERÊNCIA DA GAVETA (DINHEIRO) ---*\n`
-    msg += `(+) Fundo de Troco Inicial: ${formatCurrency(shift ? shift.initialFloat : initialFloat)}\n`
-    msg += `(+) Vendas em Dinheiro: ${formatCurrency(cashTotal)}\n`
-    if (suprimentosTotal > 0) msg += `(+) Troco Adicionado (Suprimento): +${formatCurrency(suprimentosTotal)}\n`
-    if (sangriasTotal > 0) msg += `(-) Retiradas da Gaveta (Sangria): -${formatCurrency(sangriasTotal)}\n`
-    msg += `(=) *Dinheiro Esperado na Gaveta:* ${formatCurrency(expectedDrawerCash)}\n`
-    if (shift?.closingCashCounted !== undefined) {
-      msg += `🔎 *Dinheiro Contado na Gaveta:* ${formatCurrency(shift.closingCashCounted)}\n`
-      const diff = shift.closingDifference || 0
+    msg += `(+) Fundo de Troco Inicial: ${formatCurrency(shiftInitial)}\n`
+    msg += `(+) Vendas em Dinheiro: ${formatCurrency(shiftCashSales)}\n`
+    if (shiftSuprimentos > 0) msg += `(+) Troco Adicionado (Suprimento): +${formatCurrency(shiftSuprimentos)}\n`
+    if (shiftSangrias > 0) msg += `(-) Retiradas da Gaveta (Sangria): -${formatCurrency(shiftSangrias)}\n`
+    msg += `(=) *Dinheiro Esperado na Gaveta:* ${formatCurrency(shiftExpected)}\n`
+    if (shiftCounted !== undefined) {
+      msg += `🔎 *Dinheiro Contado na Gaveta:* ${formatCurrency(shiftCounted)}\n`
+      const diff = shift?.closingDifference !== undefined ? shift.closingDifference : countedDifference
       if (diff === 0) msg += `✅ *Batimento:* Caixa bateu 100%! (Diferença: R$ 0,00)\n`
       else if (diff > 0) msg += `🟢 *Batimento:* Sobra de Caixa: +${formatCurrency(diff)}\n`
       else msg += `⚠️ *Batimento:* Falta de Troco: ${formatCurrency(diff)}\n`

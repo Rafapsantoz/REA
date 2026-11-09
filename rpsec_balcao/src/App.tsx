@@ -160,8 +160,13 @@ export function App() {
     setCurrentShift(updated)
   }
 
-  const handleCloseShift = (countedCash: number, expectedCash: number, notes?: string) => {
-    const result = closeShift(countedCash, expectedCash, notes)
+  const handleCloseShift = (
+    countedCash: number, 
+    expectedCash: number, 
+    notes?: string,
+    extraData?: { cashSalesTotal?: number; totalSalesAmount?: number }
+  ) => {
+    const result = closeShift(countedCash, expectedCash, notes, extraData)
     if (result) {
       setCurrentShift(null)
       setShiftHistory(result.history)
