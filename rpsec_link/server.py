@@ -44,12 +44,15 @@ CONFIG = {
 
 ACTIVE_CLIENTS: Set[str] = set()
 ACTIVE_WEBSOCKETS: Set[WebSocket] = set()
+ACTIVE_DEVICES: Dict[str, Dict[str, Any]] = {}
 SERVER_LOOP: Optional[asyncio.AbstractEventLoop] = None
 
 CALLBACKS = {
     "on_connect": None,
     "on_disconnect": None,
     "on_security_alert": None,
+    "on_devices_update": None,
+    "on_shutdown_request": None,
 }
 
 # Rastreamento de falhas de autenticação e bloqueio (Anti-Brute Force)
@@ -60,19 +63,101 @@ capturer = ScreenCapturer(draw_cursor=False)
 input_ctrl = InputController(capturer.width, capturer.height)
 
 
+def get_connected_devices() -> list:
+    """Retorna lista formatada de todos os dispositivos conectados no momento."""
+    now = time.time()
+    return [
+        {
+            "id": dev["id"],
+            "ip": dev["ip"],
+            "connected_at": dev["connected_at"],
+            "connected_str": dev["connected_str"],
+            "duration": int(now - dev["connected_at"]),
+            "is_native": dev.get("is_native", False),
+            "client_type": "Cliente Desktop" if dev.get("is_native") else "Navegador Web"
+        }
+        for dev in list(ACTIVE_DEVICES.values())
+    ]
+
+
+async def broadcast_devices():
+    """Envia a lista atualizada de dispositivos para todos os clientes conectados."""
+    dev_list = get_connected_devices()
+    msg = json.dumps({"type": "devices_list", "devices": dev_list})
+    for dev in list(ACTIVE_DEVICES.values()):
+        try:
+            await dev["ws"].send_text(msg)
+        except Exception:
+            pass
+
+
+def notify_devices_changed():
+    """Notifica a interface gráfica do Host sobre alterações nos dispositivos conectados."""
+    if CALLBACKS.get("on_devices_update"):
+        try:
+            CALLBACKS["on_devices_update"](get_connected_devices())
+        except Exception:
+            pass
+
+
+async def disconnect_device_by_id(session_id: str):
+    """Encerra a conexão de um dispositivo específico pelo seu ID."""
+    dev = ACTIVE_DEVICES.pop(session_id, None)
+    if dev:
+        try:
+            await dev["ws"].send_text(json.dumps({
+                "type": "server_disconnect",
+                "message": "Sessão encerrada pelo Host."
+            }))
+            await dev["ws"].close(code=1000, reason="Desconectado pelo Host")
+        except Exception:
+            pass
+        ACTIVE_CLIENTS.discard(dev["ip"])
+        ACTIVE_WEBSOCKETS.discard(dev["ws"])
+        await broadcast_devices()
+        notify_devices_changed()
+
+
+def trigger_disconnect_device(session_id: str):
+    """Dispara a desconexão de um dispositivo específico a partir de threads síncronas."""
+    if SERVER_LOOP and SERVER_LOOP.is_running():
+        asyncio.run_coroutine_threadsafe(disconnect_device_by_id(session_id), SERVER_LOOP)
+
+
+async def disconnect_other_devices(caller_session_id: str):
+    """Desconecta todos os outros dispositivos conectados, mantendo o chamador ativo."""
+    for sid, dev in list(ACTIVE_DEVICES.items()):
+        if sid != caller_session_id:
+            try:
+                await dev["ws"].send_text(json.dumps({
+                    "type": "server_disconnect",
+                    "message": "Sessão encerrada pelo administrador."
+                }))
+                await dev["ws"].close(code=1000, reason="Desconectado pelo administrador")
+            except Exception:
+                pass
+            ACTIVE_DEVICES.pop(sid, None)
+            ACTIVE_CLIENTS.discard(dev["ip"])
+            ACTIVE_WEBSOCKETS.discard(dev["ws"])
+    await broadcast_devices()
+    notify_devices_changed()
+
+
 async def disconnect_all_clients():
     """Encerra todas as conexões WebSocket ativas imediatamente."""
-    for ws in list(ACTIVE_WEBSOCKETS):
+    for dev in list(ACTIVE_DEVICES.values()):
         try:
-            await ws.send_text(json.dumps({
+            await dev["ws"].send_text(json.dumps({
                 "type": "server_disconnect",
                 "message": "A sessão foi encerrada pelo Host."
             }))
-            await ws.close(code=1000, reason="Host encerrou a sessão")
+            await dev["ws"].close(code=1000, reason="Host encerrou a sessão")
         except Exception:
             pass
+    ACTIVE_DEVICES.clear()
     ACTIVE_WEBSOCKETS.clear()
     ACTIVE_CLIENTS.clear()
+    notify_devices_changed()
     if CALLBACKS.get("on_disconnect"):
         try:
             CALLBACKS["on_disconnect"]("Desconectado", 0)
@@ -190,21 +275,37 @@ async def websocket_endpoint(websocket: WebSocket, pin: str = Query("")):
     # 3. Autenticado com sucesso
     FAILED_ATTEMPTS.pop(client_ip, None)
     await websocket.accept()
+
+    session_id = f"dev_{secrets.token_hex(4)}"
     ACTIVE_CLIENTS.add(client_ip)
     ACTIVE_WEBSOCKETS.add(websocket)
-    print(f"[+] Cliente autorizado conectado com sucesso: {client_ip}")
+    ACTIVE_DEVICES[session_id] = {
+        "id": session_id,
+        "ip": client_ip,
+        "ws": websocket,
+        "connected_at": time.time(),
+        "connected_str": time.strftime("%H:%M:%S"),
+        "is_native": False,
+    }
+
+    print(f"[+] Cliente autorizado conectado com sucesso: {client_ip} (ID: {session_id})")
+
+    notify_devices_changed()
+    await broadcast_devices()
 
     if CALLBACKS["on_connect"]:
         try:
-            CALLBACKS["on_connect"](client_ip, len(ACTIVE_CLIENTS))
+            CALLBACKS["on_connect"](client_ip, len(ACTIVE_DEVICES))
         except Exception:
             pass
 
-    # Envia dimensões físicas nativas da tela
+    # Envia dimensões físicas nativas da tela e ID da sessão
     await websocket.send_text(json.dumps({
         "type": "init",
+        "session_id": session_id,
         "width": capturer.width,
-        "height": capturer.height
+        "height": capturer.height,
+        "devices": get_connected_devices()
     }))
 
     session_state = {
@@ -309,6 +410,36 @@ async def websocket_endpoint(websocket: WebSocket, pin: str = Query("")):
                 elif mtype == "ping":
                     await websocket.send_text(json.dumps({"type": "pong", "ts": msg.get("ts")}))
 
+                elif mtype == "client_info":
+                    if session_id in ACTIVE_DEVICES:
+                        ACTIVE_DEVICES[session_id]["is_native"] = bool(msg.get("is_native", False))
+                        notify_devices_changed()
+                        await broadcast_devices()
+
+                elif mtype == "request_devices":
+                    await websocket.send_text(json.dumps({
+                        "type": "devices_list",
+                        "devices": get_connected_devices()
+                    }))
+
+                elif mtype == "disconnect_device":
+                    target_id = msg.get("device_id")
+                    if target_id:
+                        await disconnect_device_by_id(target_id)
+
+                elif mtype == "disconnect_other_devices":
+                    await disconnect_other_devices(session_id)
+
+                elif mtype == "disconnect_all_devices":
+                    await disconnect_all_clients()
+
+                elif mtype == "shutdown_host":
+                    if CALLBACKS.get("on_shutdown_request"):
+                        try:
+                            CALLBACKS["on_shutdown_request"]()
+                        except Exception:
+                            pass
+
                 elif mtype == "client_disconnect":
                     session_state["running"] = False
                     break
@@ -327,13 +458,17 @@ async def websocket_endpoint(websocket: WebSocket, pin: str = Query("")):
     for task in pending:
         task.cancel()
 
+    ACTIVE_DEVICES.pop(session_id, None)
     ACTIVE_WEBSOCKETS.discard(websocket)
     ACTIVE_CLIENTS.discard(client_ip)
-    print(f"[-] Cliente desconectado de {client_ip}")
+    await broadcast_devices()
+    notify_devices_changed()
+
+    print(f"[-] Cliente desconectado de {client_ip} (ID: {session_id})")
 
     if CALLBACKS["on_disconnect"]:
         try:
-            CALLBACKS["on_disconnect"](client_ip, len(ACTIVE_CLIENTS))
+            CALLBACKS["on_disconnect"](client_ip, len(ACTIVE_DEVICES))
         except Exception:
             pass
 

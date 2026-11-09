@@ -147,6 +147,7 @@ class RemoteViewerWindow(tk.Toplevel):
         self.ping_ms = 0
         self.frame_count = 0
         self.last_fps_time = time.perf_counter()
+        self.connected_devices = []
 
         # Canvas nativo para renderização GDI
         self.canvas = tk.Canvas(self, bg="#000000", highlightthickness=0, cursor="arrow")
@@ -256,7 +257,24 @@ class RemoteViewerWindow(tk.Toplevel):
         self.btn_fs = tk.Button(self.toolbar_frame, text="⛶", command=self.toggle_fullscreen, **btn_style)
         self.btn_fs.pack(side="left", padx=2)
 
-        # Botão Desconectar destacado em vermelho
+        # Indicador / Botão de Dispositivos Conectados no Host
+        self.btn_devices = tk.Button(
+            self.toolbar_frame,
+            text="👥 1 Disp.",
+            command=self._show_devices_dialog,
+            bg="#334155",
+            fg="#38bdf8",
+            activebackground="#0284c7",
+            activeforeground="#ffffff",
+            font=("Segoe UI", 8, "bold"),
+            bd=0,
+            padx=6,
+            pady=2,
+            relief="flat"
+        )
+        self.btn_devices.pack(side="left", padx=2)
+
+        # Botão Desconectar destacado em vermelho (retorna ao Launcher)
         self.btn_dc = tk.Button(
             self.toolbar_frame,
             text="🔴 Desconectar",
@@ -271,7 +289,24 @@ class RemoteViewerWindow(tk.Toplevel):
             pady=2,
             relief="flat"
         )
-        self.btn_dc.pack(side="left", padx=(4, 6))
+        self.btn_dc.pack(side="left", padx=2)
+
+        # Botão Fechar Programa Completo (encerra a aplicação na hora)
+        self.btn_quit = tk.Button(
+            self.toolbar_frame,
+            text="✕ Fechar App",
+            command=self.quit_app,
+            bg="#7f1d1d",
+            fg="#fecaca",
+            activebackground="#991b1b",
+            activeforeground="#ffffff",
+            font=("Segoe UI", 8, "bold"),
+            bd=0,
+            padx=8,
+            pady=2,
+            relief="flat"
+        )
+        self.btn_quit.pack(side="left", padx=(2, 6))
 
         # Sistema de arrasto da barra
         self.drag_bar.bind("<Button-1>", self._start_drag)
@@ -371,8 +406,10 @@ class RemoteViewerWindow(tk.Toplevel):
         """Thread assíncrona dedicada de transmissão com zero travamento da UI."""
         try:
             with websockets.sync.client.connect(self.ws_url, max_size=10 * 1024 * 1024) as ws:
-                # 1. Configura perfil de rede inicial
+                # 1. Configura perfil de rede inicial e informa identidade do cliente
+                ws.send(json.dumps({"type": "client_info", "is_native": True}))
                 ws.send(json.dumps({"type": "quality", "profile": self.current_profile}))
+                ws.send(json.dumps({"type": "request_devices"}))
 
                 last_ping = time.perf_counter()
 
@@ -420,6 +457,12 @@ class RemoteViewerWindow(tk.Toplevel):
                             if mtype == "init":
                                 self.remote_width = data.get("width", 1920)
                                 self.remote_height = data.get("height", 1080)
+                                if "devices" in data:
+                                    self.connected_devices = data.get("devices", [])
+                                    self.after(0, self._update_devices_ui)
+                            elif mtype == "devices_list":
+                                self.connected_devices = data.get("devices", [])
+                                self.after(0, self._update_devices_ui)
                             elif mtype == "pong":
                                 rtt = int((time.perf_counter() - data.get("ts", 0)) * 1000)
                                 self.ping_ms = max(1, rtt)
@@ -481,12 +524,97 @@ class RemoteViewerWindow(tk.Toplevel):
         if self.is_running:
             self.lbl_stats.config(text=f"{self.fps} FPS • {self.ping_ms}ms")
 
+    def _update_devices_ui(self):
+        if self.is_running:
+            total = len(self.connected_devices)
+            self.btn_devices.config(text=f"👥 {total} Disp.")
+
+    def _show_devices_dialog(self):
+        """Abre janela para visualizar e desconectar dispositivos conectados no Host."""
+        dlg = tk.Toplevel(self)
+        dlg.title("Dispositivos no Host")
+        dlg.geometry("380x290")
+        dlg.configure(bg="#0f172a")
+        dlg.resizable(False, False)
+
+        lbl = tk.Label(
+            dlg,
+            text=f"Dispositivos Conectados no Host ({len(self.connected_devices)})",
+            font=("Segoe UI", 11, "bold"),
+            bg="#0f172a",
+            fg="#f8fafc"
+        )
+        lbl.pack(pady=(12, 6), padx=12, anchor="w")
+
+        sub = tk.Label(
+            dlg,
+            text="Você pode desconectar qualquer sessão individual ou todas:",
+            font=("Segoe UI", 8),
+            bg="#0f172a",
+            fg="#94a3b8"
+        )
+        sub.pack(pady=(0, 8), padx=12, anchor="w")
+
+        f = tk.Frame(dlg, bg="#0f172a")
+        f.pack(fill="both", expand=True, padx=12, pady=2)
+
+        for dev in self.connected_devices:
+            row = tk.Frame(f, bg="#1e293b", bd=1, relief="ridge")
+            row.pack(fill="x", pady=2)
+
+            icon = "💻" if dev.get("is_native") else "🌐"
+            dev_name = f"{icon} {dev['ip']} ({dev.get('client_type', 'Cliente')})"
+            l = tk.Label(row, text=dev_name, font=("Segoe UI", 9, "bold"), bg="#1e293b", fg="#f8fafc")
+            l.pack(side="left", padx=8, pady=5)
+
+            btn_d = tk.Button(
+                row,
+                text="Desconectar",
+                font=("Segoe UI", 8, "bold"),
+                bg="#ef4444",
+                fg="#ffffff",
+                activebackground="#dc2626",
+                bd=0,
+                padx=6,
+                command=lambda did=dev["id"]: (self.out_queue.put({"type": "disconnect_device", "device_id": did}), dlg.destroy())
+            )
+            btn_d.pack(side="right", padx=6, pady=4)
+
+        if len(self.connected_devices) > 1:
+            btn_all = tk.Button(
+                dlg,
+                text="⚡ Desconectar Outros Dispositivos",
+                font=("Segoe UI", 9, "bold"),
+                bg="#ef4444",
+                fg="#ffffff",
+                activebackground="#dc2626",
+                bd=0,
+                pady=6,
+                command=lambda: (self.out_queue.put({"type": "disconnect_other_devices"}), dlg.destroy())
+            )
+            btn_all.pack(fill="x", padx=12, pady=(4, 10))
+
     def _on_server_disconnect(self, message: Optional[str]):
         msg = message or "A sessão remota foi encerrada pelo Host."
         self.launcher.show_status(msg, is_error=False)
 
     def _on_connection_error(self, err: str):
         self.launcher.show_status(f"Conexão perdida: {err}", is_error=True)
+
+    def quit_app(self):
+        """Encerra a sessão remota e fecha o aplicativo cliente completamente."""
+        self.is_running = False
+        try:
+            self.out_queue.put({"type": "client_disconnect"})
+        except Exception:
+            pass
+        try:
+            if self.hdc and self.canvas_hwnd:
+                u32.ReleaseDC(self.canvas_hwnd, self.hdc)
+        except Exception:
+            pass
+        self.destroy()
+        self.launcher.quit_app()
 
     def close_session(self):
         """Encerra a sessão remota com segurança e reabre o Launcher."""
@@ -524,7 +652,7 @@ class ClientLauncher(ctk.CTk):
         ctk.set_default_color_theme("blue")
 
         self.title("RPsec Link — Cliente Desktop")
-        self.geometry("460x580")
+        self.geometry("460x630")
         self.resizable(False, False)
         self.configure(fg_color=("#f8fafc", "#0b0f17"))
 
@@ -670,7 +798,20 @@ class ClientLauncher(ctk.CTk):
             text_color="#ffffff",
             command=self._connect
         )
-        self.btn_connect.pack(fill="x", padx=20, pady=(0, 16))
+        self.btn_connect.pack(fill="x", padx=20, pady=(0, 10))
+
+        # Botão Fechar Programa Completo
+        self.btn_quit_app = ctk.CTkButton(
+            card,
+            text="🔴 Fechar Programa",
+            font=ctk.CTkFont(size=12, weight="bold"),
+            height=36,
+            fg_color=("#fee2e2", "#3b1111"),
+            hover_color=("#fca5a5", "#5c1d1d"),
+            text_color="#ef4444",
+            command=self.quit_app
+        )
+        self.btn_quit_app.pack(fill="x", padx=20, pady=(0, 16))
 
     def _toggle_theme(self):
         curr = ctk.get_appearance_mode()
@@ -725,6 +866,11 @@ class ClientLauncher(ctk.CTk):
         self.deiconify()
         self.btn_connect.configure(text="⚡ Conectar à Máquina", state="normal")
         self.active_session = None
+
+    def quit_app(self):
+        """Fecha o aplicativo completamente."""
+        self.destroy()
+        os._exit(0)
 
 
 def main():

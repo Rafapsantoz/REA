@@ -41,7 +41,7 @@ class HostApp(ctk.CTk):
         super().__init__()
 
         self.title("RPsec Link — Host Agent")
-        self.geometry("500x700")
+        self.geometry("500x740")
         self.resizable(False, False)
 
         # Configura cores de fundo da janela principal
@@ -65,6 +65,8 @@ class HostApp(ctk.CTk):
         server.CALLBACKS["on_connect"] = self._on_client_connect
         server.CALLBACKS["on_disconnect"] = self._on_client_disconnect
         server.CALLBACKS["on_security_alert"] = self._on_security_alert
+        server.CALLBACKS["on_devices_update"] = self._on_devices_update
+        server.CALLBACKS["on_shutdown_request"] = self._exit_app
 
         self._start_server_thread()
         self._build_ui()
@@ -251,7 +253,7 @@ class HostApp(ctk.CTk):
         )
         btn_save_pin.pack(side="right")
 
-        # 5. CARD 3: Status da Sessão e Segurança
+        # 5. CARD 3: Status & Dispositivos Conectados
         self.card_session = ctk.CTkFrame(
             self,
             fg_color=("#ffffff", "#0f172a"),
@@ -263,7 +265,7 @@ class HostApp(ctk.CTk):
 
         lbl_sess_title = ctk.CTkLabel(
             self.card_session,
-            text="STATUS DA SESSÃO REMOTA",
+            text="STATUS & DISPOSITIVOS CONECTADOS",
             font=ctk.CTkFont(size=11, weight="bold"),
             text_color=("#64748b", "#94a3b8")
         )
@@ -271,7 +273,7 @@ class HostApp(ctk.CTk):
 
         self.lbl_session_status = ctk.CTkLabel(
             self.card_session,
-            text="🟢 Pronto para conexões — Aguardando...",
+            text="🟢 Pronto para conexões — Nenhum dispositivo conectado",
             font=ctk.CTkFont(size=13, weight="bold"),
             text_color=("#334155", "#cbd5e1")
         )
@@ -283,22 +285,26 @@ class HostApp(ctk.CTk):
             font=ctk.CTkFont(size=11),
             text_color=("#64748b", "#94a3b8")
         )
-        self.lbl_res_info.pack(anchor="w", padx=16, pady=(0, 14))
+        self.lbl_res_info.pack(anchor="w", padx=16, pady=(0, 6))
 
-        # Botão de Desconexão Imediata (Exibido apenas com sessão ativa)
-        self.btn_disconnect_client = ctk.CTkButton(
+        # Container para lista de dispositivos conectados
+        self.devices_frame = ctk.CTkFrame(self.card_session, fg_color="transparent")
+        self.devices_frame.pack(fill="x", padx=16, pady=(0, 6))
+
+        # Botão para Desconectar Todos os Dispositivos (visível quando houver conexões)
+        self.btn_disconnect_all = ctk.CTkButton(
             self.card_session,
-            text="🔴 Desconectar Sessão Ativa",
+            text="🔴 Desconectar Todos os Dispositivos",
             font=ctk.CTkFont(size=12, weight="bold"),
             fg_color="#ef4444",
             hover_color="#dc2626",
             text_color="#ffffff",
-            height=36,
-            command=self._disconnect_active_session
+            height=34,
+            command=self._disconnect_all_sessions
         )
-        # Inicialmente oculto até haver cliente conectado
+        # Inicialmente oculto
 
-        # 6. Rodapé: Abrir Cliente Desktop & Minimizar
+        # 6. Rodapé: Abrir Cliente, Minimizar e Fechar Programa
         btn_client = ctk.CTkButton(
             self,
             text="💻 Conectar a Outro Host (Cliente Nativo)",
@@ -311,18 +317,33 @@ class HostApp(ctk.CTk):
             height=36,
             command=self._launch_client
         )
-        btn_client.pack(fill="x", padx=24, pady=(8, 4))
+        btn_client.pack(fill="x", padx=24, pady=(6, 8))
+
+        footer_row = ctk.CTkFrame(self, fg_color="transparent")
+        footer_row.pack(fill="x", padx=24, pady=(0, 12))
 
         btn_min = ctk.CTkButton(
-            self,
-            text="Minimizar para Segundo Plano",
+            footer_row,
+            text="Minimizar",
             fg_color="transparent",
             text_color=("#64748b", "#94a3b8"),
             hover_color=("#e2e8f0", "#1e293b"),
-            height=30,
+            height=32,
             command=self.iconify
         )
-        btn_min.pack(pady=(2, 10))
+        btn_min.pack(side="left", expand=True, fill="x", padx=(0, 6))
+
+        btn_exit = ctk.CTkButton(
+            footer_row,
+            text="🔴 Fechar e Encerrar",
+            fg_color=("#fee2e2", "#3b1111"),
+            hover_color=("#fca5a5", "#5c1d1d"),
+            text_color="#ef4444",
+            font=ctk.CTkFont(size=11, weight="bold"),
+            height=32,
+            command=self._exit_app
+        )
+        btn_exit.pack(side="right", expand=True, fill="x", padx=(6, 0))
 
     def _launch_client(self):
         """Abre o cliente nativo do RPsec Link em processo independente."""
@@ -363,21 +384,20 @@ class HostApp(ctk.CTk):
             self.pin = new_pin
 
     def _on_client_connect(self, client_ip: str, total_clients: int):
-        self.after(0, lambda: self._update_session_ui(True, client_ip, total_clients))
+        pass  # O gerenciamento e exibição de detalhes é feito em tempo real via _on_devices_update
 
     def _on_client_disconnect(self, client_ip: str, total_clients: int):
-        self.after(0, lambda: self._update_session_ui(False, client_ip, total_clients))
+        pass
 
-    def _on_security_alert(self, client_ip: str, freeze_seconds: int):
-        self.after(0, lambda: self._update_security_alert_ui(client_ip, freeze_seconds))
+    def _on_devices_update(self, devices: list):
+        self.after(0, lambda: self._update_devices_ui(devices))
 
-    def _disconnect_active_session(self):
-        """Encerra a sessão remota ativa instantaneamente a pedido do Host."""
-        self.btn_disconnect_client.configure(text="Desconectando...", state="disabled")
-        server.trigger_disconnect_all()
-        self.after(600, lambda: self.btn_disconnect_client.configure(text="🔴 Desconectar Sessão Ativa", state="normal"))
+    def _update_devices_ui(self, devices: list):
+        # Limpa itens anteriores do container
+        for child in self.devices_frame.winfo_children():
+            child.destroy()
 
-    def _update_session_ui(self, connected: bool, client_ip: str, total: int):
+        total = len(devices)
         if total > 0:
             self.badge_status.configure(
                 text=f"● SESSÃO ATIVA ({total})",
@@ -385,11 +405,33 @@ class HostApp(ctk.CTk):
                 fg_color=("#bae6fd", "#0c4a6e")
             )
             self.lbl_session_status.configure(
-                text=f"🔵 Conectado com sucesso de {client_ip}",
+                text=f"🔵 {total} Dispositivo(s) Conectado(s)",
                 text_color="#0284c7"
             )
-            self.lbl_res_info.pack_configure(pady=(0, 8))
-            self.btn_disconnect_client.pack(fill="x", padx=16, pady=(0, 14))
+
+            for dev in devices:
+                dev_id = dev["id"]
+                row = ctk.CTkFrame(self.devices_frame, fg_color=("#f1f5f9", "#1e293b"), corner_radius=8)
+                row.pack(fill="x", pady=2)
+
+                icon = "💻" if dev.get("is_native") else "🌐"
+                dev_text = f"{icon} {dev['ip']} ({dev['client_type']}) • {dev.get('connected_str', '')}"
+                lbl = ctk.CTkLabel(row, text=dev_text, font=ctk.CTkFont(size=11, weight="bold"), text_color=("#0f172a", "#f8fafc"))
+                lbl.pack(side="left", padx=10, pady=5)
+
+                btn_dc = ctk.CTkButton(
+                    row,
+                    text="Desconectar",
+                    width=78,
+                    height=24,
+                    font=ctk.CTkFont(size=10, weight="bold"),
+                    fg_color="#ef4444",
+                    hover_color="#dc2626",
+                    command=lambda sid=dev_id: server.trigger_disconnect_device(sid)
+                )
+                btn_dc.pack(side="right", padx=6, pady=4)
+
+            self.btn_disconnect_all.pack(fill="x", padx=16, pady=(4, 12))
         else:
             self.badge_status.configure(
                 text="● ONLINE",
@@ -397,11 +439,28 @@ class HostApp(ctk.CTk):
                 fg_color=("#dcfce7", "#064e3b")
             )
             self.lbl_session_status.configure(
-                text="🟢 Pronto para conexões — Aguardando...",
+                text="🟢 Pronto para conexões — Nenhum dispositivo conectado",
                 text_color=("#334155", "#cbd5e1")
             )
-            self.btn_disconnect_client.pack_forget()
-            self.lbl_res_info.pack_configure(pady=(0, 14))
+            self.btn_disconnect_all.pack_forget()
+
+    def _on_security_alert(self, client_ip: str, freeze_seconds: int):
+        self.after(0, lambda: self._update_security_alert_ui(client_ip, freeze_seconds))
+
+    def _disconnect_all_sessions(self):
+        """Encerra todas as sessões ativas com feedback visual."""
+        self.btn_disconnect_all.configure(text="Desconectando...", state="disabled")
+        server.trigger_disconnect_all()
+        self.after(600, lambda: self.btn_disconnect_all.configure(text="🔴 Desconectar Todos os Dispositivos", state="normal"))
+
+    def _exit_app(self):
+        """Encerra todas as sessões e fecha o programa completamente."""
+        try:
+            server.trigger_disconnect_all()
+        except Exception:
+            pass
+        self.destroy()
+        os._exit(0)
 
     def _update_security_alert_ui(self, client_ip: str, freeze_secs: int):
         self.lbl_session_status.configure(

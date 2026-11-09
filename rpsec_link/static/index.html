@@ -424,7 +424,7 @@
 
     <!-- Painel Expansível de Controles -->
     <div id="widgetPanel">
-      <div class="stat-badge"><span id="fpsCount">--</span> FPS • <span id="pingCount">--</span>ms</div>
+      <div class="stat-badge"><span id="fpsCount">--</span> FPS • <span id="pingCount">--</span>ms • <span id="devicesBadge">👥 1</span></div>
       
       <!-- Modos de Exibição -->
       <select id="scaleSelect" class="tb-select" title="Modo de Exibição">
@@ -452,6 +452,7 @@
       <button id="btnMobileKbd" class="tb-btn" title="Abrir Teclado no Tablet/Celular">⌨ Teclado</button>
       <button id="btnFullscreen" class="tb-btn" title="Modo Tela Cheia Imersivo">⛶ Tela Cheia</button>
       <button id="btnClosePanel" class="tb-btn" title="Recolher Barra">▲</button>
+      <button id="btnDisconnectOthers" class="tb-btn" style="display:none; color: #f59e0b;" title="Desconectar Outros Dispositivos">⚡ Desconectar Outros</button>
       <button id="btnDisconnect" class="tb-btn tb-btn-danger" title="Encerrar Sessão Remota">🔴 Desconectar</button>
     </div>
   </div>
@@ -663,12 +664,17 @@
             if (data.type === 'init') {
               remoteWidth = data.width;
               remoteHeight = data.height;
+              if (data.devices) {
+                updateDevicesBadge(data.devices);
+              }
               // Esconde tela de autenticação
               authOverlay.style.display = 'none';
               pillStatusDot.classList.remove('offline');
               container.focus();
               sendQualityConfig();
               startPingLoop();
+            } else if (data.type === 'devices_list') {
+              updateDevicesBadge(data.devices || []);
             } else if (data.type === 'pong') {
               const rtt = Math.round(performance.now() - data.ts);
               pingCount.textContent = rtt;
@@ -848,6 +854,26 @@
         document.exitFullscreen().catch(() => {});
       }
     });
+
+    const devicesBadge = document.getElementById('devicesBadge');
+    const btnDisconnectOthers = document.getElementById('btnDisconnectOthers');
+
+    function updateDevicesBadge(devs) {
+      if (!devicesBadge) return;
+      const count = devs.length;
+      devicesBadge.textContent = `👥 ${count}`;
+      if (btnDisconnectOthers) {
+        btnDisconnectOthers.style.display = count > 1 ? 'inline-flex' : 'none';
+      }
+    }
+
+    if (btnDisconnectOthers) {
+      btnDisconnectOthers.addEventListener('click', () => {
+        if (ws && ws.readyState === WebSocket.OPEN) {
+          ws.send(JSON.stringify({ type: 'disconnect_other_devices' }));
+        }
+      });
+    }
 
     function disconnectSession() {
       if (ws) {
