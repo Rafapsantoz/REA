@@ -1,16 +1,19 @@
-import { useState, useRef, useEffect, type ClipboardEvent } from "react";
+import { useState, useRef, useEffect, useMemo, type ClipboardEvent } from "react";
 import {
   Sparkles,
   Loader2,
   Image as ImageIcon,
   X,
   CheckCircle2,
-  Calendar,
   AlertCircle,
-  ExternalLink,
   Settings2,
   RotateCcw,
-  Plus,
+  Code2,
+  ArrowUpRight,
+  UserCheck,
+  CheckSquare,
+  Square,
+  Filter,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -51,6 +54,8 @@ interface AiDemandDialogProps {
   onCreateDemand: (input: DemandInput) => Promise<void>;
 }
 
+type FilterView = "all" | "immediate" | "dev_queue";
+
 export function AiDemandDialog({
   open,
   onOpenChange,
@@ -65,12 +70,14 @@ export function AiDemandDialog({
   const [modelUsed, setModelUsed] = useState<string | null>(null);
   const [showConfig, setShowConfig] = useState(false);
   const [apiKeyInput, setApiKeyInput] = useState(getGeminiApiKey());
+  const [filterView, setFilterView] = useState<FilterView>("all");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Reseta ao fechar ou reabrir
+  // Reseta ao abrir
   useEffect(() => {
     if (open) {
       setApiKeyInput(getGeminiApiKey());
+      setFilterView("all");
     }
   }, [open]);
 
@@ -119,7 +126,7 @@ export function AiDemandDialog({
 
   const handleProcess = async () => {
     if (!text.trim() && !imageBase64) {
-      toast.error("Cole um texto de chamado ou uma imagem/print screen para processar.");
+      toast.error("Cole um texto de chamado ou dê Ctrl+V em um print para processar.");
       return;
     }
 
@@ -134,8 +141,13 @@ export function AiDemandDialog({
 
       setExtractedDemands(result.demands);
       setModelUsed(result.modelUsed);
+      setFilterView("all");
+
+      const devCount = result.demands.filter((d) => d.is_dev_queue).length;
+      const immediateCount = result.demands.length - devCount;
+
       toast.success(
-        `${result.demands.length} demanda(s) extraída(s) com sucesso via ${result.modelUsed}!`
+        `${result.demands.length} chamados extraídos! (${immediateCount} ação imediata selecionados, ${devCount} de fila dev desmarcados).`
       );
     } catch (err: unknown) {
       console.error(err);
@@ -153,6 +165,28 @@ export function AiDemandDialog({
         item.id === id ? { ...item, selected: !item.selected } : item
       )
     );
+  };
+
+  const handleSelectAll = (select: boolean) => {
+    setExtractedDemands((prev) =>
+      prev.map((item) => ({ ...item, selected: select }))
+    );
+  };
+
+  const handleSelectOnlyImmediate = () => {
+    setExtractedDemands((prev) =>
+      prev.map((item) => ({ ...item, selected: !item.is_dev_queue }))
+    );
+    toast.info("Selecionados apenas chamados de Ação Imediata (Fila Dev desmarcada).");
+  };
+
+  const handleDeselectDevQueue = () => {
+    setExtractedDemands((prev) =>
+      prev.map((item) =>
+        item.is_dev_queue ? { ...item, selected: false } : item
+      )
+    );
+    toast.info("Chamados da Fila de Desenvolvimento desmarcados.");
   };
 
   const handleFieldChange = (
@@ -214,11 +248,26 @@ export function AiDemandDialog({
     toast.success("Chave de API do Gemini salva com sucesso.");
   };
 
+  // Contagens
+  const totalCount = extractedDemands.length;
+  const devQueueCount = extractedDemands.filter((d) => d.is_dev_queue).length;
+  const immediateCount = totalCount - devQueueCount;
   const selectedCount = extractedDemands.filter((d) => d.selected !== false).length;
+
+  // Filtragem visual da lista
+  const filteredDemands = useMemo(() => {
+    if (filterView === "immediate") {
+      return extractedDemands.filter((d) => !d.is_dev_queue);
+    }
+    if (filterView === "dev_queue") {
+      return extractedDemands.filter((d) => d.is_dev_queue);
+    }
+    return extractedDemands;
+  }, [extractedDemands, filterView]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl max-h-[90vh] overflow-hidden flex flex-col p-6">
+      <DialogContent className="max-w-3xl max-h-[92vh] overflow-hidden flex flex-col p-6">
         <DialogHeader className="shrink-0 flex flex-row items-start justify-between pb-2 border-b border-border">
           <div>
             <DialogTitle className="text-xl font-bold flex items-center gap-2 text-foreground">
@@ -228,7 +277,7 @@ export function AiDemandDialog({
               Adicionar com IA (Modo Serviço / Chamados)
             </DialogTitle>
             <DialogDescription className="text-xs text-muted-foreground mt-1">
-              Cole o texto do chamado, conversa com cliente ou dê Ctrl+V em um print screen de tickets.
+              Extrai chamados de suporte identificando o status original (Ação Imediata vs Fila Desenvolvimento).
             </DialogDescription>
           </div>
 
@@ -300,9 +349,9 @@ export function AiDemandDialog({
                 value={text}
                 onChange={(e) => setText(e.target.value)}
                 placeholder="Exemplo de entrada:
-Chamado 158932 - Cliente Concrepool Mococa
-A Fernanda relatou que as notas fiscais estão rejeitando com erro 503 na SEFAZ hoje.
-Rafael precisa verificar os servidores e certificados com urgência hoje à tarde!"
+Cole uma tabela de chamados, print com Ctrl+V ou texto como:
+148656 MOCMAQ - NF não respeita valor de parcelas (Status: Pendente Desenvolvimento)
+151255 CONCREPOOL - Problema com certificado NF-e travando emissão hoje (Status: Retorno Desenvolvimento)"
                 className="min-h-[140px] text-sm resize-y leading-relaxed font-sans"
               />
 
@@ -315,7 +364,7 @@ Rafael precisa verificar os servidores e certificados com urgência hoje à tard
                   />
                   <div className="text-xs">
                     <p className="font-semibold text-foreground">Print Screen Anexado</p>
-                    <p className="text-muted-foreground">A IA analisará a imagem com visão computacional.</p>
+                    <p className="text-muted-foreground">A IA analisará a grade de tickets e status com visão computacional.</p>
                   </div>
                   <Button
                     type="button"
@@ -332,11 +381,11 @@ Rafael precisa verificar os servidores e certificados com urgência hoje à tard
               <div className="rounded-lg bg-accent/40 border border-border p-3 text-xs text-muted-foreground flex items-start gap-2.5">
                 <Sparkles className="size-4 text-primary shrink-0 mt-0.5" />
                 <div>
-                  <p className="font-medium text-foreground mb-0.5">Dica para agilidade no suporte:</p>
+                  <p className="font-medium text-foreground mb-0.5">Triagem de Suporte com 1 Clique:</p>
                   <p>
                     Pressione <kbd className="px-1 py-0.5 bg-muted rounded font-mono text-[10px]">PrintScreen</kbd> ou{" "}
-                    <kbd className="px-1 py-0.5 bg-muted rounded font-mono text-[10px]">Win+Shift+S</kbd> no seu sistema de chamados e dê{" "}
-                    <kbd className="px-1 py-0.5 bg-muted rounded font-mono text-[10px]">Ctrl+V</kbd> diretamente nesta janela. A IA identifica número do ticket, cliente e nível de urgência automaticamente!
+                    <kbd className="px-1 py-0.5 bg-muted rounded font-mono text-[10px]">Win+Shift+S</kbd> no helpdesk e cole aqui (<kbd className="px-1 py-0.5 bg-muted rounded font-mono text-[10px]">Ctrl+V</kbd>).
+                    A IA identifica a coluna <strong>Status</strong> e <strong>desmarca automaticamente</strong> chamados de <em>Encaminhar ao Desenvolvimento</em> e <em>Pendente Desenvolvimento</em> para não poluir suas tarefas de hoje!
                   </p>
                 </div>
               </div>
@@ -344,164 +393,288 @@ Rafael precisa verificar os servidores e certificados com urgência hoje à tard
           ) : (
             /* Resultados extraídos para revisão antes de salvar */
             <div className="space-y-3">
-              <div className="flex items-center justify-between pb-1">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-semibold text-foreground">
-                    Demanda(s) Pronta(s) para Inserção ({selectedCount} de {extractedDemands.length} selecionadas):
-                  </span>
-                  {modelUsed && (
-                    <Badge variant="outline" className="text-[10px] text-muted-foreground">
-                      {modelUsed}
-                    </Badge>
-                  )}
+              {/* Barra de Filtro e Contagem Rápida */}
+              <div className="flex flex-col gap-2.5 pb-2 border-b border-border">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-semibold text-foreground">
+                      Extraídos: {totalCount} chamados ({selectedCount} marcados para adicionar)
+                    </span>
+                    {modelUsed && (
+                      <Badge variant="outline" className="text-[10px] text-muted-foreground font-mono">
+                        {modelUsed}
+                      </Badge>
+                    )}
+                  </div>
+
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 text-xs text-muted-foreground hover:text-foreground gap-1"
+                    onClick={() => setExtractedDemands([])}
+                  >
+                    <RotateCcw className="size-3.5" />
+                    Voltar / Refazer
+                  </Button>
                 </div>
 
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="h-7 text-xs text-muted-foreground hover:text-foreground gap-1"
-                  onClick={() => setExtractedDemands([])}
-                >
-                  <RotateCcw className="size-3.5" />
-                  Voltar / Refazer
-                </Button>
+                {/* Abas e Filtros Rápidos */}
+                <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
+                  {/* Pílulas de visualização */}
+                  <div className="inline-flex items-center gap-1 bg-muted/60 p-1 rounded-lg border border-border text-xs">
+                    <button
+                      type="button"
+                      onClick={() => setFilterView("all")}
+                      className={`px-2.5 py-1 rounded-md font-medium transition-all cursor-pointer ${
+                        filterView === "all"
+                          ? "bg-background text-foreground shadow-xs"
+                          : "text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      Todos ({totalCount})
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setFilterView("immediate")}
+                      className={`px-2.5 py-1 rounded-md font-medium transition-all cursor-pointer flex items-center gap-1 ${
+                        filterView === "immediate"
+                          ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 font-bold shadow-xs"
+                          : "text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      ⚡ Ação Imediata ({immediateCount})
+                    </button>
+                    {devQueueCount > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => setFilterView("dev_queue")}
+                        className={`px-2.5 py-1 rounded-md font-medium transition-all cursor-pointer flex items-center gap-1 ${
+                          filterView === "dev_queue"
+                            ? "bg-purple-500/15 text-purple-600 dark:text-purple-400 font-bold shadow-xs"
+                            : "text-muted-foreground hover:text-foreground"
+                        }`}
+                      >
+                        ⚙️ Fila Dev ({devQueueCount})
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Ações em lote para seleção */}
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={handleSelectOnlyImmediate}
+                      title="Marca apenas chamados que dependem de você hoje e desmarca fila dev"
+                      className="h-7 text-[11px] px-2 text-emerald-700 dark:text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/10 gap-1 font-semibold"
+                    >
+                      <CheckCircle2 className="size-3" />
+                      Apenas Ação Imediata
+                    </Button>
+
+                    {devQueueCount > 0 && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={handleDeselectDevQueue}
+                        title="Desmarca todos os chamados com status Encaminhar ao Desenvolvimento ou Pendente Desenvolvimento"
+                        className="h-7 text-[11px] px-2 text-purple-700 dark:text-purple-400 border-purple-500/30 hover:bg-purple-500/10 gap-1"
+                      >
+                        <Code2 className="size-3" />
+                        Desmarcar Fila Dev
+                      </Button>
+                    )}
+
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleSelectAll(selectedCount !== totalCount)}
+                      className="h-7 text-[11px] px-2 text-muted-foreground hover:text-foreground"
+                    >
+                      {selectedCount === totalCount ? "Desmarcar Todos" : "Marcar Todos"}
+                    </Button>
+                  </div>
+                </div>
               </div>
 
-              <div className="space-y-3 max-h-[380px] overflow-y-auto pr-1">
-                {extractedDemands.map((item, index) => (
-                  <div
-                    key={item.id || index}
-                    className={`p-3.5 rounded-lg border transition-all ${
-                      item.selected !== false
-                        ? "border-primary/40 bg-card shadow-sm"
-                        : "border-border/60 bg-muted/30 opacity-60"
-                    }`}
-                  >
-                    <div className="flex items-start gap-3">
-                      <Checkbox
-                        checked={item.selected !== false}
-                        onCheckedChange={() => handleToggleSelect(item.id)}
-                        className="mt-1"
-                      />
+              {/* Lista dos Chamados */}
+              <div className="space-y-3 max-h-[420px] overflow-y-auto pr-1">
+                {filteredDemands.map((item, index) => {
+                  const isDev = item.is_dev_queue;
+                  const isRetorno =
+                    item.status_chamado?.toUpperCase().includes("RETORNO");
 
-                      <div className="flex-1 space-y-2.5">
-                        <div className="flex flex-wrap items-center gap-2">
-                          {item.urgencia === "Urgente" && (
-                            <Badge variant="destructive" className="text-[11px] font-bold">
-                              🔥 Urgente
+                  return (
+                    <div
+                      key={item.id || index}
+                      className={`p-3.5 rounded-lg border transition-all ${
+                        item.selected !== false
+                          ? isDev
+                            ? "border-purple-500/40 bg-purple-500/5 shadow-xs"
+                            : "border-primary/40 bg-card shadow-xs"
+                          : "border-border/60 bg-muted/20 opacity-65"
+                      }`}
+                    >
+                      <div className="flex items-start gap-3">
+                        <Checkbox
+                          checked={item.selected !== false}
+                          onCheckedChange={() => handleToggleSelect(item.id)}
+                          className="mt-1"
+                        />
+
+                        <div className="flex-1 space-y-2.5">
+                          {/* Linha de Badges de Status do Suporte */}
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            {/* STATUS DO CHAMADO NO HELPDESK (DESTAQUE MÁXIMO) */}
+                            {isDev ? (
+                              <Badge className="bg-purple-100 text-purple-800 dark:bg-purple-950/70 dark:text-purple-300 border border-purple-300 dark:border-purple-800 font-bold text-[11px] flex items-center gap-1">
+                                <Code2 className="size-3" />
+                                ⚙️ {item.status_chamado || "Pendente Desenvolvimento"}
+                              </Badge>
+                            ) : isRetorno ? (
+                              <Badge className="bg-emerald-100 text-emerald-800 dark:bg-emerald-950/70 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 font-bold text-[11px] flex items-center gap-1">
+                                <ArrowUpRight className="size-3" />
+                                🔄 {item.status_chamado} (Ação Imediata)
+                              </Badge>
+                            ) : item.status_chamado ? (
+                              <Badge
+                                variant="outline"
+                                className="bg-sky-50 text-sky-800 dark:bg-sky-950/40 dark:text-sky-300 border-sky-300 dark:border-sky-800 font-semibold text-[11px]"
+                              >
+                                📋 {item.status_chamado}
+                              </Badge>
+                            ) : null}
+
+                            {/* Urgência */}
+                            {item.urgencia === "Urgente" && (
+                              <Badge variant="destructive" className="text-[11px] font-bold">
+                                🔥 Urgente
+                              </Badge>
+                            )}
+                            {item.urgencia === "Alta" && (
+                              <Badge className="bg-amber-600 text-white text-[11px] font-bold">
+                                ⚡ Alta
+                              </Badge>
+                            )}
+                            {item.urgencia === "Normal" && (
+                              <Badge variant="secondary" className="text-[11px]">
+                                Normal
+                              </Badge>
+                            )}
+
+                            {/* Horizonte Sugerido */}
+                            <Badge variant="outline" className="text-[11px] capitalize">
+                              📅 {item.horizon === "daily" ? "Hoje (Daily)" : item.horizon === "weekly" ? "Esta Semana" : item.horizon === "monthly" ? "Este Mês" : "Longo Prazo"}
                             </Badge>
-                          )}
-                          {item.urgencia === "Alta" && (
-                            <Badge className="bg-amber-600 text-white text-[11px] font-bold">
-                              ⚡ Alta
-                            </Badge>
-                          )}
-                          {item.urgencia === "Normal" && (
-                            <Badge variant="secondary" className="text-[11px]">
-                              Normal
-                            </Badge>
-                          )}
 
-                          <Badge variant="outline" className="text-[11px] capitalize">
-                            📅 {item.horizon === "daily" ? "Hoje (Daily)" : item.horizon === "weekly" ? "Esta Semana" : item.horizon}
-                          </Badge>
+                            {/* Número do Ticket */}
+                            {item.ticket_num && (
+                              <span className="text-[11px] font-mono text-muted-foreground bg-muted px-1.5 py-0.5 rounded border border-border/60">
+                                #{item.ticket_num}
+                              </span>
+                            )}
 
-                          {item.ticket_num && (
-                            <span className="text-[11px] font-mono text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
-                              Ticket #{item.ticket_num}
-                            </span>
-                          )}
-
-                          {item.cliente && (
-                            <span className="text-[11px] font-medium text-foreground bg-muted/80 px-2 py-0.5 rounded">
-                              🏢 {item.cliente}
-                            </span>
-                          )}
-                        </div>
-
-                        {/* Campo Descrição Editável */}
-                        <div>
-                          <Label className="text-[11px] text-muted-foreground">Descrição / Título no Quadro:</Label>
-                          <Input
-                            value={item.description}
-                            onChange={(e) =>
-                              handleFieldChange(item.id, "description", e.target.value)
-                            }
-                            className="h-8 text-xs font-medium"
-                          />
-                        </div>
-
-                        {/* Linha com Categoria, Horizonte e Prazo */}
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                          <div>
-                            <Label className="text-[11px] text-muted-foreground">Categoria:</Label>
-                            <Select
-                              value={String(item.category_id)}
-                              onValueChange={(val) =>
-                                handleFieldChange(item.id, "category_id", Number(val))
-                              }
-                            >
-                              <SelectTrigger className="h-8 text-xs">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {categories.map((c) => (
-                                  <SelectItem key={c.id} value={String(c.id)} className="text-xs">
-                                    {c.description}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
+                            {/* Cliente */}
+                            {item.cliente && (
+                              <span className="text-[11px] font-semibold text-foreground bg-muted px-2 py-0.5 rounded border border-border/60">
+                                🏢 {item.cliente}
+                              </span>
+                            )}
                           </div>
 
+                          {/* Campo Descrição Editável */}
                           <div>
-                            <Label className="text-[11px] text-muted-foreground">Horizonte:</Label>
-                            <Select
-                              value={item.horizon}
-                              onValueChange={(val) =>
-                                handleFieldChange(item.id, "horizon", val as Horizon)
-                              }
-                            >
-                              <SelectTrigger className="h-8 text-xs">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="daily" className="text-xs">Hoje (Daily)</SelectItem>
-                                <SelectItem value="weekly" className="text-xs">Semana (Weekly)</SelectItem>
-                                <SelectItem value="monthly" className="text-xs">Mês (Monthly)</SelectItem>
-                                <SelectItem value="long_term" className="text-xs">Longo Prazo</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </div>
-
-                          <div>
-                            <Label className="text-[11px] text-muted-foreground">Prazo (Deadline):</Label>
+                            <Label className="text-[11px] text-muted-foreground">Descrição / Título no Quadro:</Label>
                             <Input
-                              type="date"
-                              value={item.deadline ? item.deadline.slice(0, 10) : ""}
+                              value={item.description}
                               onChange={(e) =>
-                                handleFieldChange(
-                                  item.id,
-                                  "deadline",
-                                  e.target.value ? `${e.target.value}T18:00:00` : null
-                                )
+                                handleFieldChange(item.id, "description", e.target.value)
                               }
-                              className="h-8 text-xs"
+                              className="h-8 text-xs font-medium"
                             />
                           </div>
-                        </div>
 
-                        {item.motivo_horizon && (
-                          <p className="text-[11px] text-muted-foreground italic flex items-center gap-1">
-                            <AlertCircle className="size-3 text-primary shrink-0" />
-                            {item.motivo_horizon}
-                          </p>
-                        )}
+                          {/* Linha com Categoria, Horizonte e Prazo */}
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                            <div>
+                              <Label className="text-[11px] text-muted-foreground">Categoria:</Label>
+                              <Select
+                                value={String(item.category_id)}
+                                onValueChange={(val) =>
+                                  handleFieldChange(item.id, "category_id", Number(val))
+                                }
+                              >
+                                <SelectTrigger className="h-8 text-xs">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {categories.map((c) => (
+                                    <SelectItem key={c.id} value={String(c.id)} className="text-xs">
+                                      {c.description}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+
+                            <div>
+                              <Label className="text-[11px] text-muted-foreground">Horizonte:</Label>
+                              <Select
+                                value={item.horizon}
+                                onValueChange={(val) =>
+                                  handleFieldChange(item.id, "horizon", val as Horizon)
+                                }
+                              >
+                                <SelectTrigger className="h-8 text-xs">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="daily" className="text-xs">Hoje (Daily)</SelectItem>
+                                  <SelectItem value="weekly" className="text-xs">Semana (Weekly)</SelectItem>
+                                  <SelectItem value="monthly" className="text-xs">Mês (Monthly)</SelectItem>
+                                  <SelectItem value="long_term" className="text-xs">Longo Prazo</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+
+                            <div>
+                              <Label className="text-[11px] text-muted-foreground">Prazo (Deadline):</Label>
+                              <Input
+                                type="date"
+                                value={item.deadline ? item.deadline.slice(0, 10) : ""}
+                                onChange={(e) =>
+                                  handleFieldChange(
+                                    item.id,
+                                    "deadline",
+                                    e.target.value ? `${e.target.value}T18:00:00` : null
+                                  )
+                                }
+                                className="h-8 text-xs"
+                              />
+                            </div>
+                          </div>
+
+                          {/* Dica / Alerta da Fila Dev */}
+                          {isDev ? (
+                            <p className="text-[11px] text-purple-700 dark:text-purple-300 bg-purple-50 dark:bg-purple-950/40 px-2 py-1 rounded border border-purple-200 dark:border-purple-800/60 flex items-center gap-1.5 font-medium">
+                              <Code2 className="size-3.5 shrink-0" />
+                              Fila de Desenvolvimento: desmarcado por padrão para não entrar nas tarefas de hoje.
+                            </p>
+                          ) : item.motivo_horizon ? (
+                            <p className="text-[11px] text-muted-foreground italic flex items-center gap-1">
+                              <AlertCircle className="size-3 text-primary shrink-0" />
+                              {item.motivo_horizon}
+                            </p>
+                          ) : null}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           )}
