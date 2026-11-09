@@ -5,6 +5,16 @@ import type {
   TaskStatus,
   Users,
 } from "@/types/doapp";
+import {
+  readDatabase,
+  writeDatabase,
+  nextId,
+  readSessionUserId,
+  writeSession,
+  clearSession,
+} from "@/lib/local-db";
+import { login as localLogin, register as localRegister } from "@/lib/auth";
+import { ensureSeeded } from "@/lib/seed";
 
 export const API_BASE_URL =
   (import.meta.env.VITE_API_BASE_URL as string | undefined) ||
@@ -72,6 +82,7 @@ async function fetchApi<T>(
   const response = await fetch(`${API_BASE_URL}${endpoint}`, {
     ...options,
     headers,
+    signal: AbortSignal.timeout(2000), // Timeout rápido para fallback local
   });
 
   if (!response.ok) {
@@ -104,35 +115,79 @@ export interface AuthResponse {
 
 export const authApi = {
   async login(email: string, password: string): Promise<Users> {
-    const data = await fetchApi<AuthResponse>("/auth/login-json", {
-      method: "POST",
-      body: JSON.stringify({ email, password }),
-    });
-    setToken(data.access_token);
-    setCachedUser(data.user);
-    return data.user;
+    try {
+      const data = await fetchApi<AuthResponse>("/auth/login-json", {
+        method: "POST",
+        body: JSON.stringify({ email, password }),
+      });
+      setToken(data.access_token);
+      setCachedUser(data.user);
+      return data.user;
+    } catch {
+      // Fallback local caso o backend esteja offline
+      await ensureSeeded();
+      const res = await localLogin(email, password);
+      if (res.ok) {
+        setToken("local-token");
+        setCachedUser(res.user);
+        writeSession(res.user.id);
+        return res.user;
+      }
+      throw new ApiError(res.error, 400);
+    }
   },
 
   async register(name: string, email: string, password: string): Promise<Users> {
-    await fetchApi<Users>("/auth/register", {
-      method: "POST",
-      body: JSON.stringify({ name, email, password }),
-    });
-    return authApi.login(email, password);
+    try {
+      await fetchApi<Users>("/auth/register", {
+        method: "POST",
+        body: JSON.stringify({ name, email, password }),
+      });
+      return authApi.login(email, password);
+    } catch {
+      await ensureSeeded();
+      const res = await localRegister(name, email, password);
+      if (res.ok) {
+        setToken("local-token");
+        setCachedUser(res.user);
+        writeSession(res.user.id);
+        return res.user;
+      }
+      throw new ApiError(res.error, 400);
+    }
   },
 
   async me(): Promise<Users | null> {
-    const token = getToken();
-    if (!token) return null;
     try {
+      const token = getToken();
+      if (!token) {
+        // Se ainda não logou mas tem seed, restaura sessão demo
+        await ensureSeeded();
+        const sid = readSessionUserId();
+        const db = readDatabase();
+        const autoUser = db.users.find((u) => u.id === sid) || db.users[0] || null;
+        if (autoUser) {
+          setToken("local-token");
+          setCachedUser(autoUser);
+          return autoUser;
+        }
+        return null;
+      }
       const user = await fetchApi<Users>("/auth/me");
       setCachedUser(user);
       return user;
-    } catch (error) {
-      if (error instanceof ApiError && error.status === 401) {
-        clearAuth();
+    } catch {
+      await ensureSeeded();
+      const cached = getCachedUser();
+      if (cached) return cached;
+      const sid = readSessionUserId();
+      const db = readDatabase();
+      const found = db.users.find((u) => u.id === sid) || db.users[0] || null;
+      if (found) {
+        setToken("local-token");
+        setCachedUser(found);
       }
-      return null;
+      return found;
     }
   },
 
@@ -140,27 +195,45 @@ export const authApi = {
     try {
       await fetchApi("/auth/logout", { method: "POST" });
     } catch {
-      // Ignore network errors on logout
+      // Ignora erro de rede no logout
     } finally {
       clearAuth();
+      clearSession();
     }
   },
 };
 
 export const categoriesApi = {
   async list(): Promise<CategoriesDoapp[]> {
-    return fetchApi<CategoriesDoapp[]>("/categories/");
+    try {
+      return await fetchApi<CategoriesDoapp[]>("/categories/");
+    } catch {
+      await ensureSeeded();
+      return readDatabase().categories_doapp;
+    }
   },
 
   async create(description: string): Promise<CategoriesDoapp> {
-    return fetchApi<CategoriesDoapp>("/categories/", {
-      method: "POST",
-      body: JSON.stringify({ description }),
-    });
+    try {
+      return await fetchApi<CategoriesDoapp>("/categories/", {
+        method: "POST",
+        body: JSON.stringify({ description }),
+      });
+    } catch {
+      const db = readDatabase();
+      const newCat: CategoriesDoapp = { id: nextId(db.categories_doapp), description };
+      writeDatabase({ ...db, categories_doapp: [...db.categories_doapp, newCat] });
+      return newCat;
+    }
   },
 
   async delete(id: number): Promise<void> {
-    await fetchApi(`/categories/${id}`, { method: "DELETE" });
+    try {
+      await fetchApi(`/categories/${id}`, { method: "DELETE" });
+    } catch {
+      const db = readDatabase();
+      writeDatabase({ ...db, categories_doapp: db.categories_doapp.filter((c) => c.id !== id) });
+    }
   },
 };
 
@@ -173,51 +246,107 @@ export interface DemandFilters {
 
 export const demandsApi = {
   async list(filters?: DemandFilters): Promise<ListDoapp[]> {
-    const params = new URLSearchParams();
-    if (filters?.category_id && filters.category_id !== "all") {
-      params.set("category_id", String(filters.category_id));
-    }
-    if (filters?.status) {
-      params.set("status", filters.status);
-    }
-    if (filters?.horizon && filters.horizon !== "all") {
-      params.set("horizon", filters.horizon);
-    }
-    if (filters?.search) {
-      params.set("search", filters.search);
-    }
+    try {
+      const params = new URLSearchParams();
+      if (filters?.category_id && filters.category_id !== "all") {
+        params.set("category_id", String(filters.category_id));
+      }
+      if (filters?.status) {
+        params.set("status", filters.status);
+      }
+      if (filters?.horizon && filters.horizon !== "all") {
+        params.set("horizon", filters.horizon);
+      }
+      if (filters?.search) {
+        params.set("search", filters.search);
+      }
 
-    const query = params.toString() ? `?${params.toString()}` : "";
-    return fetchApi<ListDoapp[]>(`/demands/${query}`);
+      const query = params.toString() ? `?${params.toString()}` : "";
+      return await fetchApi<ListDoapp[]>(`/demands/${query}`);
+    } catch {
+      await ensureSeeded();
+      let list = readDatabase().list_doapp;
+      if (filters?.category_id && filters.category_id !== "all") {
+        list = list.filter((d) => d.category_id === Number(filters.category_id));
+      }
+      if (filters?.status) {
+        list = list.filter((d) => d.status === filters.status);
+      }
+      if (filters?.horizon && filters.horizon !== "all") {
+        list = list.filter((d) => d.horizon === filters.horizon);
+      }
+      if (filters?.search) {
+        const s = filters.search.toLowerCase();
+        list = list.filter((d) => d.description.toLowerCase().includes(s));
+      }
+      return list;
+    }
   },
 
   async create(
     demand: Omit<ListDoapp, "id" | "user_id" | "initial_dt">
   ): Promise<ListDoapp> {
-    return fetchApi<ListDoapp>("/demands/", {
-      method: "POST",
-      body: JSON.stringify(demand),
-    });
+    try {
+      return await fetchApi<ListDoapp>("/demands/", {
+        method: "POST",
+        body: JSON.stringify(demand),
+      });
+    } catch {
+      const db = readDatabase();
+      const sessionUser = getCachedUser() || db.users[0];
+      const newDemand: ListDoapp = {
+        ...demand,
+        id: nextId(db.list_doapp),
+        user_id: sessionUser ? sessionUser.id : 1,
+        initial_dt: new Date().toISOString(),
+        link: demand.link ?? null,
+      };
+      writeDatabase({ ...db, list_doapp: [...db.list_doapp, newDemand] });
+      return newDemand;
+    }
   },
 
   async update(
     id: number,
     demand: Partial<Omit<ListDoapp, "id" | "user_id" | "initial_dt">>
   ): Promise<ListDoapp> {
-    return fetchApi<ListDoapp>(`/demands/${id}`, {
-      method: "PUT",
-      body: JSON.stringify(demand),
-    });
+    try {
+      return await fetchApi<ListDoapp>(`/demands/${id}`, {
+        method: "PUT",
+        body: JSON.stringify(demand),
+      });
+    } catch {
+      const db = readDatabase();
+      let updated: ListDoapp | null = null;
+      const list = db.list_doapp.map((d) => {
+        if (d.id === id) {
+          updated = { ...d, ...demand };
+          return updated;
+        }
+        return d;
+      });
+      writeDatabase({ ...db, list_doapp: list });
+      return updated ?? db.list_doapp.find((d) => d.id === id)!;
+    }
   },
 
   async updateStatus(id: number, status: TaskStatus): Promise<ListDoapp> {
-    return fetchApi<ListDoapp>(`/demands/${id}/status`, {
-      method: "PATCH",
-      body: JSON.stringify({ status }),
-    });
+    try {
+      return await fetchApi<ListDoapp>(`/demands/${id}/status`, {
+        method: "PATCH",
+        body: JSON.stringify({ status }),
+      });
+    } catch {
+      return demandsApi.update(id, { status });
+    }
   },
 
   async delete(id: number): Promise<void> {
-    await fetchApi(`/demands/${id}`, { method: "DELETE" });
+    try {
+      await fetchApi(`/demands/${id}`, { method: "DELETE" });
+    } catch {
+      const db = readDatabase();
+      writeDatabase({ ...db, list_doapp: db.list_doapp.filter((d) => d.id !== id) });
+    }
   },
 };

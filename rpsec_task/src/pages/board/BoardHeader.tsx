@@ -1,4 +1,4 @@
-import { Menu, Plus, Search, X } from "lucide-react";
+import { Menu, Plus, Search, Sparkles, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,6 +13,7 @@ interface BoardHeaderProps {
   onSearchChange: (value: string) => void;
   onClearCategory: () => void;
   onCreate: () => void;
+  onOpenAi: () => void;
   onOpenNav: () => void;
 }
 
@@ -23,6 +24,7 @@ export function BoardHeader({
   onSearchChange,
   onClearCategory,
   onCreate,
+  onOpenAi,
   onOpenNav,
 }: BoardHeaderProps) {
   return (
@@ -65,20 +67,32 @@ export function BoardHeader({
       </div>
 
       <div className="flex items-center gap-2 md:ml-auto">
-        <div className="relative min-w-0 flex-1 md:w-[260px] md:flex-none">
+        <div className="relative min-w-0 flex-1 md:w-[240px] md:flex-none">
           <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             value={search}
             onChange={(event) => onSearchChange(event.target.value)}
-            placeholder="Search demands"
-            aria-label="Search demands"
-            className="h-9 pl-9"
+            placeholder="Pesquisar chamados..."
+            aria-label="Pesquisar chamados"
+            className="h-9 pl-9 text-xs"
           />
         </div>
 
-        <Button type="button" className="h-9 shrink-0" onClick={onCreate}>
+        <Button
+          type="button"
+          variant="outline"
+          className="h-9 shrink-0 gap-1.5 border-primary/40 bg-primary/5 text-primary hover:bg-primary/10 hover:border-primary/60 font-medium text-xs px-3"
+          onClick={onOpenAi}
+          title="Adicionar chamado colando texto ou print de tela"
+        >
+          <Sparkles className="size-3.5" />
+          <span className="hidden sm:inline">Adicionar com IA</span>
+          <span className="sm:hidden">IA</span>
+        </Button>
+
+        <Button type="button" className="h-9 shrink-0 gap-1.5 text-xs px-3" onClick={onCreate}>
           <Plus className="size-4" />
-          New demand
+          Nova demanda
         </Button>
       </div>
     </header>

@@ -1,9 +1,10 @@
 import { useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { Inbox } from "lucide-react";
+import { Inbox, Sparkles } from "lucide-react";
 
 import { SidebarPanel, type CategoryActionResult } from "@/components/app-sidebar";
 import { DemandDialog } from "@/components/demand-dialog";
+import { AiDemandDialog } from "@/components/ai-demand-dialog";
 import { KanbanBoard } from "@/components/kanban/kanban-board";
 import {
   AlertDialog,
@@ -60,23 +61,32 @@ function BoardSkeleton() {
   );
 }
 
-function EmptyBoard({ onCreate }: { onCreate: () => void }) {
+function EmptyBoard({ onCreate, onOpenAi }: { onCreate: () => void; onOpenAi: () => void }) {
   return (
     <div className="flex flex-col items-center justify-center gap-4 rounded-xl border border-dashed border-border px-6 py-16 text-center">
       <Inbox className="size-10 text-muted-foreground/40" />
       <div className="flex flex-col gap-2">
         <h2 className="text-lg font-semibold tracking-[-0.01em] text-foreground">
-          Your board is empty
+          Seu quadro de demandas está vazio
         </h2>
-        <p className="max-w-[42ch] text-sm leading-relaxed text-muted-foreground">
-          Add your first demand and it lands in Pending. The deadline decides when it
-          shows up in Daily, Weekly, Monthly, or Long-term, and the Overdue lane fills
-          itself.
+        <p className="max-w-[44ch] text-sm leading-relaxed text-muted-foreground">
+          Adicione suas pendências ou use a IA para converter chamados e tickets de suporte em tarefas organizadas com 1 clique.
         </p>
       </div>
-      <Button type="button" onClick={onCreate}>
-        Add a demand
-      </Button>
+      <div className="flex items-center gap-3">
+        <Button
+          type="button"
+          variant="outline"
+          className="gap-2 border-primary/40 bg-primary/5 text-primary hover:bg-primary/10"
+          onClick={onOpenAi}
+        >
+          <Sparkles className="size-4" />
+          Adicionar com IA
+        </Button>
+        <Button type="button" onClick={onCreate}>
+          Nova Demanda Manual
+        </Button>
+      </div>
     </div>
   );
 }
@@ -103,6 +113,7 @@ const Board = () => {
 
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [dialog, setDialog] = useState<DialogState>(CLOSED_DIALOG);
+  const [aiDialogOpen, setAiDialogOpen] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<ListDoapp | null>(null);
 
   const { demands, isPending } = useDemands(user?.id ?? null);
@@ -150,7 +161,7 @@ const Board = () => {
       : categories.find((category) => category.id === activeCategoryId) ?? null;
 
   const viewLabel =
-    VIEWS.find((option) => option.value === view)?.label ?? "All demands";
+    VIEWS.find((option) => option.value === view)?.label ?? "Todas as demandas";
 
   const updateParams = (changes: Record<string, string | null>) => {
     const next = new URLSearchParams(searchParams);
@@ -167,12 +178,12 @@ const Board = () => {
   const handleDialogSubmit = async (input: DemandInput) => {
     if (dialog.demand) {
       await updateDemand({ id: dialog.demand.id, input });
-      toast.success("Demand updated");
+      toast.success("Demanda atualizada");
       return;
     }
 
     await createDemand(input);
-    toast.success("Demand added");
+    toast.success("Demanda adicionada");
   };
 
   const handleMove = (demand: ListDoapp, status: TaskStatus) => {
@@ -188,12 +199,12 @@ const Board = () => {
     if (!pendingDelete) return;
     await deleteDemand(pendingDelete.id);
     setPendingDelete(null);
-    toast.success("Demand deleted");
+    toast.success("Demanda excluída");
   };
 
   const handleCreateCategory = async (name: string): Promise<CategoryActionResult> => {
     const result = await createCategory(name);
-    if (result.ok) toast.success(`"${name.trim()}" added`);
+    if (result.ok) toast.success(`"${name.trim()}" adicionada`);
     else if (result.error) toast.error(result.error);
     return result;
   };
@@ -203,7 +214,7 @@ const Board = () => {
     if (!result.ok && result.error) toast.error(result.error);
     else if (result.ok) {
       if (activeCategoryId === id) updateParams({ category: null });
-      toast.success("Category deleted");
+      toast.success("Categoria excluída");
     }
     return result;
   };
@@ -247,6 +258,7 @@ const Board = () => {
           onSearchChange={(value) => updateParams({ q: value })}
           onClearCategory={() => updateParams({ category: null })}
           onCreate={() => openCreate()}
+          onOpenAi={() => setAiDialogOpen(true)}
           onOpenNav={() => setMobileNavOpen(true)}
         />
 
@@ -254,7 +266,7 @@ const Board = () => {
           {isPending ? (
             <BoardSkeleton />
           ) : demands.length === 0 ? (
-            <EmptyBoard onCreate={() => openCreate()} />
+            <EmptyBoard onCreate={() => openCreate()} onOpenAi={() => setAiDialogOpen(true)} />
           ) : (
             <KanbanBoard
               demands={visibleDemands}
@@ -279,6 +291,13 @@ const Board = () => {
         onDelete={requestDelete}
       />
 
+      <AiDemandDialog
+        open={aiDialogOpen}
+        onOpenChange={setAiDialogOpen}
+        categories={categories}
+        onCreateDemand={createDemand}
+      />
+
       <AlertDialog
         open={pendingDelete !== null}
         onOpenChange={(open) => {
@@ -287,19 +306,18 @@ const Board = () => {
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete this demand?</AlertDialogTitle>
+            <AlertDialogTitle>Excluir esta demanda?</AlertDialogTitle>
             <AlertDialogDescription>
-              {pendingDelete?.description} will be removed from your board. This cannot
-              be undone.
+              {pendingDelete?.description} será removida do seu quadro. Esta ação não pode ser desfeita.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Keep it</AlertDialogCancel>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               onClick={() => void confirmDelete()}
             >
-              Delete
+              Excluir
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
