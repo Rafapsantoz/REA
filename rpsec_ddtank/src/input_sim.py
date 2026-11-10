@@ -169,35 +169,34 @@ def click_at(x: int, y: int, jitter: bool = True):
         return
 
     if jitter:
-        # Micro-variação de 1 a 3 pixels para humanização
-        x += random.randint(-2, 2)
-        y += random.randint(-2, 2)
+        # Micro-variação de 1 a 2 pixels para humanização
+        x += random.randint(-1, 1)
+        y += random.randint(-1, 1)
+
+    # Posicionamento exato do cursor físico na tela
+    user32.SetCursorPos(x, y)
+    time.sleep(random.uniform(0.04, 0.08))
 
     # Converte coordenadas para normalização absoluta do SendInput (0 a 65535)
-    screen_w = user32.GetSystemMetrics(0)
-    screen_h = user32.GetSystemMetrics(1)
+    screen_w = max(1, user32.GetSystemMetrics(0))
+    screen_h = max(1, user32.GetSystemMetrics(1))
     norm_x = int(x * 65535 / (screen_w - 1))
     norm_y = int(y * 65535 / (screen_h - 1))
 
-    # 1. Move o cursor
-    inp_move = INPUT()
-    inp_move.type = INPUT_MOUSE
-    inp_move.u.mi.dx = norm_x
-    inp_move.u.mi.dy = norm_y
-    inp_move.u.mi.dwFlags = MOUSEEVENTF_MOVE | MOUSEEVENTF_ABSOLUTE
-
-    # 2. Pressiona botão esquerdo
+    # 1. Pressiona botão esquerdo
     inp_down = INPUT()
     inp_down.type = INPUT_MOUSE
+    inp_down.u.mi.dx = norm_x
+    inp_down.u.mi.dy = norm_y
     inp_down.u.mi.dwFlags = MOUSEEVENTF_LEFTDOWN
 
-    # 3. Solta botão esquerdo
+    # 2. Solta botão esquerdo
     inp_up = INPUT()
     inp_up.type = INPUT_MOUSE
+    inp_up.u.mi.dx = norm_x
+    inp_up.u.mi.dy = norm_y
     inp_up.u.mi.dwFlags = MOUSEEVENTF_LEFTUP
 
-    user32.SendInput(1, ctypes.byref(inp_move), ctypes.sizeof(INPUT))
-    time.sleep(random.uniform(0.03, 0.06))
     user32.SendInput(1, ctypes.byref(inp_down), ctypes.sizeof(INPUT))
     time.sleep(random.uniform(0.06, 0.12))
     user32.SendInput(1, ctypes.byref(inp_up), ctypes.sizeof(INPUT))

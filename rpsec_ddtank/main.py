@@ -43,17 +43,27 @@ def main():
     print("=" * 60)
 
     if args.test_ready:
+        print("\n[TESTE PRONTO] O bot clicará em 'Pronto' nas 3 fakes (TL, BL, BR).")
+        print("Iniciando em 3 segundos... (posicione as janelas no grid e solte o mouse)\n")
+        for i in range(3, 0, -1):
+            print(f"Disparando em {i}...")
+            time.sleep(1.0)
         logger.info("Executando teste: Clicar Pronto nas 3 fakes...")
         wm = WindowManager(DEFAULT_CONFIG)
         wm.ready_all_fakes()
-        logger.info("Teste de Pronto concluído!")
+        logger.info("Teste de Pronto concluído com sucesso!")
         return
 
     if args.test_suicide:
+        print("\n[TESTE SUICÍDIO] O bot focará as 3 fakes e segurará 'Seta Esquerda' por 3.5s em cada.")
+        print("Iniciando em 3 segundos... (posicione as janelas no grid e solte o teclado)\n")
+        for i in range(3, 0, -1):
+            print(f"Disparando em {i}...")
+            time.sleep(1.0)
         logger.info("Executando teste: Suicídio das 3 fakes (andar para a esquerda)...")
         wm = WindowManager(DEFAULT_CONFIG)
         wm.execute_fakes_suicide_sequence()
-        logger.info("Teste de suicídio concluído!")
+        logger.info("Teste de suicídio concluído com sucesso!")
         return
 
     if args.test_vision:

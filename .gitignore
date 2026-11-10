@@ -33,6 +33,8 @@ recordings/
 *.tmp
 *.mp4
 *.wav
+*.jpg
+*.jpeg
 rpsec_ddtank/data/raw/
 rpsec_ddtank/data/frames/
 
