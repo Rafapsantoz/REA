@@ -20,7 +20,7 @@ export function useDemands(userId: number | null) {
     queryKey: ["demands", userId],
     queryFn: async () => {
       if (!userId || !getToken()) return [];
-      const list = await demandsApi.list();
+      const list = await demandsApi.list({ user_id: userId });
       return list.sort(compareDemands);
     },
     enabled: !!userId && !!getToken(),

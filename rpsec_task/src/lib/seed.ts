@@ -49,7 +49,7 @@ export async function ensureSeeded(): Promise<void> {
       register_dt: new Date().toISOString(),
       last_login: new Date().toISOString(),
       updated_dt: new Date().toISOString(),
-      fg_logged: true,
+      fg_logged: false,
     } satisfies Users);
 
   const categories: CategoriesDoapp[] =
@@ -70,6 +70,5 @@ export async function ensureSeeded(): Promise<void> {
     list_doapp: demands,
   });
 
-  writeSession(demoUser.id);
   markSeeded();
 }

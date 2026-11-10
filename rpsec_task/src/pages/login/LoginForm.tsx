@@ -2,8 +2,9 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { CircleAlert, Loader2 } from "lucide-react";
+import { CircleAlert, Loader2, Sparkles } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,13 +14,18 @@ import { DEMO_EMAIL, DEMO_PASSWORD } from "@/lib/seed";
 import { EMAIL_PATTERN } from "@/lib/validation";
 
 const loginSchema = z.object({
-  email: z.string().trim().regex(EMAIL_PATTERN, "Enter a valid email address."),
-  password: z.string().min(6, "Passwords have at least 6 characters."),
+  email: z.string().trim().regex(EMAIL_PATTERN, "Informe um e-mail válido."),
+  password: z.string().min(6, "A senha deve ter no mínimo 6 caracteres."),
 });
 
 type LoginValues = z.infer<typeof loginSchema>;
 
-export function LoginForm() {
+interface LoginFormProps {
+  onSwitchToRegister?: () => void;
+}
+
+export function LoginForm({ onSwitchToRegister }: LoginFormProps) {
+  const { t } = useTranslation();
   const { login } = useAuth();
   const navigate = useNavigate();
   const [formError, setFormError] = useState<string | null>(null);
@@ -42,15 +48,21 @@ export function LoginForm() {
     navigate("/board", { replace: true });
   });
 
+  const handleFillDemo = () => {
+    form.setValue("email", DEMO_EMAIL, { shouldValidate: true });
+    form.setValue("password", DEMO_PASSWORD, { shouldValidate: true });
+    setFormError(null);
+  };
+
   return (
     <form onSubmit={handleSubmit} className="mt-6 flex flex-col gap-4" noValidate>
       <div className="flex flex-col gap-1.5">
-        <Label htmlFor="login-email">Email</Label>
+        <Label htmlFor="login-email">{t("login.email", "E-mail de Acesso")}</Label>
         <Input
           id="login-email"
           type="email"
           autoComplete="email"
-          placeholder="you@example.com"
+          placeholder={t("login.emailPlaceholder", "seu.email@exemplo.com")}
           className="h-9"
           {...form.register("email")}
         />
@@ -60,12 +72,12 @@ export function LoginForm() {
       </div>
 
       <div className="flex flex-col gap-1.5">
-        <Label htmlFor="login-password">Password</Label>
+        <Label htmlFor="login-password">{t("login.password", "Senha")}</Label>
         <Input
           id="login-password"
           type="password"
           autoComplete="current-password"
-          placeholder="Your password"
+          placeholder={t("login.passwordPlaceholder", "Sua senha segura")}
           className="h-9"
           {...form.register("password")}
         />
@@ -83,28 +95,43 @@ export function LoginForm() {
         </p>
       )}
 
-      <Button type="submit" className="h-9 w-full" disabled={isSubmitting}>
+      <Button type="submit" className="h-9.5 w-full font-medium" disabled={isSubmitting}>
         {isSubmitting && <Loader2 className="size-4 animate-spin" />}
-        Sign in
+        {t("login.submitSignIn", "Entrar no Sistema")}
       </Button>
 
-      <div className="rounded-lg border border-border bg-muted/50 p-3">
-        <p className="text-xs font-medium text-foreground">Try the demo account</p>
-        <p className="mt-1 text-xs text-muted-foreground">
+      {onSwitchToRegister && (
+        <p className="text-center text-xs text-muted-foreground">
+          {t("login.noAccount", "Ainda não tem conta?")}{" "}
+          <button
+            type="button"
+            onClick={onSwitchToRegister}
+            className="font-medium text-primary hover:underline"
+          >
+            {t("login.createAccountLink", "Cadastre-se")}
+          </button>
+        </p>
+      )}
+
+      <div className="rounded-lg border border-border bg-muted/40 p-3">
+        <div className="flex items-center justify-between gap-2">
+          <p className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+            <Sparkles className="size-3.5 text-primary" />
+            {t("login.demoCardTitle", "Acesso Rápido (Conta Demo)")}
+          </p>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="h-7 px-2.5 text-xs border-primary/30 text-primary hover:bg-primary/10"
+            onClick={handleFillDemo}
+          >
+            {t("login.demoFillBtn", "Preencher dados")}
+          </Button>
+        </div>
+        <p className="mt-1.5 text-xs text-muted-foreground font-mono">
           {DEMO_EMAIL} · {DEMO_PASSWORD}
         </p>
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          className="mt-2 h-8 px-2 text-xs"
-          onClick={() => {
-            form.setValue("email", DEMO_EMAIL);
-            form.setValue("password", DEMO_PASSWORD);
-          }}
-        >
-          Fill demo credentials
-        </Button>
       </div>
     </form>
   );

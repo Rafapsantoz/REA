@@ -14,7 +14,7 @@ import {
   writeSession,
   clearSession,
 } from "@/lib/local-db";
-import { login as localLogin, register as localRegister } from "@/lib/auth";
+import { login as localLogin, register as localRegister, logout as localLogout } from "@/lib/auth";
 import { ensureSeeded } from "@/lib/seed";
 
 export const API_BASE_URL =
@@ -162,16 +162,17 @@ export const authApi = {
     try {
       const token = getToken();
       if (!token) {
-        // Se ainda não logou mas tem seed, restaura sessão demo
         await ensureSeeded();
         const sid = readSessionUserId();
+        if (!sid) return null;
         const db = readDatabase();
-        const autoUser = db.users.find((u) => u.id === sid) || db.users[0] || null;
+        const autoUser = db.users.find((u) => u.id === sid);
         if (autoUser) {
           setToken("local-token");
           setCachedUser(autoUser);
           return autoUser;
         }
+        clearSession();
         return null;
       }
       const user = await fetchApi<Users>("/auth/me");
@@ -179,16 +180,24 @@ export const authApi = {
       return user;
     } catch {
       await ensureSeeded();
-      const cached = getCachedUser();
-      if (cached) return cached;
       const sid = readSessionUserId();
+      const cached = getCachedUser();
+      const targetId = sid ?? cached?.id;
+      if (!targetId) {
+        clearAuth();
+        clearSession();
+        return null;
+      }
       const db = readDatabase();
-      const found = db.users.find((u) => u.id === sid) || db.users[0] || null;
+      const found = db.users.find((u) => u.id === targetId);
       if (found) {
         setToken("local-token");
         setCachedUser(found);
+        return found;
       }
-      return found;
+      clearAuth();
+      clearSession();
+      return null;
     }
   },
 
@@ -200,6 +209,7 @@ export const authApi = {
     } finally {
       clearAuth();
       clearSession();
+      localLogout();
     }
   },
 };
@@ -243,12 +253,16 @@ export interface DemandFilters {
   status?: TaskStatus;
   horizon?: Horizon | "all";
   search?: string;
+  user_id?: number;
 }
 
 export const demandsApi = {
   async list(filters?: DemandFilters): Promise<ListDoapp[]> {
     try {
       const params = new URLSearchParams();
+      if (filters?.user_id) {
+        params.set("user_id", String(filters.user_id));
+      }
       if (filters?.category_id && filters.category_id !== "all") {
         params.set("category_id", String(filters.category_id));
       }
@@ -267,6 +281,9 @@ export const demandsApi = {
     } catch {
       await ensureSeeded();
       let list = readDatabase().list_doapp;
+      if (filters?.user_id) {
+        list = list.filter((d) => d.user_id === filters.user_id);
+      }
       if (filters?.category_id && filters.category_id !== "all") {
         list = list.filter((d) => d.category_id === Number(filters.category_id));
       }
@@ -294,11 +311,13 @@ export const demandsApi = {
       });
     } catch {
       const db = readDatabase();
-      const sessionUser = getCachedUser() || db.users[0];
+      const sid = readSessionUserId();
+      const sessionUser = getCachedUser();
+      const targetUserId = sid ?? sessionUser?.id ?? 1;
       const newDemand: ListDoapp = {
         ...demand,
         id: nextId(db.list_doapp),
-        user_id: sessionUser ? sessionUser.id : 1,
+        user_id: targetUserId,
         initial_dt: new Date().toISOString(),
         link: demand.link ?? null,
       };
@@ -358,7 +377,17 @@ export const demandsApi = {
       await fetchApi<void>("/demands/clear-all", { method: "POST" });
     } catch {
       const db = readDatabase();
-      writeDatabase({ ...db, list_doapp: [] });
+      const sid = readSessionUserId();
+      const sessionUser = getCachedUser();
+      const targetUserId = sid ?? sessionUser?.id;
+      if (targetUserId) {
+        writeDatabase({
+          ...db,
+          list_doapp: db.list_doapp.filter((d) => d.user_id !== targetUserId),
+        });
+      } else {
+        writeDatabase({ ...db, list_doapp: [] });
+      }
     }
   },
 

@@ -59,7 +59,7 @@ export async function register(
   const normalized = normalizeEmail(email);
 
   if (database.users.some((user) => normalizeEmail(user.email) === normalized)) {
-    return { ok: false, error: "That email is already registered. Try signing in." };
+    return { ok: false, error: "Esse e-mail já está cadastrado. Tente fazer login ou use outro e-mail." };
   }
 
   const now = new Date().toISOString();
@@ -87,7 +87,7 @@ export async function login(email: string, password: string): Promise<AuthResult
   );
 
   if (!user || !(await verifyPassword(password, user.password_hash))) {
-    return { ok: false, error: "Incorrect email or password." };
+    return { ok: false, error: "E-mail ou senha incorretos." };
   }
 
   const now = new Date().toISOString();
