@@ -106,14 +106,18 @@ CODE_TO_VK = {
     "Tab": 0x09,
     "Escape": 0x1B,
     "Space": 0x20,
-    "ShiftLeft": 0x10,
-    "ShiftRight": 0x10,
-    "ControlLeft": 0x11,
-    "ControlRight": 0x11,
-    "AltLeft": 0x12,
-    "AltRight": 0x12,
+    "ShiftLeft": 0xA0,
+    "ShiftRight": 0xA1,
+    "ControlLeft": 0xA2,
+    "ControlRight": 0xA3,
+    "AltLeft": 0xA4,
+    "AltRight": 0xA5,
     "MetaLeft": 0x5B,
     "MetaRight": 0x5C,
+    "Shift": 0x10,
+    "Control": 0x11,
+    "Alt": 0x12,
+    "Meta": 0x5B,
     "ContextMenu": 0x5D,
 
     # Navegação
@@ -153,15 +157,19 @@ CODE_TO_VK = {
     "IntlBackslash": 0xE2,   # Tecla \ e | no teclado ABNT2
 }
 
-EXTENDED_KEYS = {0x25, 0x26, 0x27, 0x28, 0x2D, 0x2E, 0x24, 0x23, 0x21, 0x22, 0x5B, 0x5C, 0x6F}
+EXTENDED_KEYS = {
+    0x21, 0x22, 0x23, 0x24, 0x25, 0x26, 0x27, 0x28, 0x2D, 0x2E,
+    0x5B, 0x5C, 0x5D, 0x6F, 0xA3, 0xA5
+}
 
 
 class InputController:
-    """Controlador de Mouse e Teclado via Windows SendInput API."""
+    """Controlador de Mouse e Teclado via Windows SendInput API com imunidade a teclas presas."""
 
     def __init__(self, screen_width: int, screen_height: int):
         self.width = screen_width
         self.height = screen_height
+        self.pressed_vks = set()
 
     def _ensure_desktop(self):
         try:
@@ -170,6 +178,62 @@ class InputController:
                 u32.SetThreadDesktop(hdesk)
         except Exception:
             pass
+
+    def release_all_keys(self):
+        """Libera com 100% de garantia qualquer tecla ou modificador que possa ter ficado preso."""
+        self._ensure_desktop()
+        # Modificadores críticos do Windows que causam atalhos fantasmas
+        MODIFIERS_TO_CLEAR = [
+            0x11, 0xA2, 0xA3,  # VK_CONTROL, VK_LCONTROL, VK_RCONTROL
+            0x12, 0xA4, 0xA5,  # VK_MENU, VK_LMENU, VK_RMENU (Alt / AltGr)
+            0x10, 0xA0, 0xA1,  # VK_SHIFT, VK_LSHIFT, VK_RSHIFT
+            0x5B, 0x5C         # VK_LWIN, VK_RWIN
+        ]
+        to_release = set(self.pressed_vks) | set(MODIFIERS_TO_CLEAR)
+        for vk in to_release:
+            try:
+                self._send_raw_vk(vk, is_up=True)
+            except Exception:
+                pass
+        self.pressed_vks.clear()
+
+    def sync_modifiers(self, ctrl: bool = None, alt: bool = None, shift: bool = None, meta: bool = None):
+        """Sincroniza o estado real dos modificadores do cliente, liberando teclas presas instantaneamente."""
+        self._ensure_desktop()
+
+        if ctrl is False:
+            if 0x11 in self.pressed_vks or 0xA2 in self.pressed_vks or 0xA3 in self.pressed_vks or (u32.GetKeyState(0x11) & 0x8000):
+                self._send_raw_vk(0x11, is_up=True)
+                self._send_raw_vk(0xA2, is_up=True)
+                self._send_raw_vk(0xA3, is_up=True)
+                self.pressed_vks.discard(0x11)
+                self.pressed_vks.discard(0xA2)
+                self.pressed_vks.discard(0xA3)
+
+        if alt is False:
+            if 0x12 in self.pressed_vks or 0xA4 in self.pressed_vks or 0xA5 in self.pressed_vks or (u32.GetKeyState(0x12) & 0x8000):
+                self._send_raw_vk(0x12, is_up=True)
+                self._send_raw_vk(0xA4, is_up=True)
+                self._send_raw_vk(0xA5, is_up=True)
+                self.pressed_vks.discard(0x12)
+                self.pressed_vks.discard(0xA4)
+                self.pressed_vks.discard(0xA5)
+
+        if shift is False:
+            if 0x10 in self.pressed_vks or 0xA0 in self.pressed_vks or 0xA1 in self.pressed_vks or (u32.GetKeyState(0x10) & 0x8000):
+                self._send_raw_vk(0x10, is_up=True)
+                self._send_raw_vk(0xA0, is_up=True)
+                self._send_raw_vk(0xA1, is_up=True)
+                self.pressed_vks.discard(0x10)
+                self.pressed_vks.discard(0xA0)
+                self.pressed_vks.discard(0xA1)
+
+        if meta is False:
+            if 0x5B in self.pressed_vks or 0x5C in self.pressed_vks or (u32.GetKeyState(0x5B) & 0x8000) or (u32.GetKeyState(0x5C) & 0x8000):
+                self._send_raw_vk(0x5B, is_up=True)
+                self._send_raw_vk(0x5C, is_up=True)
+                self.pressed_vks.discard(0x5B)
+                self.pressed_vks.discard(0x5C)
 
     def move_mouse(self, norm_x: float, norm_y: float):
         """Move o cursor para coordenadas normalizadas (0.0 a 1.0)."""
@@ -210,13 +274,76 @@ class InputController:
         amt = int(delta_y * 1.5)
         u32.mouse_event(MOUSEEVENTF_WHEEL, 0, 0, amt, 0)
 
-    def key_down(self, key: str, code: str = "", vk: int = 0):
-        """Pressiona uma tecla usando SendInput de alta precisão."""
+    def key_down(self, key: str, code: str = "", vk: int = 0, ctrl: bool = None, alt: bool = None, shift: bool = None, meta: bool = None):
+        """Pressiona uma tecla com proteção total contra atalhos fantasmas e digitação perfeita."""
+        # 1. Sincroniza estado de modificadores antes de tudo
+        self.sync_modifiers(ctrl=ctrl, alt=alt, shift=shift, meta=meta)
+
+        # 2. Ignora tecla Dead (acentos em composição no navegador)
+        if key == "Dead":
+            return
+
+        is_shortcut_active = bool(ctrl or alt or meta)
+
+        # 3. Teclas de controle que devem SEMPRE ser físicas:
+        # Backspace, Enter, Tab, Escape, Delete, Setas, Home, End, PageUp, PageDown, F1-F12, Space
+        control_keys = {
+            "Backspace", "Enter", "Tab", "Escape", "Delete", "Insert",
+            "ArrowLeft", "ArrowUp", "ArrowRight", "ArrowDown",
+            "Home", "End", "PageUp", "PageDown",
+            "F1", "F2", "F3", "F4", "F5", "F6", "F7", "F8", "F9", "F10", "F11", "F12",
+            "CapsLock", "NumLock", "ScrollLock", "Space", " "
+        }
+
+        # 4. Digitação de texto normal (letras, acentos, cedilhas, números, pontuação)
+        # Se nenhum modificador de comando (Ctrl/Alt/Win) estiver ativo, injeta direto via Unicode!
+        # Isso elimina 100% dos problemas de teclas trocadas ABNT2/US, acentos errados e teclas pulando!
+        if not is_shortcut_active and len(key) == 1 and key not in control_keys and vk == 0:
+            self._send_unicode_char(key)
+            return
+
+        # 5. Tecla física (atalhos como Ctrl+C, Ctrl+V, ou teclas de controle do sistema)
         self._send_key_event(key, code, is_up=False, direct_vk=vk)
 
-    def key_up(self, key: str, code: str = "", vk: int = 0):
-        """Libera uma tecla usando SendInput."""
+    def key_up(self, key: str, code: str = "", vk: int = 0, ctrl: bool = None, alt: bool = None, shift: bool = None, meta: bool = None):
+        """Libera uma tecla física usando SendInput."""
+        if key == "Dead":
+            return
+
+        is_shortcut_active = bool(ctrl or alt or meta)
+        control_keys = {
+            "Backspace", "Enter", "Tab", "Escape", "Delete", "Insert",
+            "ArrowLeft", "ArrowUp", "ArrowRight", "ArrowDown",
+            "Home", "End", "PageUp", "PageDown",
+            "F1", "F2", "F3", "F4", "F5", "F6", "F7", "F8", "F9", "F10", "F11", "F12",
+            "CapsLock", "NumLock", "ScrollLock", "Space", " "
+        }
+
+        # Se foi caractere Unicode digitado no key_down, o envio já completou (não há tecla presa para soltar)
+        if not is_shortcut_active and len(key) == 1 and key not in control_keys and vk == 0:
+            self.sync_modifiers(ctrl=ctrl, alt=alt, shift=shift, meta=meta)
+            return
+
         self._send_key_event(key, code, is_up=True, direct_vk=vk)
+        self.sync_modifiers(ctrl=ctrl, alt=alt, shift=shift, meta=meta)
+
+    def _send_unicode_char(self, char_str: str):
+        """Injeta caractere Unicode diretamente via SendInput (0ms lag, imune a layout do Host)."""
+        self._ensure_desktop()
+        for char in char_str:
+            char_code = ord(char)
+
+            inp = INPUT()
+            inp.type = INPUT_KEYBOARD
+            inp.u.ki.wVk = 0
+            inp.u.ki.wScan = char_code
+            inp.u.ki.dwFlags = KEYEVENTF_UNICODE
+            inp.u.ki.time = 0
+            inp.u.ki.dwExtraInfo = 0
+            u32.SendInput(1, ctypes.byref(inp), ctypes.sizeof(INPUT))
+
+            inp.u.ki.dwFlags = KEYEVENTF_UNICODE | KEYEVENTF_KEYUP
+            u32.SendInput(1, ctypes.byref(inp), ctypes.sizeof(INPUT))
 
     def _send_key_event(self, key: str, code: str, is_up: bool, direct_vk: int = 0):
         self._ensure_desktop()
@@ -227,6 +354,10 @@ class InputController:
             flags = 0
             if is_up:
                 flags |= KEYEVENTF_KEYUP
+                self.pressed_vks.discard(vk)
+            else:
+                self.pressed_vks.add(vk)
+
             if vk in EXTENDED_KEYS:
                 flags |= KEYEVENTF_EXTENDEDKEY
 
@@ -240,20 +371,7 @@ class InputController:
             u32.SendInput(1, ctypes.byref(inp), ctypes.sizeof(INPUT))
 
         elif len(key) == 1:
-            # Envia via Unicode WCHAR para acentos, cedilhas e caracteres especiais
-            char_code = ord(key)
-            flags = KEYEVENTF_UNICODE
-            if is_up:
-                flags |= KEYEVENTF_KEYUP
-
-            inp = INPUT()
-            inp.type = INPUT_KEYBOARD
-            inp.u.ki.wVk = 0
-            inp.u.ki.wScan = char_code
-            inp.u.ki.dwFlags = flags
-            inp.u.ki.time = 0
-            inp.u.ki.dwExtraInfo = 0
-            u32.SendInput(1, ctypes.byref(inp), ctypes.sizeof(INPUT))
+            self._send_unicode_char(key)
 
     def send_shortcut(self, shortcut: str):
         """Envia atalhos de sistema compostos (ex: 'ctrl+c', 'win+d', 'alt+tab', 'ctrl+alt+del')."""
@@ -270,10 +388,12 @@ class InputController:
                 vks.append(0x10)
             elif k in ("win", "cmd", "meta"):
                 vks.append(0x5B)
-            elif k == "del" or k == "delete":
+            elif k in ("del", "delete"):
                 vks.append(0x2E)
             elif k == "tab":
                 vks.append(0x09)
+            elif k == "esc":
+                vks.append(0x1B)
             elif len(k) == 1:
                 vks.append(ord(k.upper()))
 
@@ -284,12 +404,18 @@ class InputController:
         # Libera teclas em ordem reversa
         for vk in reversed(vks):
             self._send_raw_vk(vk, is_up=True)
+        # Liberação garantida de modificadores após atalho
+        self.release_all_keys()
 
     def _send_raw_vk(self, vk: int, is_up: bool):
         scan = u32.MapVirtualKeyW(vk, 0)
         flags = 0
         if is_up:
             flags |= KEYEVENTF_KEYUP
+            self.pressed_vks.discard(vk)
+        else:
+            self.pressed_vks.add(vk)
+
         if vk in EXTENDED_KEYS:
             flags |= KEYEVENTF_EXTENDEDKEY
 

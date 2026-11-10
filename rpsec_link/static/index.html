@@ -1113,7 +1113,16 @@
       container.focus();
       const { x, y } = getNormalizedCoords(e);
       const button = e.button === 2 ? 'right' : (e.button === 1 ? 'middle' : 'left');
-      ws.send(JSON.stringify({ type: 'mouse_down', button, x, y }));
+      ws.send(JSON.stringify({
+        type: 'mouse_down',
+        button,
+        x,
+        y,
+        ctrl: e.ctrlKey,
+        alt: e.altKey,
+        shift: e.shiftKey,
+        meta: e.metaKey
+      }));
     });
 
     canvas.addEventListener('mouseup', (e) => {
@@ -1133,20 +1142,74 @@
       ws.send(JSON.stringify({ type: 'wheel', delta: -Math.sign(e.deltaY) * 120 }));
     }, { passive: false });
 
-    // Envio Robusto de Teclado (Físico + Caracteres)
+    // Envio Robusto de Teclado (Físico + Caracteres + Prevenção de Atalhos Locais do Navegador)
     window.addEventListener('keydown', (e) => {
       if (document.activeElement === pinInput) return;
-      if (['Tab', 'Backspace', 'F5', 'Alt', 'Meta'].includes(e.key)) {
+      if (!isSessionActive || !ws || ws.readyState !== WebSocket.OPEN) return;
+
+      // 1. Previne atalhos locais do navegador que roubam foco, abrem abas ou fecham o cliente:
+      // Ex: Tab, Backspace, F1-F12, Ctrl+T, Ctrl+W, Ctrl+N, Ctrl+S, Ctrl+P, Ctrl+F, Ctrl+H, Ctrl+J, Ctrl+R, Alt+Left, etc.
+      if (
+        ['Tab', 'Backspace', 'Escape', 'F1', 'F3', 'F5', 'F6', 'F7', 'F11', 'F12', 'ContextMenu', 'Alt', 'Meta'].includes(e.key) ||
+        (e.ctrlKey && ['w', 'W', 't', 'T', 'n', 'N', 'r', 'R', 'p', 'P', 's', 'S', 'f', 'F', 'h', 'H', 'j', 'J', 'u', 'U', 'd', 'D', 'l', 'L', 'o', 'O', 'b', 'B', 'Tab'].includes(e.key)) ||
+        (e.altKey && ['ArrowLeft', 'ArrowRight', 'Home'].includes(e.key))
+      ) {
         e.preventDefault();
       }
-      if (!ws || ws.readyState !== WebSocket.OPEN) return;
-      ws.send(JSON.stringify({ type: 'key_down', key: e.key, code: e.code }));
+
+      // 2. Se for tecla 'Dead', aguarda o navegador compor o caractere acentuado
+      if (e.key === 'Dead') {
+        return;
+      }
+
+      ws.send(JSON.stringify({
+        type: 'key_down',
+        key: e.key,
+        code: e.code,
+        ctrl: e.ctrlKey,
+        alt: e.altKey,
+        shift: e.shiftKey,
+        meta: e.metaKey,
+        repeat: e.repeat
+      }));
     });
 
     window.addEventListener('keyup', (e) => {
       if (document.activeElement === pinInput) return;
-      if (!ws || ws.readyState !== WebSocket.OPEN) return;
-      ws.send(JSON.stringify({ type: 'key_up', key: e.key, code: e.code }));
+      if (!isSessionActive || !ws || ws.readyState !== WebSocket.OPEN) return;
+
+      if (
+        ['Tab', 'Backspace', 'F5', 'Alt', 'Meta'].includes(e.key) ||
+        (e.ctrlKey && ['w', 'W', 't', 'T'].includes(e.key))
+      ) {
+        e.preventDefault();
+      }
+
+      if (e.key === 'Dead') {
+        return;
+      }
+
+      ws.send(JSON.stringify({
+        type: 'key_up',
+        key: e.key,
+        code: e.code,
+        ctrl: e.ctrlKey,
+        alt: e.altKey,
+        shift: e.shiftKey,
+        meta: e.metaKey
+      }));
+    });
+
+    // Liberação preventiva de teclas quando o navegador do cliente perde o foco ou minimiza
+    function resetRemoteKeys() {
+      if (isSessionActive && ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({ type: 'reset_keys' }));
+      }
+    }
+
+    window.addEventListener('blur', resetRemoteKeys);
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) resetRemoteKeys();
     });
 
     // Atalhos do Painel
@@ -1179,11 +1242,28 @@
       mobileKeyTrap.focus();
     });
 
-    document.getElementById('btnFullscreen').addEventListener('click', () => {
+    document.getElementById('btnFullscreen').addEventListener('click', async () => {
       if (!document.fullscreenElement) {
-        document.documentElement.requestFullscreen().catch(() => {});
+        try {
+          await document.documentElement.requestFullscreen();
+          if (navigator.keyboard && navigator.keyboard.lock) {
+            await navigator.keyboard.lock();
+          }
+        } catch (err) {}
       } else {
+        if (navigator.keyboard && navigator.keyboard.unlock) {
+          navigator.keyboard.unlock();
+        }
         document.exitFullscreen().catch(() => {});
+      }
+    });
+
+    document.addEventListener('fullscreenchange', () => {
+      if (!document.fullscreenElement) {
+        if (navigator.keyboard && navigator.keyboard.unlock) {
+          try { navigator.keyboard.unlock(); } catch (e) {}
+        }
+        resetRemoteKeys();
       }
     });
 

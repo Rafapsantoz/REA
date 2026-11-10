@@ -337,6 +337,8 @@ class RemoteViewerWindow(tk.Toplevel):
         self.bind("<KeyPress>", self._on_key_press)
         self.bind("<KeyRelease>", self._on_key_release)
         self.bind("<F11>", lambda e: self.toggle_fullscreen())
+        self.bind("<FocusOut>", lambda e: self.out_queue.put({"type": "reset_keys"}))
+        self.bind("<Deactivate>", lambda e: self.out_queue.put({"type": "reset_keys"}))
         self.protocol("WM_DELETE_WINDOW", self.close_session)
 
     def _get_normalized_coords(self, event) -> Tuple[float, float]:
@@ -359,28 +361,54 @@ class RemoteViewerWindow(tk.Toplevel):
     def _on_mouse_btn(self, event, button: str, is_down: bool):
         nx, ny = self._get_normalized_coords(event)
         mtype = "mouse_down" if is_down else "mouse_up"
-        self.out_queue.put({"type": mtype, "button": button, "x": nx, "y": ny})
+        ctrl = bool(event.state & 0x0004)
+        shift = bool(event.state & 0x0001)
+        alt = bool(event.state & (0x0008 | 0x20000 | 0x80))
+        self.out_queue.put({
+            "type": mtype,
+            "button": button,
+            "x": nx,
+            "y": ny,
+            "ctrl": ctrl,
+            "alt": alt,
+            "shift": shift,
+            "meta": False
+        })
 
     def _on_mouse_wheel(self, event):
         delta = -120 if event.delta < 0 else 120
         self.out_queue.put({"type": "wheel", "delta": delta})
 
     def _on_key_press(self, event):
-        # Envia diretamente o Virtual Key code do Windows (0ms mapping overhead!)
+        # Envia tecla com mapeamento seguro e sincronização de modificadores
+        ctrl = bool(event.state & 0x0004)
+        shift = bool(event.state & 0x0001)
+        alt = bool(event.state & (0x0008 | 0x20000 | 0x80))
         self.out_queue.put({
             "type": "key_down",
             "key": event.char,
             "code": event.keysym,
-            "vk": event.keycode
+            "vk": event.keycode,
+            "ctrl": ctrl,
+            "alt": alt,
+            "shift": shift,
+            "meta": False
         })
         return "break"
 
     def _on_key_release(self, event):
+        ctrl = bool(event.state & 0x0004)
+        shift = bool(event.state & 0x0001)
+        alt = bool(event.state & (0x0008 | 0x20000 | 0x80))
         self.out_queue.put({
             "type": "key_up",
             "key": event.char,
             "code": event.keysym,
-            "vk": event.keycode
+            "vk": event.keycode,
+            "ctrl": ctrl,
+            "alt": alt,
+            "shift": shift,
+            "meta": False
         })
         return "break"
 
@@ -611,6 +639,7 @@ class RemoteViewerWindow(tk.Toplevel):
         """Encerra a sessão remota e fecha o aplicativo cliente completamente."""
         self.is_running = False
         try:
+            self.out_queue.put({"type": "reset_keys"})
             self.out_queue.put({"type": "client_disconnect"})
         except Exception:
             pass
@@ -628,8 +657,9 @@ class RemoteViewerWindow(tk.Toplevel):
             return
         self.is_running = False
 
-        # Envia sinal de desconexão graciosa
+        # Envia sinal de desconexão graciosa e liberação de teclas
         try:
+            self.out_queue.put({"type": "reset_keys"})
             self.out_queue.put({"type": "client_disconnect"})
         except Exception:
             pass

@@ -277,6 +277,9 @@ async def websocket_endpoint(websocket: WebSocket, pin: str = Query("")):
     FAILED_ATTEMPTS.pop(client_ip, None)
     await websocket.accept()
 
+    # Limpa qualquer tecla que possa ter ficado presa de sessões anteriores
+    input_ctrl.release_all_keys()
+
     session_id = f"dev_{secrets.token_hex(4)}"
     ACTIVE_CLIENTS.add(client_ip)
     ACTIVE_WEBSOCKETS.add(websocket)
@@ -363,6 +366,12 @@ async def websocket_endpoint(websocket: WebSocket, pin: str = Query("")):
 
                 elif mtype == "mouse_down":
                     session_state["interactive_boost"] = 3
+                    input_ctrl.sync_modifiers(
+                        ctrl=msg.get("ctrl"),
+                        alt=msg.get("alt"),
+                        shift=msg.get("shift"),
+                        meta=msg.get("meta")
+                    )
                     input_ctrl.mouse_down(msg["button"], msg.get("x"), msg.get("y"))
 
                 elif mtype == "mouse_up":
@@ -375,11 +384,30 @@ async def websocket_endpoint(websocket: WebSocket, pin: str = Query("")):
 
                 elif mtype == "key_down":
                     session_state["interactive_boost"] = 3
-                    input_ctrl.key_down(msg.get("key", ""), msg.get("code", ""), int(msg.get("vk", 0)))
+                    input_ctrl.key_down(
+                        key=msg.get("key", ""),
+                        code=msg.get("code", ""),
+                        vk=int(msg.get("vk", 0)),
+                        ctrl=msg.get("ctrl"),
+                        alt=msg.get("alt"),
+                        shift=msg.get("shift"),
+                        meta=msg.get("meta")
+                    )
 
                 elif mtype == "key_up":
                     session_state["interactive_boost"] = 3
-                    input_ctrl.key_up(msg.get("key", ""), msg.get("code", ""), int(msg.get("vk", 0)))
+                    input_ctrl.key_up(
+                        key=msg.get("key", ""),
+                        code=msg.get("code", ""),
+                        vk=int(msg.get("vk", 0)),
+                        ctrl=msg.get("ctrl"),
+                        alt=msg.get("alt"),
+                        shift=msg.get("shift"),
+                        meta=msg.get("meta")
+                    )
+
+                elif mtype == "reset_keys":
+                    input_ctrl.release_all_keys()
 
                 elif mtype == "shortcut":
                     session_state["interactive_boost"] = 3
@@ -464,6 +492,9 @@ async def websocket_endpoint(websocket: WebSocket, pin: str = Query("")):
     ACTIVE_CLIENTS.discard(client_ip)
     await broadcast_devices()
     notify_devices_changed()
+
+    # Garante que nenhuma tecla fique presa no host após desconexão
+    input_ctrl.release_all_keys()
 
     print(f"[-] Cliente desconectado de {client_ip} (ID: {session_id})")
 
