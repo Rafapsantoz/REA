@@ -16,16 +16,12 @@ const baseUrl = import.meta.env.BASE_URL.endsWith("/")
   ? import.meta.env.BASE_URL
   : `${import.meta.env.BASE_URL}/`;
 
-// Bundle every public/locales file at build time and pass them as synchronous
+// Bundle every src/locales file at build time and pass them as synchronous
 // `resources`, so t() returns real strings on the first paint instead of returning
-// the key and re-rendering the whole tree once HttpBackend finishes loading. That
-// async swap is what remounts elements keyed off a translated value (key={t(...)})
-// and breaks their mount-time effects (scroll/stack animations, layout measurement),
-// leaving them flat after a reload. The preview re-imports these JSON files on every
-// rebuild, so the bundled copy never goes stale.
+// the key and re-rendering the whole tree once HttpBackend finishes loading.
 const bundledResources = Object.fromEntries(
   Object.entries(
-    import.meta.glob<Record<string, string>>("../../public/locales/*.json", {
+    import.meta.glob<Record<string, string>>("../locales/*.json", {
       eager: true,
       import: "default",
     }),
