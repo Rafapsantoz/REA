@@ -37,6 +37,8 @@ recordings/
 *.jpeg
 rpsec_ddtank/data/raw/
 rpsec_ddtank/data/frames/
+rpsec_ddtank/data/test_debug/
+rpsec_ddtank/data/*.png
 
 # Logs e arquivos de sistema
 *.log

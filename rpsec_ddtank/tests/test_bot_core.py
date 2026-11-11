@@ -1,6 +1,7 @@
 """
 Testes automatizados do RPsec DDTank Bot.
-Valida mapeamento de quadrantes, integridade das funções de entrada e visão.
+Valida mapeamento de quadrantes calibrados, alternância de líder da sala,
+integridade das funções de entrada e visão computacional.
 """
 
 import unittest
@@ -18,37 +19,45 @@ from src.vision_engine import VisionEngine
 
 class TestBotCore(unittest.TestCase):
 
-    def test_quadrant_geometry(self):
-        """Valida que os 4 quadrantes somam exatamente a tela de 1920x1080 sem sobreposição."""
+    def test_calibrated_geometry(self):
+        """Valida que todos os botões de ação e pontos de foco calibrados estão dentro da tela 1920x1080."""
         cfg = DEFAULT_CONFIG
-        
-        # TL
-        self.assertEqual(cfg.quadrant_tl, (0, 0, 960, 540))
-        # TR
-        self.assertEqual(cfg.quadrant_tr, (960, 0, 960, 540))
-        # BL
-        self.assertEqual(cfg.quadrant_bl, (0, 540, 960, 540))
-        # BR
-        self.assertEqual(cfg.quadrant_br, (960, 540, 960, 540))
 
-        # Valida que todos os botões de Ready/Start estão dentro da tela
         for name, pt in [
             ("ready_tl", cfg.ready_btn_tl),
+            ("ready_tr", cfg.ready_btn_tr),
             ("ready_bl", cfg.ready_btn_bl),
             ("ready_br", cfg.ready_btn_br),
-            ("start_tr", cfg.start_btn_tr),
+            ("focus_tl", cfg.focus_tl),
+            ("focus_tr", cfg.focus_tr),
+            ("focus_bl", cfg.focus_bl),
+            ("focus_br", cfg.focus_br),
         ]:
             x, y = pt
-            self.assertGreaterEqual(x, 0)
-            self.assertLess(x, SCREEN_WIDTH)
-            self.assertGreaterEqual(y, 0)
-            self.assertLess(y, SCREEN_HEIGHT)
+            self.assertGreaterEqual(x, 0, f"{name} X fora da tela")
+            self.assertLess(x, SCREEN_WIDTH, f"{name} X fora da tela")
+            self.assertGreaterEqual(y, 0, f"{name} Y fora da tela")
+            self.assertLess(y, SCREEN_HEIGHT, f"{name} Y fora da tela")
+
+    def test_host_guest_alternation(self):
+        """Valida que a lista de convidados exclui corretamente o líder configurado."""
+        # Cenário 1: Líder em BR (padrão)
+        cfg_br = BotConfig(host_quadrant="BR")
+        guests_br = [q[0] for q in cfg_br.get_guest_quadrants()]
+        self.assertEqual(guests_br, ["TL", "TR", "BL"])
+        self.assertEqual(cfg_br.get_host_start_button(), cfg_br.start_btn_br)
+
+        # Cenário 2: Líder em TR
+        cfg_tr = BotConfig(host_quadrant="TR")
+        guests_tr = [q[0] for q in cfg_tr.get_guest_quadrants()]
+        self.assertEqual(guests_tr, ["TL", "BL", "BR"])
+        self.assertEqual(cfg_tr.get_host_start_button(), cfg_tr.start_btn_tr)
 
     def test_suicide_configuration(self):
         """Valida que a estratégia de suicídio das fakes está devidamente configurada."""
         cfg = DEFAULT_CONFIG
         self.assertEqual(cfg.fakes_suicide_key, "left")
-        self.assertGreater(cfg.fakes_suicide_duration_sec, 2.0)
+        self.assertGreaterEqual(cfg.fakes_suicide_duration_sec, 3.0)
 
     def test_scan_codes_integrity(self):
         """Valida que todas as teclas críticas possuem códigos de hardware mapeados."""

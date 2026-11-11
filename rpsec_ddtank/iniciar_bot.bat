@@ -1,19 +1,18 @@
 @echo off
 chcp 65001 > nul
-echo ========================================================
-echo   RPsec DDTank Bot - Automação Sky City (Castelo na Cidade)
-echo   RPsecti Soluções Inteligentes
-echo ========================================================
-echo.
-
 cd /d "%~dp0"
 
-if not exist ".venv" (
-    echo [AVISO] Ambiente virtual não encontrado. Executando instalação inicial...
+:: Auto-recuperação: Se .venv não existir, instala automaticamente
+if not exist ".venv\Scripts\python.exe" (
+    echo [*] Ambiente virtual .venv não encontrado. Configurando automaticamente...
     call instalar.bat
+    if errorlevel 1 (
+        echo [ERRO] Não foi possível iniciar o ambiente.
+        pause
+        exit /b 1
+    )
 )
 
-echo [*] Iniciando o bot com ambiente dedicado...
-echo.
-.venv\Scripts\python main.py
+:: Abre o Painel de Controle Operacional Interativo do Bot
+.venv\Scripts\python.exe main.py
 pause

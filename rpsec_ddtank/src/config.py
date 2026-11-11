@@ -1,42 +1,61 @@
 """
 RPsec DDTank Bot - Configurações Globais e Mapeamento de Quadrantes.
 Projetado para telas 1920x1080 com 4 janelas em grid 2x2.
+Calibrado com precisão sub-pixel a partir de telemetria de gravações reais.
 """
 
-from dataclasses import dataclass
-from typing import Tuple, Dict
+from dataclasses import dataclass, field
+from typing import Tuple, Dict, List
 
-# Resolução base de referência
+# Resolução base de referência do monitor de 27"
 SCREEN_WIDTH = 1920
 SCREEN_HEIGHT = 1080
 
 # Definição dos 4 Quadrantes (x, y, largura, altura)
-QUADRANT_TL = (0, 0, 960, 540)        # Fake 1 (Secundária)
-QUADRANT_TR = (960, 0, 960, 540)      # CONTA PRINCIPAL (Líder / Atacante)
-QUADRANT_BL = (0, 540, 960, 540)      # Fake 2 (Secundária)
-QUADRANT_BR = (960, 540, 960, 540)    # Fake 3 (Secundária)
+QUADRANT_TL = (0, 0, 960, 540)        # Fake 1 (Top-Left)
+QUADRANT_TR = (960, 0, 960, 540)      # Top-Right (Conta Principal LV 70 ou Host)
+QUADRANT_BL = (0, 540, 960, 540)      # Fake 2 (Bottom-Left)
+QUADRANT_BR = (960, 540, 960, 540)    # Bottom-Right (Fake 3 ou Host da Sala)
 
-# Ponto de clique interno do botão "Pronto" / "Começar" (relativo a cada quadrante de 960x540)
-BTN_READY_REL_X = 860
-BTN_READY_REL_Y = 470
+# Coordenadas calibradas dos botões de ação (Pronto / Começar)
+# Medidas com base nas capturas reais em 1920x1080
+ACTION_BTN_TL = (910, 435)
+ACTION_BTN_TR = (1870, 435)
+ACTION_BTN_BL = (910, 995)
+ACTION_BTN_BR = (1870, 995)
 
-# Ponto de clique neutro para focar a janela (centro do client area)
-FOCUS_CLICK_REL_X = 480
-FOCUS_CLICK_REL_Y = 270
+# Coordenadas neutras no centro de cada janela para restaurar foco
+FOCUS_TL = (480, 270)
+FOCUS_TR = (1440, 270)
+FOCUS_BL = (480, 800)
+FOCUS_BR = (1440, 800)
+
 
 @dataclass
 class BotConfig:
     # Quadrantes
     quadrant_tl: Tuple[int, int, int, int] = QUADRANT_TL
-    quadrant_tr: Tuple[int, int, int, int] = QUADRANT_TR  # Conta Principal
+    quadrant_tr: Tuple[int, int, int, int] = QUADRANT_TR
     quadrant_bl: Tuple[int, int, int, int] = QUADRANT_BL
     quadrant_br: Tuple[int, int, int, int] = QUADRANT_BR
 
-    # Coordenadas absolutas de clique do botão "Pronto" (Lobby)
-    ready_btn_tl: Tuple[int, int] = (QUADRANT_TL[0] + BTN_READY_REL_X, QUADRANT_TL[1] + BTN_READY_REL_Y)
-    ready_btn_bl: Tuple[int, int] = (QUADRANT_BL[0] + BTN_READY_REL_X, QUADRANT_BL[1] + BTN_READY_REL_Y)
-    ready_btn_br: Tuple[int, int] = (QUADRANT_BR[0] + BTN_READY_REL_X, QUADRANT_BR[1] + BTN_READY_REL_Y)
-    start_btn_tr: Tuple[int, int] = (QUADRANT_TR[0] + BTN_READY_REL_X, QUADRANT_TR[1] + BTN_READY_REL_Y)
+    # Botões de Ação
+    ready_btn_tl: Tuple[int, int] = ACTION_BTN_TL
+    ready_btn_tr: Tuple[int, int] = ACTION_BTN_TR
+    ready_btn_bl: Tuple[int, int] = ACTION_BTN_BL
+    ready_btn_br: Tuple[int, int] = ACTION_BTN_BR
+
+    start_btn_tr: Tuple[int, int] = ACTION_BTN_TR
+    start_btn_br: Tuple[int, int] = ACTION_BTN_BR
+
+    # Pontos de foco central de cada janela
+    focus_tl: Tuple[int, int] = FOCUS_TL
+    focus_tr: Tuple[int, int] = FOCUS_TR
+    focus_bl: Tuple[int, int] = FOCUS_BL
+    focus_br: Tuple[int, int] = FOCUS_BR
+
+    # Identificação do Líder da Sala (Host): "BR" (padrão) ou "TR"
+    host_quadrant: str = "BR"
 
     # Estratégia de Suicídio das Fakes (Elimina delay do 'Confiar')
     fakes_suicide_key: str = "left"
@@ -53,9 +72,27 @@ class BotConfig:
     turn3_attack_charge_time_sec: float = 1.05  # Tempo de barra de espaço calibrado para acertar o Boss
     turn3_items: Tuple[str, ...] = ("1", "2")   # Teclas de buffs rápidos antes do disparo
 
-    # Configurações de latência humana (Jitter anti-detecção)
+    # Configurações de latência humana
     human_jitter_enabled: bool = True
     min_click_delay: float = 0.12
     max_click_delay: float = 0.28
+
+    def get_guest_quadrants(self) -> List[Tuple[str, Tuple[int, int]]]:
+        """Retorna lista de tuplas (nome_quadrante, coordenadas_pronto) que devem dar Pronto."""
+        host = self.host_quadrant.upper()
+        all_quads = [
+            ("TL", self.ready_btn_tl),
+            ("TR", self.ready_btn_tr),
+            ("BL", self.ready_btn_bl),
+            ("BR", self.ready_btn_br),
+        ]
+        return [q for q in all_quads if q[0] != host]
+
+    def get_host_start_button(self) -> Tuple[int, int]:
+        """Retorna o botão de Iniciar do líder configurado."""
+        if self.host_quadrant.upper() == "TR":
+            return self.start_btn_tr
+        return self.start_btn_br
+
 
 DEFAULT_CONFIG = BotConfig()

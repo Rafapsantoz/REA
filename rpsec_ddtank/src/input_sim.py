@@ -68,7 +68,7 @@ if sys.platform == "win32":
         "esc": 0x1B,
     }
 
-    # Estruturas Ctypes do SendInput
+    # Estruturas Win32 ctypes para 64 bits
     class MOUSEINPUT(ctypes.Structure):
         _fields_ = [
             ("dx", wintypes.LONG),
@@ -110,6 +110,12 @@ if sys.platform == "win32":
 
     user32.SendInput.argtypes = [wintypes.UINT, ctypes.POINTER(INPUT), ctypes.c_int]
     user32.SendInput.restype = wintypes.UINT
+
+    user32.SetCursorPos.argtypes = [ctypes.c_int, ctypes.c_int]
+    user32.SetCursorPos.restype = wintypes.BOOL
+
+    user32.GetSystemMetrics.argtypes = [ctypes.c_int]
+    user32.GetSystemMetrics.restype = ctypes.c_int
 
 
 def _send_key_event(key_name: str, key_up: bool = False):
@@ -156,26 +162,38 @@ def tap_key(key_name: str, delay: float = 0.08):
     time.sleep(0.05)
 
 
-def hold_key(key_name: str, duration_sec: float):
-    """Mantém a tecla pressionada durante exatamente o tempo especificado."""
+def hold_key(key_name: str, duration_sec: float, repeat_interval: float = 0.04):
+    """
+    Mantém a tecla pressionada durante o tempo especificado simulando repeat rate físico de hardware.
+    Essencial para Flash Player / DirectInput que requerem pulsos contínuos de KeyDown para movimentação contínua.
+    """
+    start_time = time.time()
+    # Primeiro pulso
     key_down(key_name)
-    time.sleep(max(0.01, duration_sec))
+    while (time.time() - start_time) < duration_sec:
+        time.sleep(repeat_interval)
+        key_down(key_name)
+    # Solta a tecla
     key_up(key_name)
+    time.sleep(0.05)
 
 
 def click_at(x: int, y: int, jitter: bool = True):
-    """Move o mouse e clica suavemente nas coordenadas absolutas (x, y)."""
+    """
+    Move o mouse e clica com precisão absoluta nas coordenadas (x, y).
+    Utiliza combinação de SetCursorPos + SendInput absoluto para compatibilidade total.
+    """
     if sys.platform != "win32":
         return
 
     if jitter:
-        # Micro-variação de 1 a 2 pixels para humanização
+        # Micro-variação imperceptível de 1 pixel para humanização
         x += random.randint(-1, 1)
         y += random.randint(-1, 1)
 
-    # Posicionamento exato do cursor físico na tela
+    # 1. Posicionamento físico direto do cursor
     user32.SetCursorPos(x, y)
-    time.sleep(random.uniform(0.04, 0.08))
+    time.sleep(random.uniform(0.03, 0.06))
 
     # Converte coordenadas para normalização absoluta do SendInput (0 a 65535)
     screen_w = max(1, user32.GetSystemMetrics(0))
@@ -183,20 +201,24 @@ def click_at(x: int, y: int, jitter: bool = True):
     norm_x = int(x * 65535 / (screen_w - 1))
     norm_y = int(y * 65535 / (screen_h - 1))
 
-    # 1. Pressiona botão esquerdo
+    # Flags seguras com MOUSEEVENTF_MOVE | MOUSEEVENTF_ABSOLUTE
+    flags_down = MOUSEEVENTF_MOVE | MOUSEEVENTF_ABSOLUTE | MOUSEEVENTF_LEFTDOWN
+    flags_up = MOUSEEVENTF_MOVE | MOUSEEVENTF_ABSOLUTE | MOUSEEVENTF_LEFTUP
+
+    # 2. Pressiona botão esquerdo
     inp_down = INPUT()
     inp_down.type = INPUT_MOUSE
     inp_down.u.mi.dx = norm_x
     inp_down.u.mi.dy = norm_y
-    inp_down.u.mi.dwFlags = MOUSEEVENTF_LEFTDOWN
+    inp_down.u.mi.dwFlags = flags_down
 
-    # 2. Solta botão esquerdo
+    # 3. Solta botão esquerdo
     inp_up = INPUT()
     inp_up.type = INPUT_MOUSE
     inp_up.u.mi.dx = norm_x
     inp_up.u.mi.dy = norm_y
-    inp_up.u.mi.dwFlags = MOUSEEVENTF_LEFTUP
+    inp_up.u.mi.dwFlags = flags_up
 
     user32.SendInput(1, ctypes.byref(inp_down), ctypes.sizeof(INPUT))
-    time.sleep(random.uniform(0.06, 0.12))
+    time.sleep(random.uniform(0.06, 0.10))
     user32.SendInput(1, ctypes.byref(inp_up), ctypes.sizeof(INPUT))
