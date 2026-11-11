@@ -18,13 +18,12 @@ QUADRANT_BL = (0, 540, 960, 540)      # Fake 2 (Bottom-Left)
 QUADRANT_BR = (960, 540, 960, 540)    # Bottom-Right (Fake 3 ou Host Alternativo)
 
 # Coordenadas calibradas dos botões de ação (Pronto / Começar)
-# Medidas com base nas capturas reais em 1920x1080
 ACTION_BTN_TL = (910, 435)
 ACTION_BTN_TR = (1870, 435)
 ACTION_BTN_BL = (910, 995)
 ACTION_BTN_BR = (1870, 995)
 
-# Coordenadas neutras no centro de cada janela para restaurar foco
+# Coordenadas neutras no centro de cada janela para restaurar foco sem acionar nenhum botão
 FOCUS_TL = (480, 270)
 FOCUS_TR = (1440, 270)
 FOCUS_BL = (480, 800)
@@ -48,7 +47,7 @@ class BotConfig:
     start_btn_tr: Tuple[int, int] = ACTION_BTN_TR
     start_btn_br: Tuple[int, int] = ACTION_BTN_BR
 
-    # Pontos de foco central de cada janela
+    # Pontos de foco central neutro de cada janela
     focus_tl: Tuple[int, int] = FOCUS_TL
     focus_tr: Tuple[int, int] = FOCUS_TR
     focus_bl: Tuple[int, int] = FOCUS_BL
@@ -77,22 +76,29 @@ class BotConfig:
     min_click_delay: float = 0.12
     max_click_delay: float = 0.28
 
-    def get_guest_quadrants(self) -> List[Tuple[str, Tuple[int, int]]]:
-        """Retorna lista de tuplas (nome_quadrante, coordenadas_pronto) que devem dar Pronto."""
+    def get_guest_quadrants(self) -> List[Tuple[str, Tuple[int, int], Tuple[int, int]]]:
+        """
+        Retorna lista de tuplas (nome_quadrante, coordenadas_pronto, coordenadas_foco_neutro)
+        para todas as contas secundárias que devem dar Pronto.
+        """
         host = self.host_quadrant.upper()
         all_quads = [
-            ("TL", self.ready_btn_tl),
-            ("TR", self.ready_btn_tr),
-            ("BL", self.ready_btn_bl),
-            ("BR", self.ready_btn_br),
+            ("TL", self.ready_btn_tl, self.focus_tl),
+            ("TR", self.ready_btn_tr, self.focus_tr),
+            ("BL", self.ready_btn_bl, self.focus_bl),
+            ("BR", self.ready_btn_br, self.focus_br),
         ]
         return [q for q in all_quads if q[0] != host]
 
-    def get_host_start_button(self) -> Tuple[int, int]:
-        """Retorna o botão de Iniciar do líder configurado."""
+    def get_host_info(self) -> Tuple[str, Tuple[int, int], Tuple[int, int]]:
+        """Retorna tupla (nome_quadrante, coordenadas_inicio, coordenadas_foco_neutro) do líder."""
         if self.host_quadrant.upper() == "TR":
-            return self.start_btn_tr
-        return self.start_btn_br
+            return ("TR", self.start_btn_tr, self.focus_tr)
+        return ("BR", self.start_btn_br, self.focus_br)
+
+    def get_host_start_button(self) -> Tuple[int, int]:
+        """Compatibilidade: Retorna o botão de Iniciar do líder configurado."""
+        return self.get_host_info()[1]
 
 
 DEFAULT_CONFIG = BotConfig()

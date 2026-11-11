@@ -41,17 +41,17 @@ class TestBotCore(unittest.TestCase):
 
     def test_host_guest_alternation(self):
         """Valida que a lista de convidados exclui corretamente o líder configurado."""
-        # Cenário 1: Líder em BR (padrão)
-        cfg_br = BotConfig(host_quadrant="BR")
-        guests_br = [q[0] for q in cfg_br.get_guest_quadrants()]
-        self.assertEqual(guests_br, ["TL", "TR", "BL"])
-        self.assertEqual(cfg_br.get_host_start_button(), cfg_br.start_btn_br)
-
-        # Cenário 2: Líder em TR
+        # Cenário 1: Líder em TR (padrão - Conta Principal)
         cfg_tr = BotConfig(host_quadrant="TR")
         guests_tr = [q[0] for q in cfg_tr.get_guest_quadrants()]
         self.assertEqual(guests_tr, ["TL", "BL", "BR"])
         self.assertEqual(cfg_tr.get_host_start_button(), cfg_tr.start_btn_tr)
+
+        # Cenário 2: Líder em BR
+        cfg_br = BotConfig(host_quadrant="BR")
+        guests_br = [q[0] for q in cfg_br.get_guest_quadrants()]
+        self.assertEqual(guests_br, ["TL", "TR", "BL"])
+        self.assertEqual(cfg_br.get_host_start_button(), cfg_br.start_btn_br)
 
     def test_suicide_configuration(self):
         """Valida que a estratégia de suicídio das fakes está devidamente configurada."""
