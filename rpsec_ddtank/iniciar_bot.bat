@@ -1,18 +1,22 @@
 @echo off
-chcp 65001 > nul
+setlocal
 cd /d "%~dp0"
 
-:: Auto-recuperação: Se .venv não existir, instala automaticamente
 if not exist ".venv\Scripts\python.exe" (
-    echo [*] Ambiente virtual .venv não encontrado. Configurando automaticamente...
+    echo [*] Ambiente virtual .venv nao encontrado.
+    echo [*] Configurando ambiente automaticamente pela primeira vez...
     call instalar.bat
     if errorlevel 1 (
-        echo [ERRO] Não foi possível iniciar o ambiente.
+        echo [ERRO] Nao foi possivel iniciar o ambiente.
         pause
         exit /b 1
     )
 )
 
-:: Abre o Painel de Controle Operacional Interativo do Bot
+echo [*] Abrindo Painel de Controle RPsec DDTank...
 .venv\Scripts\python.exe main.py
-pause
+if errorlevel 1 (
+    echo.
+    echo [AVISO] O processo encerrou com codigo de erro.
+    pause
+)
