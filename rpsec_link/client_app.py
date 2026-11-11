@@ -36,6 +36,7 @@ import customtkinter as ctk
 import cv2
 import numpy as np
 import websockets.sync.client
+import requests
 
 # Ativa DPI Awareness para resolução física nativa
 try:
@@ -78,6 +79,9 @@ class BITMAPINFOHEADER(ctypes.Structure):
     ]
 
 BASE_DIR = Path(__file__).parent
+if str(BASE_DIR) not in sys.path:
+    sys.path.insert(0, str(BASE_DIR))
+import file_transfer as ft
 CONFIG_FILE = BASE_DIR / "rpsec_client_config.json"
 ICON_ICO = BASE_DIR / "assets" / "icon.ico"
 
@@ -141,6 +145,17 @@ class RemoteViewerWindow(tk.Toplevel):
         # Dimensões da máquina remota
         self.remote_width = 1920
         self.remote_height = 1080
+
+        # Endereço e PIN para chamadas HTTP de transferência de arquivos
+        self.host_addr = ""
+        self.pin = ""
+        try:
+            after_ws = ws_url.split("://", 1)[1]
+            self.host_addr = after_ws.split("/ws", 1)[0]
+            if "pin=" in ws_url:
+                self.pin = ws_url.split("pin=", 1)[1].split("&", 1)[0]
+        except Exception:
+            pass
 
         # Estatísticas em tempo real
         self.fps = 0
@@ -256,6 +271,23 @@ class RemoteViewerWindow(tk.Toplevel):
 
         self.btn_fs = tk.Button(self.toolbar_frame, text="⛶", command=self.toggle_fullscreen, **btn_style)
         self.btn_fs.pack(side="left", padx=2)
+
+        # Botão de Transferência de Arquivos
+        self.btn_files = tk.Button(
+            self.toolbar_frame,
+            text="📁 Arquivos",
+            command=self._show_file_transfer_dialog,
+            bg="#0369a1",
+            fg="#ffffff",
+            activebackground="#0284c7",
+            activeforeground="#ffffff",
+            font=("Segoe UI", 8, "bold"),
+            bd=0,
+            padx=7,
+            pady=2,
+            relief="flat"
+        )
+        self.btn_files.pack(side="left", padx=2)
 
         # Indicador / Botão de Dispositivos Conectados no Host
         self.btn_devices = tk.Button(
@@ -384,6 +416,21 @@ class RemoteViewerWindow(tk.Toplevel):
         ctrl = bool(event.state & 0x0004)
         shift = bool(event.state & 0x0001)
         alt = bool(event.state & (0x0008 | 0x20000 | 0x80))
+
+        # Intercepta Ctrl+V: se o usuário tiver arquivos copiados na Área de Transferência local do Windows,
+        # envia-os para o Host e injeta no Clipboard do Host (Ctrl+V remoto)!
+        if ctrl and (event.keysym.lower() == 'v' or event.char == '\x16'):
+            try:
+                local_cb = ft.get_clipboard_files()
+                if local_cb:
+                    paths = [f["path"] for f in local_cb if not f.get("is_dir")]
+                    if paths:
+                        threading.Thread(target=self._upload_files_async, args=(paths, True), daemon=True).start()
+                        self._show_floating_notification(f"📋 Enviando {len(paths)} arquivo(s) copiado(s) para o Host...")
+                        return "break"
+            except Exception:
+                pass
+
         self.out_queue.put({
             "type": "key_down",
             "key": event.char,
@@ -627,6 +674,274 @@ class RemoteViewerWindow(tk.Toplevel):
                 command=lambda: (self.out_queue.put({"type": "disconnect_other_devices"}), dlg.destroy())
             )
             btn_all.pack(fill="x", padx=12, pady=(4, 10))
+
+    def _show_floating_notification(self, text: str, border_color: str = "#0284c7"):
+        """Exibe uma notificação flutuante suave sobre o canvas."""
+        if hasattr(self, "_toast_label") and self._toast_label and self._toast_label.winfo_exists():
+            self._toast_label.destroy()
+
+        self._toast_label = tk.Label(
+            self,
+            text=text,
+            font=("Segoe UI", 9, "bold"),
+            bg="#1e293b",
+            fg="#f8fafc",
+            highlightthickness=1,
+            highlightbackground=border_color,
+            padx=14,
+            pady=8,
+            relief="flat"
+        )
+        self._toast_label.place(relx=0.5, rely=0.08, anchor="center")
+        self.after(3500, lambda: self._toast_label.destroy() if hasattr(self, "_toast_label") and self._toast_label.winfo_exists() else None)
+
+    def _show_file_transfer_dialog(self):
+        """Abre o Gerenciador de Transferência de Arquivos do RPsec Link no Cliente Nativo."""
+        dlg = tk.Toplevel(self)
+        dlg.title("Transferência de Arquivos — RPsec Link")
+        dlg.geometry("520x440")
+        dlg.minsize(480, 380)
+        dlg.configure(bg="#0f172a")
+
+        if ICON_ICO.exists():
+            try:
+                dlg.iconbitmap(str(ICON_ICO))
+            except Exception:
+                pass
+
+        header = tk.Frame(dlg, bg="#0f172a")
+        header.pack(fill="x", padx=16, pady=(14, 8))
+
+        lbl_t = tk.Label(header, text="📁 Transferência de Arquivos Remota", font=("Segoe UI", 12, "bold"), bg="#0f172a", fg="#f8fafc")
+        lbl_t.pack(anchor="w")
+
+        lbl_sub = tk.Label(header, text="Envie arquivos para o Host ou baixe arquivos da máquina remota:", font=("Segoe UI", 9), bg="#0f172a", fg="#94a3b8")
+        lbl_sub.pack(anchor="w")
+
+        # Seção de Ações Rápidas
+        actions_frame = tk.Frame(dlg, bg="#1e293b", bd=1, relief="ridge", padx=12, pady=10)
+        actions_frame.pack(fill="x", padx=16, pady=6)
+
+        def on_send_files():
+            from tkinter import filedialog
+            selected = filedialog.askopenfilenames(parent=dlg, title="Selecione arquivos para transferir para o Host")
+            if selected:
+                dlg.destroy()
+                threading.Thread(target=self._upload_files_async, args=(list(selected), True), daemon=True).start()
+                self._show_floating_notification(f"📤 Enviando {len(selected)} arquivo(s) para o Host...")
+
+        def on_download_clipboard():
+            dlg.destroy()
+            threading.Thread(target=self._download_host_clipboard_async, daemon=True).start()
+
+        def on_open_host_folder():
+            try:
+                requests.post(f"http://{self.host_addr}/api/files/open-folder", data={"pin": self.pin}, timeout=5)
+                self._show_floating_notification("📂 Pasta RPsec_Transfer aberta no Windows Explorer do Host.", "#10b981")
+            except Exception as e:
+                self._show_floating_notification(f"Erro ao abrir pasta: {e}", "#ef4444")
+
+        btn_send = tk.Button(
+            actions_frame,
+            text="📤 Enviar Arquivo para o Host (Copiar para Ctrl+V)",
+            command=on_send_files,
+            bg="#0284c7",
+            fg="#ffffff",
+            activebackground="#0369a1",
+            activeforeground="#ffffff",
+            font=("Segoe UI", 9, "bold"),
+            bd=0,
+            padx=10,
+            pady=6,
+            relief="flat"
+        )
+        btn_send.pack(fill="x", pady=2)
+
+        btn_row = tk.Frame(actions_frame, bg="#1e293b")
+        btn_row.pack(fill="x", pady=4)
+
+        btn_clip = tk.Button(
+            btn_row,
+            text="📋 Baixar Arquivo Copiado no Host",
+            command=on_download_clipboard,
+            bg="#334155",
+            fg="#38bdf8",
+            activebackground="#475569",
+            activeforeground="#ffffff",
+            font=("Segoe UI", 8, "bold"),
+            bd=0,
+            padx=8,
+            pady=4,
+            relief="flat"
+        )
+        btn_clip.pack(side="left", fill="x", expand=True, padx=(0, 4))
+
+        btn_open = tk.Button(
+            btn_row,
+            text="📂 Abrir Pasta no Host",
+            command=on_open_host_folder,
+            bg="#334155",
+            fg="#94a3b8",
+            activebackground="#475569",
+            activeforeground="#ffffff",
+            font=("Segoe UI", 8),
+            bd=0,
+            padx=8,
+            pady=4,
+            relief="flat"
+        )
+        btn_open.pack(side="right", padx=(4, 0))
+
+        # Seção do Explorador Remoto
+        expl_lbl = tk.Label(dlg, text="Arquivos na Pasta de Transferência do Host:", font=("Segoe UI", 9, "bold"), bg="#0f172a", fg="#f8fafc")
+        expl_lbl.pack(padx=16, pady=(10, 4), anchor="w")
+
+        list_container = tk.Frame(dlg, bg="#1e293b", bd=1, relief="ridge")
+        list_container.pack(fill="both", expand=True, padx=16, pady=(0, 14))
+
+        listbox_frame = tk.Frame(list_container, bg="#1e293b")
+        listbox_frame.pack(fill="both", expand=True, padx=4, pady=4)
+
+        scrollbar = tk.Scrollbar(listbox_frame, orient="vertical")
+        scrollbar.pack(side="right", fill="y")
+
+        items_listbox = tk.Listbox(
+            listbox_frame,
+            yscrollcommand=scrollbar.set,
+            bg="#0f172a",
+            fg="#f8fafc",
+            selectbackground="#0284c7",
+            selectforeground="#ffffff",
+            font=("Consolas", 9),
+            bd=0,
+            highlightthickness=0
+        )
+        items_listbox.pack(side="left", fill="both", expand=True)
+        scrollbar.config(command=items_listbox.yview)
+
+        items_data = []
+
+        def refresh_list():
+            items_listbox.delete(0, tk.END)
+            items_data.clear()
+            items_listbox.insert(tk.END, "Carregando arquivos do Host...")
+            def _fetch():
+                try:
+                    res = requests.get(f"http://{self.host_addr}/api/files/list", params={"pin": self.pin}, timeout=5)
+                    if res.status_code == 200:
+                        data = res.json()
+                        files = [it for it in data.get("items", []) if not it.get("is_dir")]
+                        def _update():
+                            items_listbox.delete(0, tk.END)
+                            if not files:
+                                items_listbox.insert(tk.END, "Nenhum arquivo encontrado na pasta de transferências.")
+                            for f in files:
+                                items_data.append(f)
+                                items_listbox.insert(tk.END, f"📄 {f['name']} ({f['size_formatted']}) - {f['modified']}")
+                        dlg.after(0, _update)
+                except Exception as e:
+                    dlg.after(0, lambda: items_listbox.insert(tk.END, f"Erro: {e}"))
+            threading.Thread(target=_fetch, daemon=True).start()
+
+        def on_download_selected():
+            sel = items_listbox.curselection()
+            if sel and sel[0] < len(items_data):
+                item = items_data[sel[0]]
+                dlg.destroy()
+                threading.Thread(target=self._download_host_file_async, args=(item["path"], item["name"]), daemon=True).start()
+
+        btn_dl = tk.Button(
+            list_container,
+            text="⬇ Baixar Arquivo Selecionado para seu Computador",
+            command=on_download_selected,
+            bg="#0284c7",
+            fg="#ffffff",
+            activebackground="#0369a1",
+            activeforeground="#ffffff",
+            font=("Segoe UI", 9, "bold"),
+            bd=0,
+            padx=10,
+            pady=6,
+            relief="flat"
+        )
+        btn_dl.pack(fill="x", padx=6, pady=6)
+
+        refresh_list()
+
+    def _upload_files_async(self, file_paths: list, copy_to_clipboard: bool = True):
+        """Faz upload de arquivos para o Host via HTTP POST em background."""
+        if not file_paths or not self.host_addr:
+            return
+        url = f"http://{self.host_addr}/api/files/upload"
+        try:
+            files_to_send = []
+            opened_handles = []
+            for p in file_paths:
+                if os.path.exists(p) and os.path.isfile(p):
+                    f = open(p, "rb")
+                    opened_handles.append(f)
+                    files_to_send.append(("files", (os.path.basename(p), f, "application/octet-stream")))
+
+            if not files_to_send:
+                return
+
+            data = {
+                "copy_to_clipboard": "true" if copy_to_clipboard else "false",
+                "pin": self.pin
+            }
+            res = requests.post(url, files=files_to_send, data=data, timeout=60)
+            for h in opened_handles:
+                h.close()
+
+            if res.status_code == 200:
+                count = len(files_to_send)
+                msg = f"✓ {count} arquivo(s) transferido(s)! Disponível no Ctrl+V do Host."
+                self.after(0, lambda: self._show_floating_notification(msg, "#10b981"))
+            else:
+                self.after(0, lambda: self._show_floating_notification(f"Erro no envio: HTTP {res.status_code}", "#ef4444"))
+        except Exception as e:
+            self.after(0, lambda: self._show_floating_notification(f"Falha ao transferir: {e}", "#ef4444"))
+
+    def _download_host_file_async(self, file_path: str, filename: str):
+        """Baixa arquivo do Host para a pasta Downloads local."""
+        try:
+            self.after(0, lambda: self._show_floating_notification(f"⬇ Baixando {filename} do Host..."))
+            dest_dir = Path.home() / "Downloads"
+            dest_dir.mkdir(parents=True, exist_ok=True)
+            dest_file = dest_dir / filename
+
+            res = requests.get(
+                f"http://{self.host_addr}/api/files/download",
+                params={"path": file_path, "pin": self.pin},
+                stream=True,
+                timeout=60
+            )
+            if res.status_code == 200:
+                with open(dest_file, "wb") as f:
+                    for chunk in res.iter_content(chunk_size=65536):
+                        if chunk:
+                            f.write(chunk)
+                self.after(0, lambda: self._show_floating_notification(f"✓ Salvo em: {dest_file.name} (Downloads)", "#10b981"))
+            else:
+                self.after(0, lambda: self._show_floating_notification(f"Erro ao baixar: HTTP {res.status_code}", "#ef4444"))
+        except Exception as e:
+            self.after(0, lambda: self._show_floating_notification(f"Falha no download: {e}", "#ef4444"))
+
+    def _download_host_clipboard_async(self):
+        """Consulta arquivo copiado no Host e baixa para o cliente."""
+        try:
+            res = requests.get(f"http://{self.host_addr}/api/files/clipboard", params={"pin": self.pin}, timeout=5)
+            if res.status_code == 200:
+                files = res.json().get("files", [])
+                if files:
+                    target = files[0]
+                    self._download_host_file_async(target["path"], target["name"])
+                else:
+                    self.after(0, lambda: self._show_floating_notification("Nenhum arquivo copiado no Host.", "#f59e0b"))
+            else:
+                self.after(0, lambda: self._show_floating_notification(f"Erro no clipboard: {res.status_code}", "#ef4444"))
+        except Exception as e:
+            self.after(0, lambda: self._show_floating_notification(f"Falha ao consultar clipboard: {e}", "#ef4444"))
 
     def _on_server_disconnect(self, message: Optional[str]):
         msg = message or "A sessão remota foi encerrada pelo Host."

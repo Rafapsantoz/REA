@@ -241,6 +241,345 @@
       transition: filter 0.3s ease;
     }
 
+    /* Dropzone de Arrastar e Soltar Arquivos */
+    #dropZoneOverlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(2, 132, 199, 0.45);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 3000;
+      pointer-events: none;
+      animation: fadeInOverlay 0.15s ease-out;
+    }
+    .dropzone-card {
+      background: var(--bg-card);
+      border: 3px dashed var(--brand-cyan);
+      border-radius: 24px;
+      padding: 3rem 4rem;
+      text-align: center;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.6);
+      transform: scale(1.02);
+      transition: transform 0.2s;
+    }
+    .dropzone-icon {
+      font-size: 3.5rem;
+      margin-bottom: 0.75rem;
+      animation: bounceSoft 1s infinite alternate ease-in-out;
+    }
+    @keyframes bounceSoft {
+      from { transform: translateY(0); }
+      to { transform: translateY(-8px); }
+    }
+    .dropzone-title {
+      font-size: 1.5rem;
+      font-weight: 800;
+      color: var(--text-primary);
+      margin-bottom: 0.4rem;
+    }
+    .dropzone-desc {
+      font-size: 0.95rem;
+      color: var(--text-secondary);
+    }
+
+    /* Modal de Transferência de Arquivos */
+    #fileTransferModal {
+      position: fixed;
+      inset: 0;
+      background: rgba(10, 15, 29, 0.82);
+      backdrop-filter: blur(14px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 2800;
+      animation: fadeInOverlay 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    body.theme-light #fileTransferModal {
+      background: rgba(241, 245, 249, 0.88);
+    }
+    .ft-modal-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-card);
+      border-radius: 20px;
+      width: 90%;
+      max-width: 680px;
+      max-height: 85vh;
+      display: flex;
+      flex-direction: column;
+      box-shadow: var(--shadow-card);
+      overflow: hidden;
+      position: relative;
+    }
+    .ft-header {
+      padding: 1.25rem 1.5rem;
+      border-bottom: 1px solid var(--border-card);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .ft-title-box {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .ft-title {
+      font-size: 1.15rem;
+      font-weight: 800;
+      color: var(--text-primary);
+    }
+    .ft-close-btn {
+      background: var(--btn-bg);
+      border: 1px solid var(--btn-border);
+      color: var(--btn-text);
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      font-size: 1rem;
+      font-weight: bold;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.15s;
+    }
+    .ft-close-btn:hover {
+      background: #ef4444;
+      color: #ffffff;
+      border-color: #ef4444;
+    }
+    .ft-tabs {
+      display: flex;
+      border-bottom: 1px solid var(--border-card);
+      background: var(--btn-bg);
+    }
+    .ft-tab-btn {
+      flex: 1;
+      padding: 0.85rem 1rem;
+      background: transparent;
+      border: none;
+      border-bottom: 2px solid transparent;
+      color: var(--text-secondary);
+      font-size: 0.9rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.15s;
+      text-align: center;
+    }
+    .ft-tab-btn.active {
+      color: var(--brand-blue);
+      border-bottom-color: var(--brand-blue);
+      background: var(--bg-card);
+    }
+    .ft-tab-content {
+      padding: 1.25rem 1.5rem;
+      overflow-y: auto;
+      flex: 1;
+    }
+    .ft-upload-box {
+      border: 2px dashed var(--btn-border);
+      border-radius: 14px;
+      padding: 2.25rem 1.5rem;
+      text-align: center;
+      background: var(--btn-bg);
+      cursor: pointer;
+      transition: all 0.2s;
+      margin-bottom: 1rem;
+    }
+    .ft-upload-box:hover, .ft-upload-box.drag-over {
+      border-color: var(--brand-blue);
+      background: rgba(2, 132, 199, 0.08);
+    }
+    .ft-upload-icon {
+      font-size: 2.4rem;
+      margin-bottom: 0.5rem;
+    }
+    .ft-upload-title {
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--text-primary);
+      margin-bottom: 0.35rem;
+    }
+    .ft-upload-sub {
+      font-size: 0.82rem;
+      color: var(--text-secondary);
+    }
+    .ft-options-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+      margin-bottom: 1rem;
+    }
+    .ft-checkbox-label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+    .ft-nav-bar {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+      margin-bottom: 0.75rem;
+    }
+    .ft-path-display {
+      flex: 1;
+      background: var(--input-bg);
+      border: 1px solid var(--input-border);
+      padding: 0.45rem 0.75rem;
+      border-radius: 8px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.78rem;
+      color: var(--input-text);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .ft-shortcuts-row {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      margin-bottom: 0.85rem;
+    }
+    .ft-shortcut-pill {
+      background: var(--btn-bg);
+      border: 1px solid var(--btn-border);
+      color: var(--btn-text);
+      font-size: 0.75rem;
+      font-weight: 600;
+      padding: 0.3rem 0.65rem;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .ft-shortcut-pill:hover {
+      background: var(--btn-hover);
+      border-color: var(--brand-blue);
+      color: var(--btn-hover-text);
+    }
+    .ft-clipboard-banner {
+      background: rgba(2, 132, 199, 0.12);
+      border: 1px solid rgba(2, 132, 199, 0.35);
+      border-radius: 10px;
+      padding: 0.75rem 1rem;
+      margin-bottom: 1rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .ft-clipboard-info {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.82rem;
+      color: var(--text-primary);
+    }
+    .ft-file-list {
+      max-height: 280px;
+      overflow-y: auto;
+      border: 1px solid var(--btn-border);
+      border-radius: 10px;
+    }
+    .ft-file-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.6rem 0.85rem;
+      border-bottom: 1px solid var(--btn-border);
+      font-size: 0.85rem;
+      transition: background 0.15s;
+    }
+    .ft-file-item:last-child {
+      border-bottom: none;
+    }
+    .ft-file-item:hover {
+      background: rgba(0, 0, 0, 0.05);
+    }
+    body:not(.theme-light) .ft-file-item:hover {
+      background: rgba(255, 255, 255, 0.04);
+    }
+    .ft-file-name-col {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+      flex: 1;
+      overflow: hidden;
+    }
+    .ft-file-name-text {
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      color: var(--text-primary);
+      font-weight: 500;
+    }
+    .ft-file-meta {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+      flex-shrink: 0;
+    }
+    .btn-download-file {
+      background: var(--brand-blue);
+      color: #ffffff;
+      border: none;
+      padding: 0.35rem 0.75rem;
+      border-radius: 6px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: opacity 0.15s;
+    }
+    .btn-download-file:hover {
+      opacity: 0.9;
+    }
+
+    /* Container de Toasts de Notificação */
+    #toastContainer {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      z-index: 9999;
+      pointer-events: none;
+    }
+    .rpsec-toast {
+      background: var(--bg-card);
+      border: 1px solid var(--border-card);
+      border-left: 4px solid var(--brand-blue);
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+      padding: 0.85rem 1.25rem;
+      border-radius: 12px;
+      color: var(--text-primary);
+      font-size: 0.88rem;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      pointer-events: auto;
+      animation: slideInToast 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+      max-width: 380px;
+    }
+    .rpsec-toast.success {
+      border-left-color: #10b981;
+    }
+    .rpsec-toast.error {
+      border-left-color: #ef4444;
+    }
+    @keyframes slideInToast {
+      from { transform: translateX(50px); opacity: 0; }
+      to { transform: translateX(0); opacity: 1; }
+    }
+
     .auth-theme-btn {
       position: absolute;
       top: 1.25rem;
@@ -606,6 +945,7 @@
       <button id="btnAltTab" class="tb-btn" title="Alternar Janelas">Alt+Tab</button>
       <button id="btnCtrlAltDel" class="tb-btn" title="Enviar Ctrl+Alt+Del">Ctrl+Alt+Del</button>
       <button id="btnEsc" class="tb-btn" title="Pressionar Esc">Esc</button>
+      <button id="btnFiles" class="tb-btn" title="Transferência e Gerenciador de Arquivos (Copiar/Colar & Baixar)">📁 Arquivos</button>
       <button id="btnMobileKbd" class="tb-btn" title="Abrir Teclado no Tablet/Celular">⌨ Teclado</button>
       <button id="btnFullscreen" class="tb-btn" title="Modo Tela Cheia Imersivo">⛶ Tela Cheia</button>
       <button id="btnClosePanel" class="tb-btn" title="Recolher Barra">▲</button>
@@ -620,6 +960,99 @@
   </div>
 
   <input type="text" id="mobileKeyTrap">
+
+  <!-- Dropzone Overlay para Arrastar e Soltar Arquivos Diretamente -->
+  <div id="dropZoneOverlay" style="display: none;">
+    <div class="dropzone-card">
+      <div class="dropzone-icon">📥</div>
+      <h3 class="dropzone-title">Solte para Transferir para o Host</h3>
+      <p class="dropzone-desc">O arquivo será transferido e colocado automaticamente no <strong>Ctrl+V</strong> da máquina remota</p>
+    </div>
+  </div>
+
+  <!-- Modal do Gerenciador de Arquivos (Copiar, Colar & Baixar) -->
+  <div id="fileTransferModal" style="display: none;">
+    <div class="ft-modal-card">
+      <div class="ft-header">
+        <div class="ft-title-box">
+          <span style="font-size: 1.3rem;">📁</span>
+          <h2 class="ft-title">Transferência de Arquivos • RPsec Link</h2>
+        </div>
+        <button id="btnCloseFilesModal" class="ft-close-btn" title="Fechar">✕</button>
+      </div>
+
+      <div class="ft-tabs">
+        <button id="tabBtnUpload" class="ft-tab-btn active">📤 Enviar para o Host (Upload & Colar)</button>
+        <button id="tabBtnExplorer" class="ft-tab-btn">📥 Explorador do Host (Baixar)</button>
+      </div>
+
+      <!-- Aba 1: Upload / Enviar -->
+      <div id="tabContentUpload" class="ft-tab-content">
+        <div id="ftDropBox" class="ft-upload-box">
+          <div class="ft-upload-icon">☁️</div>
+          <div class="ft-upload-title">Clique para selecionar arquivos ou arraste para cá</div>
+          <div class="ft-upload-sub">Dica: Você também pode colar arquivos com <strong>Ctrl+V</strong> na tela remota a qualquer momento!</div>
+          <input type="file" id="fileSelectorInput" multiple style="display: none;">
+        </div>
+
+        <div class="ft-options-row">
+          <label class="ft-checkbox-label">
+            <input type="checkbox" id="chkAutoClipboard" checked>
+            <span>Copiar para a Área de Transferência (Ctrl+V) do Host</span>
+          </label>
+          <button id="btnOpenHostFolder" class="tb-btn" style="padding: 0.35rem 0.75rem;">📂 Abrir Pasta no Host</button>
+        </div>
+
+        <div id="uploadProgressBox" style="display: none; margin-bottom: 1rem;">
+          <div style="display: flex; justify-content: space-between; font-size: 0.8rem; margin-bottom: 0.3rem;">
+            <span id="uploadStatusText">Enviando arquivos...</span>
+            <span id="uploadPercentText">0%</span>
+          </div>
+          <div class="reconnect-bar-track">
+            <div id="uploadProgressBar" class="reconnect-progress-bar" style="width: 0%;"></div>
+          </div>
+        </div>
+
+        <div id="transferHistoryContainer" style="display: none;">
+          <div style="font-size: 0.8rem; font-weight: 700; color: var(--text-secondary); margin-bottom: 0.5rem;">ARQUIVOS TRANSFERIDOS RECENTEMENTE</div>
+          <div id="transferHistoryList" class="ft-file-list" style="max-height: 140px;"></div>
+        </div>
+      </div>
+
+      <!-- Aba 2: Explorador do Host -->
+      <div id="tabContentExplorer" class="ft-tab-content" style="display: none;">
+        <!-- Banner de Arquivo Copiado no Host -->
+        <div id="hostClipboardBanner" class="ft-clipboard-banner" style="display: none;">
+          <div class="ft-clipboard-info">
+            <span style="font-size: 1.2rem;">📋</span>
+            <span>Copiado no Host: <strong id="hostClipboardFileName">--</strong> (<span id="hostClipboardFileSize">--</span>)</span>
+          </div>
+          <button id="btnDownloadClipboardFile" class="btn-download-file">⬇ Baixar para seu PC</button>
+        </div>
+
+        <!-- Atalhos Rápidos -->
+        <div class="ft-shortcuts-row">
+          <button class="ft-shortcut-pill" data-target="RPsec Transfer">📁 RPsec Transfer</button>
+          <button class="ft-shortcut-pill" data-target="Área de Trabalho">🖥️ Área de Trabalho</button>
+          <button class="ft-shortcut-pill" data-target="Downloads">📥 Downloads</button>
+          <button class="ft-shortcut-pill" data-target="Documentos">📄 Documentos</button>
+        </div>
+
+        <!-- Barra de Navegação -->
+        <div class="ft-nav-bar">
+          <button id="btnFolderUp" class="tb-btn" title="Subir um nível">⬆</button>
+          <div id="currentPathDisplay" class="ft-path-display">Carregando...</div>
+          <button id="btnRefreshFolder" class="tb-btn" title="Atualizar pasta">🔄</button>
+        </div>
+
+        <!-- Tabela de Arquivos -->
+        <div id="hostFileList" class="ft-file-list"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Container de Toasts de Notificação -->
+  <div id="toastContainer"></div>
 
   <script>
     const authOverlay = document.getElementById('authOverlay');
@@ -879,6 +1312,14 @@
             } else if (data.type === 'pong') {
               const rtt = Math.round(performance.now() - data.ts);
               pingCount.textContent = rtt;
+            } else if (data.type === 'file_received') {
+              showToast(`📥 Arquivo recebido no Host: ${data.file.filename} (${data.file.size_formatted}) (Copiado para o Ctrl+V)`, 'success');
+              if (currentHostPath && tabContentExplorer.style.display !== 'none') {
+                loadHostDirectory(currentHostPath);
+              }
+              checkHostClipboard();
+            } else if (data.type === 'clipboard_files') {
+              updateHostClipboardBanner(data.files || []);
             }
           } catch (e) {}
         }
@@ -1310,6 +1751,442 @@
     }
 
     document.getElementById('btnDisconnect').addEventListener('click', disconnectSession);
+
+    /* ==========================================================================
+       TRANSFERÊNCIA DE ARQUIVOS, COPIAR & COLAR (Ctrl+V) E EXPLORADOR REMOTO
+       ========================================================================== */
+
+    const btnFiles = document.getElementById('btnFiles');
+    const fileTransferModal = document.getElementById('fileTransferModal');
+    const btnCloseFilesModal = document.getElementById('btnCloseFilesModal');
+    const tabBtnUpload = document.getElementById('tabBtnUpload');
+    const tabBtnExplorer = document.getElementById('tabBtnExplorer');
+    const tabContentUpload = document.getElementById('tabContentUpload');
+    const tabContentExplorer = document.getElementById('tabContentExplorer');
+
+    const ftDropBox = document.getElementById('ftDropBox');
+    const fileSelectorInput = document.getElementById('fileSelectorInput');
+    const chkAutoClipboard = document.getElementById('chkAutoClipboard');
+    const btnOpenHostFolder = document.getElementById('btnOpenHostFolder');
+    const uploadProgressBox = document.getElementById('uploadProgressBox');
+    const uploadProgressBar = document.getElementById('uploadProgressBar');
+    const uploadStatusText = document.getElementById('uploadStatusText');
+    const uploadPercentText = document.getElementById('uploadPercentText');
+    const transferHistoryContainer = document.getElementById('transferHistoryContainer');
+    const transferHistoryList = document.getElementById('transferHistoryList');
+
+    const hostClipboardBanner = document.getElementById('hostClipboardBanner');
+    const hostClipboardFileName = document.getElementById('hostClipboardFileName');
+    const hostClipboardFileSize = document.getElementById('hostClipboardFileSize');
+    const btnDownloadClipboardFile = document.getElementById('btnDownloadClipboardFile');
+    const currentPathDisplay = document.getElementById('currentPathDisplay');
+    const btnFolderUp = document.getElementById('btnFolderUp');
+    const btnRefreshFolder = document.getElementById('btnRefreshFolder');
+    const hostFileList = document.getElementById('hostFileList');
+
+    const dropZoneOverlay = document.getElementById('dropZoneOverlay');
+    const toastContainer = document.getElementById('toastContainer');
+
+    let currentHostPath = "";
+    let cachedShortcuts = {};
+    let cachedClipboardFiles = [];
+
+    function escapeHtml(text) {
+      if (!text) return '';
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    /* Sistema de Toasts Elegantes */
+    function showToast(message, type = 'info', duration = 4000) {
+      if (!toastContainer) return;
+      const toast = document.createElement('div');
+      toast.className = `rpsec-toast ${type}`;
+      const icon = type === 'success' ? '✓' : (type === 'error' ? '⚠️' : '⚡');
+      toast.innerHTML = `<span style="font-size:1.15rem; font-weight:bold;">${icon}</span><span style="flex:1; line-height: 1.35;">${escapeHtml(message)}</span>`;
+      toastContainer.appendChild(toast);
+
+      setTimeout(() => {
+        toast.style.opacity = '0';
+        toast.style.transform = 'translateX(40px)';
+        toast.style.transition = 'all 0.3s cubic-bezier(0.16, 1, 0.3, 1)';
+        setTimeout(() => toast.remove(), 320);
+      }, duration);
+    }
+
+    /* Envio de Arquivos via Multipart HTTP POST */
+    function uploadFiles(fileList, copyToClipboard = true) {
+      if (!fileList || fileList.length === 0) return;
+      const pin = localStorage.getItem('rpsec_link_pin') || pinInput.value.trim() || '';
+
+      const formData = new FormData();
+      for (let i = 0; i < fileList.length; i++) {
+        formData.append('files', fileList[i]);
+      }
+      formData.append('copy_to_clipboard', copyToClipboard ? 'true' : 'false');
+      formData.append('pin', pin);
+
+      uploadProgressBox.style.display = 'block';
+      uploadProgressBar.style.width = '0%';
+      uploadPercentText.textContent = '0%';
+      uploadStatusText.textContent = `Enviando ${fileList.length} arquivo(s)...`;
+
+      const xhr = new XMLHttpRequest();
+      xhr.open('POST', '/api/files/upload', true);
+
+      xhr.upload.onprogress = (e) => {
+        if (e.lengthComputable) {
+          const percent = Math.round((e.loaded / e.total) * 100);
+          uploadProgressBar.style.width = `${percent}%`;
+          uploadPercentText.textContent = `${percent}%`;
+        }
+      };
+
+      xhr.onload = () => {
+        if (xhr.status === 200) {
+          uploadProgressBar.style.width = '100%';
+          uploadPercentText.textContent = '100%';
+          uploadStatusText.textContent = 'Transferência concluída!';
+          
+          try {
+            const res = JSON.parse(xhr.responseText);
+            if (res.success && res.files) {
+              res.files.forEach(addTransferHistoryItem);
+              transferHistoryContainer.style.display = 'block';
+            }
+          } catch (e) {}
+
+          const clipMsg = copyToClipboard ? ' (Disponível no Ctrl+V do Host!)' : '';
+          showToast(`✓ ${fileList.length} arquivo(s) transferido(s) com sucesso!${clipMsg}`, 'success', 5000);
+
+          setTimeout(() => {
+            uploadProgressBox.style.display = 'none';
+          }, 2000);
+
+          if (currentHostPath && tabContentExplorer.style.display !== 'none') {
+            loadHostDirectory(currentHostPath);
+          }
+        } else {
+          uploadStatusText.textContent = 'Falha no envio';
+          showToast(`Erro ao enviar arquivos (${xhr.status}): ${xhr.responseText || 'Falha de comunicação'}`, 'error', 6000);
+          setTimeout(() => {
+            uploadProgressBox.style.display = 'none';
+          }, 3500);
+        }
+      };
+
+      xhr.onerror = () => {
+        uploadStatusText.textContent = 'Erro de rede';
+        showToast('Erro de rede ao transferir arquivos para o Host.', 'error', 6000);
+        setTimeout(() => {
+          uploadProgressBox.style.display = 'none';
+        }, 3500);
+      };
+
+      xhr.send(formData);
+    }
+
+    function addTransferHistoryItem(file) {
+      if (!transferHistoryList) return;
+      const item = document.createElement('div');
+      item.className = 'ft-file-item';
+      item.innerHTML = `
+        <div class="ft-file-name-col">
+          <span style="font-size:1.1rem;">📄</span>
+          <span class="ft-file-name-text" title="${escapeHtml(file.filename)}">${escapeHtml(file.filename)}</span>
+        </div>
+        <div class="ft-file-meta">
+          <span>${file.size_formatted}</span>
+          ${file.in_clipboard ? '<span style="color:var(--brand-cyan); font-weight:700;">[Copiado Ctrl+V]</span>' : ''}
+        </div>
+      `;
+      transferHistoryList.prepend(item);
+    }
+
+    /* Captura Global de Colagem de Arquivos (Ctrl+V) */
+    window.addEventListener('paste', (e) => {
+      if (document.activeElement === pinInput) return;
+      if (!isSessionActive) return;
+
+      if (e.clipboardData && e.clipboardData.files && e.clipboardData.files.length > 0) {
+        e.preventDefault();
+        const count = e.clipboardData.files.length;
+        showToast(`📋 Colando ${count} arquivo(s) no Host via Ctrl+V...`, 'info', 3000);
+        uploadFiles(e.clipboardData.files, true);
+      }
+    });
+
+    /* Drag & Drop em Toda a Janela do Navegador */
+    let dragCounter = 0;
+    window.addEventListener('dragenter', (e) => {
+      e.preventDefault();
+      if (!isSessionActive) return;
+      dragCounter++;
+      if (e.dataTransfer && e.dataTransfer.types && e.dataTransfer.types.includes('Files')) {
+        dropZoneOverlay.style.display = 'flex';
+      }
+    });
+
+    window.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      if (!isSessionActive) return;
+      if (e.dataTransfer) {
+        e.dataTransfer.dropEffect = 'copy';
+      }
+    });
+
+    window.addEventListener('dragleave', (e) => {
+      e.preventDefault();
+      dragCounter--;
+      if (dragCounter <= 0) {
+        dragCounter = 0;
+        dropZoneOverlay.style.display = 'none';
+      }
+    });
+
+    window.addEventListener('drop', (e) => {
+      e.preventDefault();
+      dragCounter = 0;
+      dropZoneOverlay.style.display = 'none';
+      if (!isSessionActive) return;
+      if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+        uploadFiles(e.dataTransfer.files, true);
+      }
+    });
+
+    /* Interações do Modal de Transferência */
+    btnFiles.addEventListener('click', () => {
+      const isVisible = fileTransferModal.style.display === 'flex';
+      fileTransferModal.style.display = isVisible ? 'none' : 'flex';
+      if (!isVisible) {
+        if (tabContentExplorer.style.display !== 'none') {
+          loadHostDirectory(currentHostPath);
+          checkHostClipboard();
+        }
+      }
+    });
+
+    btnCloseFilesModal.addEventListener('click', () => {
+      fileTransferModal.style.display = 'none';
+    });
+
+    fileTransferModal.addEventListener('click', (e) => {
+      if (e.target === fileTransferModal) {
+        fileTransferModal.style.display = 'none';
+      }
+    });
+
+    /* Alternância de Abas */
+    tabBtnUpload.addEventListener('click', () => {
+      tabBtnUpload.classList.add('active');
+      tabBtnExplorer.classList.remove('active');
+      tabContentUpload.style.display = 'block';
+      tabContentExplorer.style.display = 'none';
+    });
+
+    tabBtnExplorer.addEventListener('click', () => {
+      tabBtnExplorer.classList.add('active');
+      tabBtnUpload.classList.remove('active');
+      tabContentExplorer.style.display = 'block';
+      tabContentUpload.style.display = 'none';
+      loadHostDirectory(currentHostPath);
+      checkHostClipboard();
+    });
+
+    /* Caixa de Upload */
+    ftDropBox.addEventListener('click', () => {
+      fileSelectorInput.click();
+    });
+
+    fileSelectorInput.addEventListener('change', () => {
+      if (fileSelectorInput.files.length > 0) {
+        uploadFiles(fileSelectorInput.files, chkAutoClipboard.checked);
+        fileSelectorInput.value = '';
+      }
+    });
+
+    ftDropBox.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      ftDropBox.classList.add('drag-over');
+    });
+
+    ftDropBox.addEventListener('dragleave', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      ftDropBox.classList.remove('drag-over');
+    });
+
+    ftDropBox.addEventListener('drop', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      ftDropBox.classList.remove('drag-over');
+      if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+        uploadFiles(e.dataTransfer.files, chkAutoClipboard.checked);
+      }
+    });
+
+    /* Abrir Pasta no Explorer do Host */
+    btnOpenHostFolder.addEventListener('click', async () => {
+      const pin = localStorage.getItem('rpsec_link_pin') || pinInput.value.trim() || '';
+      try {
+        if (ws && ws.readyState === WebSocket.OPEN) {
+          ws.send(JSON.stringify({ type: 'open_transfer_folder' }));
+        }
+        await fetch(`/api/files/open-folder?pin=${encodeURIComponent(pin)}`, { method: 'POST' });
+        showToast('Pasta RPsec_Transfer aberta no Windows Explorer do Host.', 'info');
+      } catch (e) {
+        showToast('Erro ao abrir pasta no Host.', 'error');
+      }
+    });
+
+    /* Explorador Remoto e Download de Arquivos */
+    async function loadHostDirectory(targetPath = "") {
+      const pin = localStorage.getItem('rpsec_link_pin') || pinInput.value.trim() || '';
+      try {
+        currentPathDisplay.textContent = "Carregando pasta...";
+        const url = `/api/files/list?path=${encodeURIComponent(targetPath)}&pin=${encodeURIComponent(pin)}`;
+        const res = await fetch(url);
+        if (!res.ok) {
+          throw new Error(`Status ${res.status}: ${res.statusText}`);
+        }
+        const data = await res.json();
+        if (data.error) {
+          currentPathDisplay.textContent = data.current_path || "Erro";
+          hostFileList.innerHTML = `<div style="padding: 1.5rem; text-align: center; color: #ef4444;">${escapeHtml(data.error)}</div>`;
+          return;
+        }
+
+        currentHostPath = data.current_path;
+        currentPathDisplay.textContent = data.current_path;
+        currentPathDisplay.title = data.current_path;
+        if (data.shortcuts) {
+          cachedShortcuts = data.shortcuts;
+        }
+
+        btnFolderUp.disabled = !data.parent_path;
+        btnFolderUp.onclick = () => {
+          if (data.parent_path) loadHostDirectory(data.parent_path);
+        };
+
+        renderHostFileList(data.items);
+      } catch (err) {
+        hostFileList.innerHTML = `<div style="padding: 1.5rem; text-align: center; color: #ef4444;">Erro ao acessar diretório: ${escapeHtml(err.message)}</div>`;
+      }
+    }
+
+    function renderHostFileList(items) {
+      hostFileList.innerHTML = '';
+      if (!items || items.length === 0) {
+        hostFileList.innerHTML = '<div style="padding: 1.5rem; text-align: center; color: var(--text-secondary);">Esta pasta está vazia.</div>';
+        return;
+      }
+
+      items.forEach(item => {
+        const row = document.createElement('div');
+        row.className = 'ft-file-item';
+
+        const icon = item.is_dir ? '📁' : getFileIcon(item.name);
+        row.innerHTML = `
+          <div class="ft-file-name-col" title="${escapeHtml(item.name)}">
+            <span style="font-size:1.15rem;">${icon}</span>
+            <span class="ft-file-name-text">${escapeHtml(item.name)}</span>
+          </div>
+          <div class="ft-file-meta">
+            <span>${item.size_formatted}</span>
+            <span>${item.modified}</span>
+            ${!item.is_dir ? `<button class="btn-download-file" data-path="${escapeHtml(item.path)}">⬇ Baixar</button>` : ''}
+          </div>
+        `;
+
+        if (item.is_dir) {
+          row.querySelector('.ft-file-name-col').addEventListener('click', () => {
+            loadHostDirectory(item.path);
+          });
+        } else {
+          const dlBtn = row.querySelector('.btn-download-file');
+          if (dlBtn) {
+            dlBtn.addEventListener('click', () => {
+              downloadHostFile(item.path);
+            });
+          }
+        }
+
+        hostFileList.appendChild(row);
+      });
+    }
+
+    function getFileIcon(filename) {
+      const ext = filename.split('.').pop().toLowerCase();
+      if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'ico', 'svg'].includes(ext)) return '🖼️';
+      if (['zip', 'rar', '7z', 'tar', 'gz'].includes(ext)) return '📦';
+      if (['mp4', 'mkv', 'avi', 'mov', 'webm'].includes(ext)) return '🎬';
+      if (['mp3', 'wav', 'ogg', 'flac'].includes(ext)) return '🎵';
+      if (['pdf'].includes(ext)) return '📕';
+      if (['txt', 'log', 'md', 'json', 'py', 'js', 'html', 'css', 'ts'].includes(ext)) return '📝';
+      if (['exe', 'bat', 'cmd', 'ps1', 'vbs', 'msi'].includes(ext)) return '⚙️';
+      return '📄';
+    }
+
+    function downloadHostFile(filePath) {
+      const pin = localStorage.getItem('rpsec_link_pin') || pinInput.value.trim() || '';
+      const url = `/api/files/download?path=${encodeURIComponent(filePath)}&pin=${encodeURIComponent(pin)}`;
+      showToast('Iniciando download do arquivo...', 'info', 2000);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = '';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+    }
+
+    btnRefreshFolder.addEventListener('click', () => {
+      loadHostDirectory(currentHostPath);
+      checkHostClipboard();
+    });
+
+    document.querySelectorAll('.ft-shortcut-pill').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const targetName = btn.dataset.target;
+        const targetPath = cachedShortcuts[targetName] || "";
+        loadHostDirectory(targetPath);
+      });
+    });
+
+    /* Banner de Arquivo Copiado no Clipboard do Host */
+    async function checkHostClipboard() {
+      const pin = localStorage.getItem('rpsec_link_pin') || pinInput.value.trim() || '';
+      try {
+        const res = await fetch(`/api/files/clipboard?pin=${encodeURIComponent(pin)}`);
+        if (res.ok) {
+          const data = await res.json();
+          updateHostClipboardBanner(data.files || []);
+        }
+      } catch (e) {}
+    }
+
+    function updateHostClipboardBanner(files) {
+      cachedClipboardFiles = files || [];
+      if (!hostClipboardBanner) return;
+      if (cachedClipboardFiles.length > 0) {
+        hostClipboardBanner.style.display = 'flex';
+        const fileNames = cachedClipboardFiles.map(f => f.name).join(', ');
+        hostClipboardFileName.textContent = fileNames;
+        hostClipboardFileName.title = fileNames;
+        hostClipboardFileSize.textContent = cachedClipboardFiles[0].size_formatted;
+      } else {
+        hostClipboardBanner.style.display = 'none';
+      }
+    }
+
+    if (btnDownloadClipboardFile) {
+      btnDownloadClipboardFile.addEventListener('click', () => {
+        if (cachedClipboardFiles.length > 0) {
+          cachedClipboardFiles.forEach(f => downloadHostFile(f.path));
+        }
+      });
+    }
   </script>
 </body>
 </html>

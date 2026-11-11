@@ -13,16 +13,17 @@ import secrets
 import asyncio
 import argparse
 from pathlib import Path
-from typing import Optional, Callable, Set, Dict, Any
+from typing import Optional, Callable, Set, Dict, Any, List
 
 import uvicorn
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Query
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Query, UploadFile, File, Form, HTTPException, Header
 from fastapi.responses import HTMLResponse, JSONResponse, FileResponse
 
 from screen_capture import ScreenCapturer
 from input_controller import InputController
+import file_transfer as ft
 
-app = FastAPI(title="RPsec Link Server", version="1.5.0")
+app = FastAPI(title="RPsec Link Server", version="1.6.0")
 
 BASE_DIR = Path(__file__).parent
 STATIC_DIR = BASE_DIR / "static"
@@ -53,6 +54,7 @@ CALLBACKS = {
     "on_security_alert": None,
     "on_devices_update": None,
     "on_shutdown_request": None,
+    "on_file_received": None,
 }
 
 # Rastreamento de falhas de autenticação e bloqueio (Anti-Brute Force)
@@ -61,6 +63,25 @@ FAILED_ATTEMPTS: Dict[str, Dict[str, Any]] = {}
 # Inicializa motores com DPI awareness ativo e sem duplicação de cursor
 capturer = ScreenCapturer(draw_cursor=False)
 input_ctrl = InputController(capturer.width, capturer.height)
+
+
+def notify_file_received(file_info: Dict[str, Any]):
+    """Notifica a interface gráfica do Host sobre arquivo recebido do cliente."""
+    if CALLBACKS.get("on_file_received"):
+        try:
+            CALLBACKS["on_file_received"](file_info)
+        except Exception:
+            pass
+
+
+async def broadcast_file_received(file_info: Dict[str, Any]):
+    """Avisa todos os clientes conectados sobre o arquivo transferido com sucesso."""
+    msg = json.dumps({"type": "file_received", "file": file_info})
+    for dev in list(ACTIVE_DEVICES.values()):
+        try:
+            await dev["ws"].send_text(msg)
+        except Exception:
+            pass
 
 
 def get_connected_devices() -> list:
@@ -206,6 +227,84 @@ async def get_status():
         "pin_configured": bool(CONFIG["pin"]),
         "clients_connected": len(ACTIVE_CLIENTS),
     }
+
+
+def verify_pin_auth(pin: Optional[str] = None) -> bool:
+    """Valida se o PIN informado confere com o PIN ativo do Host."""
+    expected = CONFIG.get("pin")
+    if not expected:
+        return True
+    return pin == expected
+
+
+@app.post("/api/files/upload")
+async def upload_files(
+    files: List[UploadFile] = File(...),
+    folder: Optional[str] = Form(None),
+    copy_to_clipboard: bool = Form(True),
+    pin: Optional[str] = Form(None)
+):
+    """Recebe arquivos do cliente, salva no Host e injeta no Clipboard Win32 (Ctrl+V)."""
+    if not verify_pin_auth(pin):
+        raise HTTPException(status_code=401, detail="PIN de acesso inválido.")
+
+    saved_results = []
+    for f in files:
+        content = await f.read()
+        res = ft.save_uploaded_file(
+            filename=f.filename,
+            file_bytes=content,
+            target_dir=folder,
+            copy_to_clipboard=copy_to_clipboard
+        )
+        saved_results.append(res)
+        notify_file_received(res)
+        if SERVER_LOOP and SERVER_LOOP.is_running():
+            asyncio.run_coroutine_threadsafe(broadcast_file_received(res), SERVER_LOOP)
+
+    return {"success": True, "count": len(saved_results), "files": saved_results}
+
+
+@app.get("/api/files/list")
+async def list_files(path: Optional[str] = None, pin: Optional[str] = None):
+    """Lista arquivos e subpastas de um diretório no Host para navegação e download remoto."""
+    if not verify_pin_auth(pin):
+        raise HTTPException(status_code=401, detail="PIN de acesso inválido.")
+    return ft.list_host_directory(path)
+
+
+@app.get("/api/files/download")
+async def download_file(path: str, pin: Optional[str] = None):
+    """Permite que o cliente baixe arquivos do Host em alta velocidade."""
+    if not verify_pin_auth(pin):
+        raise HTTPException(status_code=401, detail="PIN de acesso inválido.")
+
+    file_path = Path(path).resolve()
+    if not file_path.exists() or not file_path.is_file():
+        raise HTTPException(status_code=404, detail="Arquivo não encontrado no Host.")
+
+    return FileResponse(
+        path=str(file_path),
+        filename=file_path.name,
+        media_type="application/octet-stream"
+    )
+
+
+@app.get("/api/files/clipboard")
+async def get_clipboard_files(pin: Optional[str] = None):
+    """Retorna arquivos atualmente copiados no Clipboard do Host (se houver)."""
+    if not verify_pin_auth(pin):
+        raise HTTPException(status_code=401, detail="PIN de acesso inválido.")
+    return {"files": ft.get_clipboard_files()}
+
+
+@app.post("/api/files/open-folder")
+async def open_transfer_folder(folder: Optional[str] = None, pin: Optional[str] = None):
+    """Abre a pasta no Windows Explorer diretamente no Host."""
+    if not verify_pin_auth(pin):
+        raise HTTPException(status_code=401, detail="PIN de acesso inválido.")
+    ok = ft.open_folder_in_host_explorer(folder)
+    return {"success": ok}
 
 
 @app.websocket("/ws")
@@ -468,6 +567,13 @@ async def websocket_endpoint(websocket: WebSocket, pin: str = Query("")):
                             CALLBACKS["on_shutdown_request"]()
                         except Exception:
                             pass
+
+                elif mtype == "get_clipboard_files":
+                    cb_files = ft.get_clipboard_files()
+                    await websocket.send_text(json.dumps({"type": "clipboard_files", "files": cb_files}))
+
+                elif mtype == "open_transfer_folder":
+                    ft.open_folder_in_host_explorer(msg.get("folder"))
 
                 elif mtype == "client_disconnect":
                     session_state["running"] = False

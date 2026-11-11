@@ -27,6 +27,7 @@ except Exception:
 import customtkinter as ctk
 import uvicorn
 import server
+import file_transfer as ft
 
 # Tema inicial padrão escuro
 ctk.set_appearance_mode("dark")
@@ -67,6 +68,7 @@ class HostApp(ctk.CTk):
         server.CALLBACKS["on_security_alert"] = self._on_security_alert
         server.CALLBACKS["on_devices_update"] = self._on_devices_update
         server.CALLBACKS["on_shutdown_request"] = self._exit_app
+        server.CALLBACKS["on_file_received"] = self._on_file_received
 
         self._start_server_thread()
         self._build_ui()
@@ -304,7 +306,21 @@ class HostApp(ctk.CTk):
         )
         # Inicialmente oculto
 
-        # 6. Rodapé: Abrir Cliente, Minimizar e Fechar Programa
+        # 6. Rodapé: Abrir Transferências, Conectar a Outro Host, Minimizar e Fechar Programa
+        btn_open_transfers = ctk.CTkButton(
+            self,
+            text="📁 Abrir Pasta de Transferências (RPsec_Transfer)",
+            font=ctk.CTkFont(size=12, weight="bold"),
+            fg_color=("#e2e8f0", "#1e293b"),
+            hover_color=("#cbd5e1", "#334155"),
+            text_color=("#0f172a", "#f8fafc"),
+            border_width=1,
+            border_color=("#cbd5e1", "#475569"),
+            height=34,
+            command=lambda: ft.open_folder_in_host_explorer()
+        )
+        btn_open_transfers.pack(fill="x", padx=24, pady=(6, 4))
+
         btn_client = ctk.CTkButton(
             self,
             text="💻 Conectar a Outro Host (Cliente Nativo)",
@@ -317,7 +333,7 @@ class HostApp(ctk.CTk):
             height=36,
             command=self._launch_client
         )
-        btn_client.pack(fill="x", padx=24, pady=(6, 8))
+        btn_client.pack(fill="x", padx=24, pady=(0, 8))
 
         footer_row = ctk.CTkFrame(self, fg_color="transparent")
         footer_row.pack(fill="x", padx=24, pady=(0, 12))
@@ -471,6 +487,18 @@ class HostApp(ctk.CTk):
         self.lbl_session_status.configure(
             text=f"⚠️ Bloqueio Ativo: {client_ip} congelado por {freeze_secs}s (3 PINs errados)",
             text_color="#ef4444"
+        )
+
+    def _on_file_received(self, file_info: dict):
+        self.after(0, lambda: self._update_file_received_ui(file_info))
+
+    def _update_file_received_ui(self, file_info: dict):
+        fname = file_info.get("filename", "Arquivo")
+        fsize = file_info.get("size_formatted", "")
+        in_cb = " (Copiado para o Ctrl+V do Host!)" if file_info.get("in_clipboard") else ""
+        self.lbl_session_status.configure(
+            text=f"📥 Arquivo recebido: {fname} ({fsize}){in_cb}",
+            text_color="#10b981"
         )
 
 
