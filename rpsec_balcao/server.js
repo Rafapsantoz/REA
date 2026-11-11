@@ -54,6 +54,17 @@ const server = http.createServer((req, res) => {
   })
 })
 
+server.on('error', (err) => {
+  if (err.code === 'EADDRINUSE') {
+    console.log(`\n[AVISO] O servidor ja esta em execucao na porta ${PORT}!`)
+    console.log(`Acesse diretamente: http://localhost:${PORT}\n`)
+    process.exit(0)
+  } else {
+    console.error('[ERRO] Falha ao iniciar servidor:', err.message)
+    process.exit(1)
+  }
+})
+
 server.listen(PORT, '0.0.0.0', () => {
   console.log(`\n======================================================`)
   console.log(`  RPsec Balcao - Servidor Leve de Producao Ativo!`)
