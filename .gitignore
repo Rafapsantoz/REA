@@ -6,6 +6,8 @@ ENV/
 *.env
 node_modules/
 dist/
+!rpsec_balcao/dist/
+!rpsec_balcao/dist/**
 build/
 
 # Bancos de Dados Locais e Caches de Teste
