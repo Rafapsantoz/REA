@@ -29,20 +29,7 @@ const STORAGE_KEYS = {
   SHIFT_HISTORY: 'rpsec_balcao_shift_history',
 }
 
-export const INITIAL_PRODUCTS: Product[] = [
-  { id: '1', name: 'Coxinha de Frango', price: 7.00, category: 'salgados', active: true, color: 'bg-amber-100 border-amber-300 text-amber-900' },
-  { id: '2', name: 'Kibe c/ Catupiry', price: 7.50, category: 'salgados', active: true, color: 'bg-amber-100 border-amber-300 text-amber-900' },
-  { id: '3', name: 'Enroladinho de Salsicha', price: 6.50, category: 'salgados', active: true, color: 'bg-amber-100 border-amber-300 text-amber-900' },
-  { id: '4', name: 'Pastel de Carne', price: 8.00, category: 'salgados', active: true, color: 'bg-amber-100 border-amber-300 text-amber-900' },
-  { id: '5', name: 'Pastel de Queijo', price: 8.00, category: 'salgados', active: true, color: 'bg-amber-100 border-amber-300 text-amber-900' },
-  { id: '6', name: 'Empada de Palmito', price: 7.50, category: 'salgados', active: true, color: 'bg-amber-100 border-amber-300 text-amber-900' },
-  { id: '7', name: 'Refrigerante Lata', price: 6.00, category: 'bebidas', active: true, color: 'bg-sky-100 border-sky-300 text-sky-900' },
-  { id: '8', name: 'Suco Natural Copo', price: 7.00, category: 'bebidas', active: true, color: 'bg-orange-100 border-orange-300 text-orange-900' },
-  { id: '9', name: 'Água Mineral 500ml', price: 4.00, category: 'bebidas', active: true, color: 'bg-blue-100 border-blue-300 text-blue-900' },
-  { id: '10', name: 'Café Expresso / Coado', price: 3.50, category: 'bebidas', active: true, color: 'bg-amber-200 border-amber-400 text-amber-950' },
-  { id: '11', name: 'Brigadeiro Tradicional', price: 4.00, category: 'doces', active: true, color: 'bg-pink-100 border-pink-300 text-pink-900' },
-  { id: '12', name: 'Bolo no Pote', price: 10.00, category: 'doces', active: true, color: 'bg-rose-100 border-rose-300 text-rose-900' },
-]
+export const INITIAL_PRODUCTS: Product[] = []
 
 export const INITIAL_CUSTOMERS: Customer[] = [
   { id: 'c1', name: 'Seu Zé (Oficina do Lado)', phone: '11 98765-4321', notes: 'Acerta toda sexta-feira', createdAt: new Date().toISOString() },
@@ -104,16 +91,27 @@ export const INITIAL_RECIPES: Recipe[] = [
   },
 ]
 
+const DEMO_PRODUCT_IDS = new Set(['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12'])
+
 export function loadProducts(): Product[] {
   const data = localStorage.getItem(STORAGE_KEYS.PRODUCTS)
   if (!data) {
-    saveProducts(INITIAL_PRODUCTS)
-    return INITIAL_PRODUCTS
+    saveProducts([])
+    return []
   }
   try {
-    return JSON.parse(data)
+    const parsed: Product[] = JSON.parse(data)
+    // Limpeza automática dos produtos de demonstração caso ainda sejam os 12 padrões
+    const isOnlyDemo = parsed.length > 0 && parsed.every(p => DEMO_PRODUCT_IDS.has(p.id))
+    const alreadyCleared = localStorage.getItem('rpsec_balcao_demo_cleared')
+    if (isOnlyDemo && !alreadyCleared) {
+      saveProducts([])
+      localStorage.setItem('rpsec_balcao_demo_cleared', 'true')
+      return []
+    }
+    return parsed
   } catch {
-    return INITIAL_PRODUCTS
+    return []
   }
 }
 

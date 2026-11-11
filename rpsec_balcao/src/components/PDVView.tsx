@@ -41,6 +41,7 @@ interface PDVViewProps {
   onOpenShift?: (initialFloat: number, notes?: string) => void
   onAddMovement?: (type: CashMovementType, amount: number, description: string) => void
   onCloseShift?: (countedCash: number, expectedCash: number, notes?: string, extraData?: { cashSalesTotal?: number; totalSalesAmount?: number }) => void
+  onGoToProducts?: () => void
 }
 
 export const PDVView: React.FC<PDVViewProps> = ({ 
@@ -57,7 +58,8 @@ export const PDVView: React.FC<PDVViewProps> = ({
   currentShift,
   onOpenShift,
   onAddMovement,
-  onCloseShift
+  onCloseShift,
+  onGoToProducts
 }) => {
   // Estados dos Modais Rápidos de Caixa no PDV (3 botões solicitados)
   const [showOpenShiftModal, setShowOpenShiftModal] = useState<boolean>(false)
@@ -637,7 +639,32 @@ export const PDVView: React.FC<PDVViewProps> = ({
 
         {/* Grade de Produtos (Botões Grandes com Paleta Gastronômica) */}
         <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-3 overflow-y-auto max-h-[calc(100vh-220px)] pr-1">
-          {filteredProducts.map(product => {
+          {filteredProducts.length === 0 ? (
+            <div className="col-span-full py-14 px-6 bg-white dark:bg-[#1a1613] rounded-2xl border-2 border-dashed border-amber-300 dark:border-amber-800/80 text-center flex flex-col items-center justify-center gap-3">
+              <div className="w-14 h-14 rounded-2xl bg-amber-100 dark:bg-amber-950/70 text-amber-600 dark:text-amber-400 flex items-center justify-center shadow-xs">
+                <UtensilsCrossed className="w-7 h-7" />
+              </div>
+              <div>
+                <h4 className="font-black text-lg text-stone-900 dark:text-stone-100">
+                  Cardápio Limpo para Cadastro
+                </h4>
+                <p className="text-xs text-stone-500 dark:text-stone-400 mt-1 max-w-md mx-auto">
+                  Nenhum produto cadastrado nesta categoria. Acesse a aba <strong>"Produtos & Cardápio"</strong> para cadastrar os salgados, sucos e doces reais da sua mãe!
+                </p>
+              </div>
+              {onGoToProducts && (
+                <button
+                  type="button"
+                  onClick={onGoToProducts}
+                  className="mt-1 px-5 py-2.5 rounded-xl bg-amber-400 hover:bg-amber-500 text-stone-950 font-black text-xs shadow-md transition-all cursor-pointer flex items-center gap-2 active:scale-95 border border-amber-300"
+                >
+                  <Plus className="w-4 h-4" />
+                  Cadastrar Primeiros Produtos
+                </button>
+              )}
+            </div>
+          ) : (
+            filteredProducts.map(product => {
             const isSalgado = product.category === 'salgados'
             const isBebida = product.category === 'bebidas'
             const isDoce = product.category === 'doces'
@@ -677,7 +704,8 @@ export const PDVView: React.FC<PDVViewProps> = ({
                 </div>
               </button>
             )
-          })}
+          })
+        )}
         </div>
       </div>
 

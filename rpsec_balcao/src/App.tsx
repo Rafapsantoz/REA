@@ -341,6 +341,7 @@ export function App() {
             onOpenShift={handleOpenShift}
             onAddMovement={handleAddMovement}
             onCloseShift={handleCloseShift}
+            onGoToProducts={() => setActiveTab('products')}
           />
         </div>
 
