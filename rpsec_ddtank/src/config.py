@@ -13,9 +13,9 @@ SCREEN_HEIGHT = 1080
 
 # Definição dos 4 Quadrantes (x, y, largura, altura)
 QUADRANT_TL = (0, 0, 960, 540)        # Fake 1 (Top-Left)
-QUADRANT_TR = (960, 0, 960, 540)      # Top-Right (Conta Principal LV 70 ou Host)
+QUADRANT_TR = (960, 0, 960, 540)      # Top-Right (Conta Principal LV 70 / Líder Padrão)
 QUADRANT_BL = (0, 540, 960, 540)      # Fake 2 (Bottom-Left)
-QUADRANT_BR = (960, 540, 960, 540)    # Bottom-Right (Fake 3 ou Host da Sala)
+QUADRANT_BR = (960, 540, 960, 540)    # Bottom-Right (Fake 3 ou Host Alternativo)
 
 # Coordenadas calibradas dos botões de ação (Pronto / Começar)
 # Medidas com base nas capturas reais em 1920x1080
@@ -54,8 +54,8 @@ class BotConfig:
     focus_bl: Tuple[int, int] = FOCUS_BL
     focus_br: Tuple[int, int] = FOCUS_BR
 
-    # Identificação do Líder da Sala (Host): "BR" (padrão) ou "TR"
-    host_quadrant: str = "BR"
+    # Identificação do Líder da Sala (Host): "TR" (padrão - Conta Principal LV 70) ou "BR"
+    host_quadrant: str = "TR"
 
     # Estratégia de Suicídio das Fakes (Elimina delay do 'Confiar')
     fakes_suicide_key: str = "left"
