@@ -431,10 +431,26 @@ class RemoteViewerWindow(tk.Toplevel):
             except Exception:
                 pass
 
+        # Normaliza caracteres de controle ASCII do Tkinter para códigos seguros
+        code_str = event.keysym
+        key_str = event.char
+        if ctrl:
+            ctrl_map = {
+                '\x16': ('v', 'KeyV', 86),
+                '\x03': ('c', 'KeyC', 67),
+                '\x18': ('x', 'KeyX', 88),
+                '\x1a': ('z', 'KeyZ', 90),
+                '\x01': ('a', 'KeyA', 65),
+            }
+            if event.char in ctrl_map:
+                key_str, code_str, vk_code = ctrl_map[event.char]
+            elif event.keysym.lower() == 'v':
+                key_str, code_str = 'v', 'KeyV'
+
         self.out_queue.put({
             "type": "key_down",
-            "key": event.char,
-            "code": event.keysym,
+            "key": key_str,
+            "code": code_str,
             "vk": event.keycode,
             "ctrl": ctrl,
             "alt": alt,
@@ -447,10 +463,26 @@ class RemoteViewerWindow(tk.Toplevel):
         ctrl = bool(event.state & 0x0004)
         shift = bool(event.state & 0x0001)
         alt = bool(event.state & (0x0008 | 0x20000 | 0x80))
+
+        code_str = event.keysym
+        key_str = event.char
+        if ctrl:
+            ctrl_map = {
+                '\x16': ('v', 'KeyV', 86),
+                '\x03': ('c', 'KeyC', 67),
+                '\x18': ('x', 'KeyX', 88),
+                '\x1a': ('z', 'KeyZ', 90),
+                '\x01': ('a', 'KeyA', 65),
+            }
+            if event.char in ctrl_map:
+                key_str, code_str, _ = ctrl_map[event.char]
+            elif event.keysym.lower() == 'v':
+                key_str, code_str = 'v', 'KeyV'
+
         self.out_queue.put({
             "type": "key_up",
-            "key": event.char,
-            "code": event.keysym,
+            "key": key_str,
+            "code": code_str,
             "vk": event.keycode,
             "ctrl": ctrl,
             "alt": alt,

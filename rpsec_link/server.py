@@ -568,6 +568,13 @@ async def websocket_endpoint(websocket: WebSocket, pin: str = Query("")):
                         except Exception:
                             pass
 
+                elif mtype == "paste_text":
+                    session_state["interactive_boost"] = 3
+                    text = msg.get("text", "")
+                    if text:
+                        ft.set_clipboard_text(text)
+                        input_ctrl.send_shortcut("ctrl+v")
+
                 elif mtype == "get_clipboard_files":
                     cb_files = ft.get_clipboard_files()
                     await websocket.send_text(json.dumps({"type": "clipboard_files", "files": cb_files}))

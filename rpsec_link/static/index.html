@@ -1904,16 +1904,31 @@
       transferHistoryList.prepend(item);
     }
 
-    /* Captura Global de Colagem de Arquivos (Ctrl+V) */
+    /* Captura Global de Colagem (Ctrl+V) no Navegador: Arquivos e Texto */
     window.addEventListener('paste', (e) => {
       if (document.activeElement === pinInput) return;
-      if (!isSessionActive) return;
+      if (!isSessionActive || !ws || ws.readyState !== WebSocket.OPEN) return;
 
+      // 1. Arquivos copiados localmente (Arquivos no Clipboard do Cliente)
       if (e.clipboardData && e.clipboardData.files && e.clipboardData.files.length > 0) {
         e.preventDefault();
         const count = e.clipboardData.files.length;
         showToast(`📋 Colando ${count} arquivo(s) no Host via Ctrl+V...`, 'info', 3000);
         uploadFiles(e.clipboardData.files, true);
+        return;
+      }
+
+      // 2. Texto copiado localmente (Texto no Clipboard do Cliente)
+      if (e.clipboardData) {
+        const text = e.clipboardData.getData('text');
+        if (text) {
+          e.preventDefault();
+          ws.send(JSON.stringify({
+            type: 'paste_text',
+            text: text
+          }));
+          return;
+        }
       }
     });
 

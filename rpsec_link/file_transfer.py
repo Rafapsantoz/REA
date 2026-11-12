@@ -15,7 +15,41 @@ u32 = ctypes.windll.user32
 k32 = ctypes.windll.kernel32
 s32 = ctypes.windll.shell32
 
+P = ctypes.c_void_p
+
+# Tipagem estrita de 64-bits para APIs de Memória e Clipboard Win32
+k32.GlobalAlloc.restype = P
+k32.GlobalAlloc.argtypes = [wintypes.UINT, ctypes.c_size_t]
+
+k32.GlobalLock.restype = P
+k32.GlobalLock.argtypes = [P]
+
+k32.GlobalUnlock.restype = wintypes.BOOL
+k32.GlobalUnlock.argtypes = [P]
+
+k32.GlobalFree.restype = P
+k32.GlobalFree.argtypes = [P]
+
+u32.OpenClipboard.restype = wintypes.BOOL
+u32.OpenClipboard.argtypes = [P]
+
+u32.CloseClipboard.restype = wintypes.BOOL
+u32.CloseClipboard.argtypes = []
+
+u32.EmptyClipboard.restype = wintypes.BOOL
+u32.EmptyClipboard.argtypes = []
+
+u32.SetClipboardData.restype = P
+u32.SetClipboardData.argtypes = [wintypes.UINT, P]
+
+u32.GetClipboardData.restype = P
+u32.GetClipboardData.argtypes = [wintypes.UINT]
+
+s32.DragQueryFileW.restype = wintypes.UINT
+s32.DragQueryFileW.argtypes = [P, wintypes.UINT, wintypes.LPWSTR, wintypes.UINT]
+
 CF_HDROP = 15
+CF_UNICODETEXT = 13
 GHND = 0x0042
 
 class POINT(ctypes.Structure):
@@ -65,6 +99,57 @@ def format_size(size_bytes: int) -> str:
         return f"{size_bytes / (1024 * 1024 * 1024):.2f} GB"
 
 
+def set_clipboard_text(text: str) -> bool:
+    """
+    Coloca texto puro na Área de Transferência do Windows como CF_UNICODETEXT.
+    Permite sincronização instantânea de Ctrl+V de texto entre Cliente e Host.
+    """
+    if not text:
+        return False
+
+    data = (text + "\x00").encode("utf-16le")
+    h_mem = k32.GlobalAlloc(GHND, len(data))
+    if not h_mem:
+        return False
+
+    ptr = k32.GlobalLock(h_mem)
+    if not ptr:
+        k32.GlobalFree(h_mem)
+        return False
+
+    ctypes.memmove(ptr, data, len(data))
+    k32.GlobalUnlock(h_mem)
+
+    for _ in range(5):
+        if u32.OpenClipboard(None):
+            u32.EmptyClipboard()
+            res = u32.SetClipboardData(CF_UNICODETEXT, h_mem)
+            u32.CloseClipboard()
+            return bool(res)
+        time.sleep(0.02)
+
+    k32.GlobalFree(h_mem)
+    return False
+
+
+def get_clipboard_text() -> str:
+    """Retorna o texto atualmente presente na Área de Transferência do Windows (se houver)."""
+    for _ in range(5):
+        if u32.OpenClipboard(None):
+            h = u32.GetClipboardData(CF_UNICODETEXT)
+            if not h:
+                u32.CloseClipboard()
+                return ""
+            ptr = k32.GlobalLock(h)
+            val = ctypes.wstring_at(ptr) if ptr else ""
+            if ptr:
+                k32.GlobalUnlock(h)
+            u32.CloseClipboard()
+            return val
+        time.sleep(0.02)
+    return ""
+
+
 def set_clipboard_files(file_paths: List[str]) -> bool:
     """
     Coloca a lista de arquivos na Área de Transferência (Clipboard) do Windows do Host como CF_HDROP.
@@ -106,23 +191,16 @@ def set_clipboard_files(file_paths: List[str]) -> bool:
     k32.GlobalUnlock(h_mem)
 
     # Tenta abrir o clipboard até 5 vezes com pequeno intervalo
-    opened = False
     for _ in range(5):
         if u32.OpenClipboard(None):
-            opened = True
-            break
+            u32.EmptyClipboard()
+            res = u32.SetClipboardData(CF_HDROP, h_mem)
+            u32.CloseClipboard()
+            return bool(res)
         time.sleep(0.02)
 
-    if not opened:
-        k32.GlobalFree(h_mem)
-        return False
-
-    try:
-        u32.EmptyClipboard()
-        u32.SetClipboardData(CF_HDROP, h_mem)
-        return True
-    finally:
-        u32.CloseClipboard()
+    k32.GlobalFree(h_mem)
+    return False
 
 
 def get_clipboard_files() -> List[Dict[str, Any]]:

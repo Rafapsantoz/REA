@@ -84,13 +84,6 @@ u32.SendInput.restype = wintypes.UINT
 
 # Mapeamento oficial de KeyboardEvent.code do navegador para Virtual Keys (VK) do Windows
 CODE_TO_VK = {
-    # Letras A-Z
-    "KeyA": 0x41, "KeyB": 0x42, "KeyC": 0x43, "KeyD": 0x44, "KeyE": 0x45,
-    "KeyF": 0x46, "KeyG": 0x47, "KeyH": 0x48, "KeyI": 0x49, "KeyJ": 0x4A,
-    "KeyK": 0x4B, "KeyL": 0x4C, "KeyM": 0x4D, "KeyN": 0x4E, "KeyO": 0x4F,
-    "KeyP": 0x50, "KeyQ": 0x51, "KeyR": 0x52, "KeyS": 0x53, "KeyT": 0x54,
-    "KeyU": 0x55, "KeyV": 0x56, "KeyW": 0x57, "KeyX": 0x58, "KeyY": 0x59, "KeyZ": 0x5A,
-
     # Dígitos 0-9
     "Digit0": 0x30, "Digit1": 0x31, "Digit2": 0x32, "Digit3": 0x33, "Digit4": 0x34,
     "Digit5": 0x35, "Digit6": 0x36, "Digit7": 0x37, "Digit8": 0x38, "Digit9": 0x39,
@@ -100,23 +93,29 @@ CODE_TO_VK = {
     "Numpad5": 0x65, "Numpad6": 0x66, "Numpad7": 0x67, "Numpad8": 0x68, "Numpad9": 0x69,
     "NumpadMultiply": 0x6A, "NumpadAdd": 0x6B, "NumpadSubtract": 0x6D, "NumpadDecimal": 0x6E, "NumpadDivide": 0x6F,
 
-    # Controle e Modificadores
+    # Controle e Modificadores (Usa VK genéricos 0x11, 0x10, 0x12 para compatibilidade universal com aceleradores Win32)
     "Enter": 0x0D,
     "Backspace": 0x08,
     "Tab": 0x09,
     "Escape": 0x1B,
     "Space": 0x20,
-    "ShiftLeft": 0xA0,
-    "ShiftRight": 0xA1,
-    "ControlLeft": 0xA2,
-    "ControlRight": 0xA3,
-    "AltLeft": 0xA4,
-    "AltRight": 0xA5,
+    "ShiftLeft": 0x10,
+    "ShiftRight": 0x10,
+    "ControlLeft": 0x11,
+    "ControlRight": 0x11,
+    "AltLeft": 0x12,
+    "AltRight": 0x12,
     "MetaLeft": 0x5B,
     "MetaRight": 0x5C,
     "Shift": 0x10,
     "Control": 0x11,
     "Alt": 0x12,
+    "Control_L": 0x11,
+    "Control_R": 0x11,
+    "Shift_L": 0x10,
+    "Shift_R": 0x10,
+    "Alt_L": 0x12,
+    "Alt_R": 0x12,
     "Meta": 0x5B,
     "ContextMenu": 0x5D,
 
@@ -156,6 +155,20 @@ CODE_TO_VK = {
     "IntlRo": 0xC1,          # Tecla / e ? no teclado ABNT2
     "IntlBackslash": 0xE2,   # Tecla \ e | no teclado ABNT2
 }
+
+# Registra letras A-Z (KeyA-KeyZ, maiúsculas e minúsculas) para suporte a navegador e Tkinter
+for _ch in "ABCDEFGHIJKLMNOPQRSTUVWXYZ":
+    _vk_val = ord(_ch)
+    CODE_TO_VK[f"Key{_ch}"] = _vk_val
+    CODE_TO_VK[_ch] = _vk_val
+    CODE_TO_VK[_ch.lower()] = _vk_val
+
+# Atalhos com caracteres de controle ASCII padrão do Windows (Tkinter)
+CODE_TO_VK["\x16"] = 0x56  # Ctrl+V (SYN) -> VK_V
+CODE_TO_VK["\x03"] = 0x43  # Ctrl+C (ETX) -> VK_C
+CODE_TO_VK["\x18"] = 0x58  # Ctrl+X (CAN) -> VK_X
+CODE_TO_VK["\x1a"] = 0x5A  # Ctrl+Z (SUB) -> VK_Z
+CODE_TO_VK["\x01"] = 0x41  # Ctrl+A (SOH) -> VK_A
 
 EXTENDED_KEYS = {
     0x21, 0x22, 0x23, 0x24, 0x25, 0x26, 0x27, 0x28, 0x2D, 0x2E,
@@ -198,11 +211,15 @@ class InputController:
         self.pressed_vks.clear()
 
     def sync_modifiers(self, ctrl: bool = None, alt: bool = None, shift: bool = None, meta: bool = None):
-        """Sincroniza o estado real dos modificadores do cliente, liberando teclas presas instantaneamente."""
+        """Sincroniza o estado real dos modificadores do cliente, garantindo ativação e liberação perfeitas."""
         self._ensure_desktop()
 
-        if ctrl is False:
-            if 0x11 in self.pressed_vks or 0xA2 in self.pressed_vks or 0xA3 in self.pressed_vks or (u32.GetKeyState(0x11) & 0x8000):
+        if ctrl is True:
+            if 0x11 not in self.pressed_vks and not (u32.GetAsyncKeyState(0x11) & 0x8000):
+                self._send_raw_vk(0x11, is_up=False)
+                self.pressed_vks.add(0x11)
+        elif ctrl is False:
+            if 0x11 in self.pressed_vks or 0xA2 in self.pressed_vks or 0xA3 in self.pressed_vks or (u32.GetAsyncKeyState(0x11) & 0x8000):
                 self._send_raw_vk(0x11, is_up=True)
                 self._send_raw_vk(0xA2, is_up=True)
                 self._send_raw_vk(0xA3, is_up=True)
@@ -210,8 +227,12 @@ class InputController:
                 self.pressed_vks.discard(0xA2)
                 self.pressed_vks.discard(0xA3)
 
-        if alt is False:
-            if 0x12 in self.pressed_vks or 0xA4 in self.pressed_vks or 0xA5 in self.pressed_vks or (u32.GetKeyState(0x12) & 0x8000):
+        if alt is True:
+            if 0x12 not in self.pressed_vks and not (u32.GetAsyncKeyState(0x12) & 0x8000):
+                self._send_raw_vk(0x12, is_up=False)
+                self.pressed_vks.add(0x12)
+        elif alt is False:
+            if 0x12 in self.pressed_vks or 0xA4 in self.pressed_vks or 0xA5 in self.pressed_vks or (u32.GetAsyncKeyState(0x12) & 0x8000):
                 self._send_raw_vk(0x12, is_up=True)
                 self._send_raw_vk(0xA4, is_up=True)
                 self._send_raw_vk(0xA5, is_up=True)
@@ -219,8 +240,12 @@ class InputController:
                 self.pressed_vks.discard(0xA4)
                 self.pressed_vks.discard(0xA5)
 
-        if shift is False:
-            if 0x10 in self.pressed_vks or 0xA0 in self.pressed_vks or 0xA1 in self.pressed_vks or (u32.GetKeyState(0x10) & 0x8000):
+        if shift is True:
+            if 0x10 not in self.pressed_vks and not (u32.GetAsyncKeyState(0x10) & 0x8000):
+                self._send_raw_vk(0x10, is_up=False)
+                self.pressed_vks.add(0x10)
+        elif shift is False:
+            if 0x10 in self.pressed_vks or 0xA0 in self.pressed_vks or 0xA1 in self.pressed_vks or (u32.GetAsyncKeyState(0x10) & 0x8000):
                 self._send_raw_vk(0x10, is_up=True)
                 self._send_raw_vk(0xA0, is_up=True)
                 self._send_raw_vk(0xA1, is_up=True)
@@ -228,8 +253,12 @@ class InputController:
                 self.pressed_vks.discard(0xA0)
                 self.pressed_vks.discard(0xA1)
 
-        if meta is False:
-            if 0x5B in self.pressed_vks or 0x5C in self.pressed_vks or (u32.GetKeyState(0x5B) & 0x8000) or (u32.GetKeyState(0x5C) & 0x8000):
+        if meta is True:
+            if 0x5B not in self.pressed_vks and not (u32.GetAsyncKeyState(0x5B) & 0x8000):
+                self._send_raw_vk(0x5B, is_up=False)
+                self.pressed_vks.add(0x5B)
+        elif meta is False:
+            if 0x5B in self.pressed_vks or 0x5C in self.pressed_vks or (u32.GetAsyncKeyState(0x5B) & 0x8000) or (u32.GetAsyncKeyState(0x5C) & 0x8000):
                 self._send_raw_vk(0x5B, is_up=True)
                 self._send_raw_vk(0x5C, is_up=True)
                 self.pressed_vks.discard(0x5B)
@@ -348,6 +377,11 @@ class InputController:
     def _send_key_event(self, key: str, code: str, is_up: bool, direct_vk: int = 0):
         self._ensure_desktop()
         vk = direct_vk if direct_vk > 0 else (CODE_TO_VK.get(code) or CODE_TO_VK.get(key))
+        if not vk:
+            if len(code) == 1 and code.isalpha():
+                vk = ord(code.upper())
+            elif len(key) == 1 and key.isalpha():
+                vk = ord(key.upper())
 
         if vk:
             scan = u32.MapVirtualKeyW(vk, 0)
