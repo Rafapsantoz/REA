@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { PlusCircle, X } from 'lucide-react'
+import { PlusCircle, X, Clock } from 'lucide-react'
 import { Card, Category, Owner, Transaction } from '../../types'
 
 interface AddTransactionModalProps {
@@ -23,19 +23,33 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
 }) => {
   if (!isOpen) return null
 
-  const todayStr = `${currentMonth}-01`
+  const defaultDate = (() => {
+    const today = new Date().toISOString().split('T')[0]
+    return today.startsWith(currentMonth) ? today : `${currentMonth}-01`
+  })()
 
   const [description, setDescription] = useState('')
   const [value, setValue] = useState('')
-  const [date, setDate] = useState(new Date().toISOString().split('T')[0] || todayStr)
+  const [date, setDate] = useState(defaultDate)
+  const [invoiceMonth, setInvoiceMonth] = useState<string>(currentMonth)
+  const [entryType, setEntryType] = useState<'expense' | 'income'>('expense')
   const [ownerId, setOwnerId] = useState<number>(owners[0]?.id || 1)
   const [cardId, setCardId] = useState<number | null>(cards[0]?.id || null)
   const [categoryId, setCategoryId] = useState<number>(categories[0]?.id || 1)
   const [curParcs, setCurParcs] = useState<number>(1)
   const [totalParcs, setTotalParcs] = useState<number>(1)
+  const [isForecast, setIsForecast] = useState<boolean>(false)
   const [comment, setComment] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [errorMsg, setErrorMsg] = useState('')
+
+  const handleCategoryChange = (catId: number) => {
+    setCategoryId(catId)
+    const cat = categories.find((c) => c.id === catId)
+    if (cat && cat.description.toLowerCase().includes('previst')) {
+      setIsForecast(true)
+    }
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -58,12 +72,15 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
         description: description.trim(),
         value: numVal,
         dt_lcto: `${date}T12:00:00Z`,
+        invoice_month: invoiceMonth || currentMonth,
         owner_id: ownerId,
         card_id: cardId,
         type_id: categoryId,
         cur_parcs: curParcs,
         total_parcs: totalParcs,
         is_paid: false,
+        is_forecast: isForecast,
+        entry_type: entryType,
         comment: comment.trim() || undefined,
       })
       onClose()
@@ -101,6 +118,37 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
             </div>
           )}
 
+          {/* Tipo de Lançamento: Despesa vs Receita */}
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+              Tipo de Lançamento *
+            </label>
+            <div className="grid grid-cols-2 gap-2 p-1 bg-slate-100 dark:bg-slate-800 rounded-xl">
+              <button
+                type="button"
+                onClick={() => setEntryType('expense')}
+                className={`py-2 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                  entryType === 'expense'
+                    ? 'bg-rose-500 text-white shadow-xs'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100'
+                }`}
+              >
+                <span>🔴 Despesa (Saída)</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setEntryType('income')}
+                className={`py-2 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                  entryType === 'income'
+                    ? 'bg-emerald-600 text-white shadow-xs'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100'
+                }`}
+              >
+                <span>🟢 Receita (Entrada)</span>
+              </button>
+            </div>
+          </div>
+
           {/* Description */}
           <div>
             <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
@@ -116,8 +164,8 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
             />
           </div>
 
-          {/* Amount & Date */}
-          <div className="grid grid-cols-2 gap-4">
+          {/* Amount, Purchase Date & Invoice Month */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div>
               <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Valor (R$) *</label>
               <input
@@ -128,7 +176,7 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
                 placeholder="0,00"
                 value={value}
                 onChange={(e) => setValue(e.target.value)}
-                className="w-full px-3.5 py-2 text-sm font-semibold bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-none text-slate-900 dark:text-slate-100"
+                className="w-full px-3 py-2 text-sm font-semibold bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-none text-slate-900 dark:text-slate-100"
               />
             </div>
             <div>
@@ -138,7 +186,18 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
                 required
                 value={date}
                 onChange={(e) => setDate(e.target.value)}
-                className="w-full px-3.5 py-2 text-sm bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-none text-slate-900 dark:text-slate-100"
+                className="w-full px-3 py-2 text-sm bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-none text-slate-900 dark:text-slate-100"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Fatura (Cobrança) *</label>
+              <input
+                type="month"
+                required
+                value={invoiceMonth}
+                onChange={(e) => setInvoiceMonth(e.target.value)}
+                className="w-full px-3 py-2 text-sm font-medium bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-none text-slate-900 dark:text-slate-100"
+                title="Mês em que esta conta será cobrada/paga na fatura"
               />
             </div>
           </div>
@@ -168,6 +227,7 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
                 onChange={(e) => setCardId(e.target.value ? Number(e.target.value) : null)}
                 className="w-full px-3.5 py-2 text-sm bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-none text-slate-900 dark:text-slate-100"
               >
+                <option value="">Sem Cartão (Custo Fixo / Direto)</option>
                 {cards.map((card) => (
                   <option key={card.id} value={card.id}>
                     {card.card_name}
@@ -183,7 +243,7 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
               <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Categoria *</label>
               <select
                 value={categoryId}
-                onChange={(e) => setCategoryId(Number(e.target.value))}
+                onChange={(e) => handleCategoryChange(Number(e.target.value))}
                 className="w-full px-3.5 py-2 text-sm bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-none text-slate-900 dark:text-slate-100"
               >
                 {categories.map((cat) => (
@@ -230,6 +290,30 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
               value={comment}
               onChange={(e) => setComment(e.target.value)}
               className="w-full px-3.5 py-2 text-sm bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-none text-slate-900 dark:text-slate-100"
+            />
+          </div>
+
+          {/* Is Forecast / Previsão Toggle */}
+          <div className="flex items-center justify-between p-3.5 rounded-xl border border-amber-200 dark:border-amber-900/60 bg-amber-50/60 dark:bg-amber-950/20">
+            <div className="flex items-center gap-2.5">
+              <div className="p-1.5 rounded-lg bg-amber-100 dark:bg-amber-900/60 text-amber-700 dark:text-amber-300">
+                <Clock className="w-4 h-4" />
+              </div>
+              <div>
+                <label htmlFor="add-is-forecast" className="text-xs font-bold text-slate-900 dark:text-slate-100 cursor-pointer">
+                  Gasto Previsto / Estimativa
+                </label>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                  Marque para valores estimados (luz, água, internet, DAS MEI) que podem variar.
+                </p>
+              </div>
+            </div>
+            <input
+              id="add-is-forecast"
+              type="checkbox"
+              checked={isForecast}
+              onChange={(e) => setIsForecast(e.target.checked)}
+              className="w-4 h-4 rounded text-amber-600 focus:ring-amber-500 border-slate-300 dark:border-slate-700 cursor-pointer"
             />
           </div>
 

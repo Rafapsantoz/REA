@@ -12,6 +12,7 @@ import {
   PlusCircle,
   RefreshCw,
   Settings,
+  Sparkles,
   Sun,
   Target,
 } from 'lucide-react'
@@ -83,7 +84,7 @@ export const Header: React.FC<HeaderProps> = ({
                 </span>
               </div>
               <p className="text-xs text-slate-500 dark:text-slate-400">
-                Rafael • Mãe • Irmã
+                Rateio Familiar & Gestão de Cartões
               </p>
             </div>
           </div>
@@ -205,10 +206,10 @@ export const Header: React.FC<HeaderProps> = ({
 
               <button
                 onClick={onOpenUploadModal}
-                className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold rounded-xl text-white bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 transition-all shadow-xs shadow-emerald-600/25 active:scale-95"
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold rounded-xl text-white bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 transition-all shadow-xs shadow-emerald-600/25 active:scale-95 cursor-pointer"
               >
-                <FileUp className="w-4 h-4" />
-                <span>Subir Fatura PDF</span>
+                <Sparkles className="w-4 h-4 text-emerald-200" />
+                <span>Lançar com IA</span>
               </button>
             </>
           )}

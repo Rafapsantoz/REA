@@ -20,6 +20,9 @@ class ExtractedInvoiceItem(BaseModel):
     category_id: Optional[int] = Field(default=None, description="ID da categoria resolvida no banco de dados")
     card_id: Optional[int] = Field(default=None, description="ID do cartão associado")
     is_duplicate: bool = Field(default=False, description="Indica se a transação já foi previamente lançada no sistema (RN02)")
+    is_duplicate_suspect: bool = Field(default=False, description="Alias para indicar suspeita de duplicata")
+    duplicate_reason: Optional[str] = Field(default=None, description="Motivo ou dados do lançamento existente que causou o aviso")
+    entry_type: str = Field(default="expense", description="'expense' (Despesa) ou 'income' (Receita)")
 
     @field_validator("amount", mode="after")
     @classmethod
@@ -41,6 +44,9 @@ class ExtractedInvoiceResponse(BaseModel):
     due_date: Optional[str] = Field(default=None, description="Data de vencimento da fatura")
     total_invoice_amount: float = Field(default=0.0, description="Valor total consolidado da fatura")
     card_id: Optional[int] = Field(default=None, description="ID do cartão associado")
+    file_hash: Optional[str] = Field(default=None, description="Hash SHA-256 do arquivo PDF para controle de duplicidade")
+    is_already_imported: bool = Field(default=False, description="Indica se este mesmo arquivo ou ciclo de fatura já foi importado")
+    already_imported_message: Optional[str] = Field(default=None, description="Mensagem de alerta informando a importação anterior")
     items: List[ExtractedInvoiceItem] = Field(default_factory=list, description="Lista de todas as compras detalhadas na fatura")
 
 
@@ -57,8 +63,10 @@ class InvoiceConfirmItem(BaseModel):
     total_parcs: int = Field(default=1, ge=1, description="Total de parcelas")
     cur_parcs: int = Field(default=1, ge=1, description="Parcela atual")
     comment: Optional[str] = Field(default=None, max_length=500, description="Observação livre")
+    invoice_month: Optional[str] = Field(default=None, description="Mês da fatura de competência (YYYY-MM)")
     is_paid: bool = Field(default=False, description="Status de quitação da dívida pelo responsável")
     is_forecast: bool = Field(default=False, description="Indica se é parcela projetada para faturas futuras")
+    entry_type: str = Field(default="expense", description="'expense' (Despesa) ou 'income' (Receita)")
 
     @field_validator("description", mode="after")
     @classmethod
@@ -115,9 +123,20 @@ class InvoiceConfirmItem(BaseModel):
 
 class InvoiceConfirmRequest(BaseModel):
     card_id: Optional[int] = Field(default=None, description="ID do cartão padrão para itens sem card_id explícito")
+    target_month: Optional[str] = Field(
+        default=None,
+        description="Mês e ano da fatura de competência (formato YYYY-MM, ex: 2026-11). Se fornecido, alinha os lançamentos à fatura.",
+    )
     project_future_installments: bool = Field(
         default=False,
         description="Se True, gera previsões de parcelas futuras (is_forecast=True) para compras parceladas",
+    )
+    file_hash: Optional[str] = Field(default=None, description="Hash SHA-256 do arquivo original para prevenção de duplicidade")
+    filename: Optional[str] = Field(default=None, description="Nome do arquivo PDF original enviado")
+    bank_or_issuer: Optional[str] = Field(default=None, description="Nome do emissor identificado")
+    replace_existing: bool = Field(
+        default=False,
+        description="Se True e a fatura já tiver sido importada, remove as transações anteriores da fatura antes de persistir as novas.",
     )
     items: List[InvoiceConfirmItem] = Field(..., min_length=1, description="Lista de itens confirmados da fatura")
 
@@ -129,5 +148,20 @@ class InvoiceConfirmResponse(BaseModel):
         default_factory=list, description="Lista de transações persistidas no banco"
     )
     message: str = Field(default="Transações confirmadas com sucesso.", description="Mensagem de status")
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class InvoiceUploadResponse(BaseModel):
+    id: int
+    file_hash: str
+    filename: str
+    card_id: Optional[int] = None
+    target_month: str
+    bank_or_issuer: Optional[str] = None
+    total_amount: float
+    items_count: int
+    uploaded_at: datetime
+    status: str
 
     model_config = ConfigDict(from_attributes=True)

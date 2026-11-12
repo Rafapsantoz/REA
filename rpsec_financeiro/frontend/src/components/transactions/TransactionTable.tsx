@@ -3,28 +3,51 @@ import {
   Check,
   CheckCircle2,
   Clock,
+  Download,
+  FileSpreadsheet,
   Filter,
+  Loader2,
   Pencil,
   Search,
   Trash2,
   X,
   CreditCard,
   User,
+  Users,
 } from 'lucide-react'
 import { Card, Category, Owner, Transaction } from '../../types'
 import { formatCurrency, formatDate } from '../../lib/formatters'
+import { exportTransactionsExcel } from '../../lib/api'
 
 interface TransactionTableProps {
   transactions: Transaction[]
   owners: Owner[]
   cards: Card[]
   categories: Category[]
+  currentMonth?: string
   selectedOwnerId: number | null
   onSelectOwner: (ownerId: number | null) => void
+  statusFilter?: 'all' | 'pending' | 'paid'
+  onStatusFilterChange?: (status: 'all' | 'pending' | 'paid') => void
+  forecastFilter?: 'all' | 'effective' | 'forecast'
+  onForecastFilterChange?: (forecast: 'all' | 'effective' | 'forecast') => void
   onTogglePaid: (id: number) => void
   onDeleteTransaction: (id: number) => void
   onEditTransaction: (tx: Transaction) => void
   isUpdatingId?: number | null
+}
+
+const MONTH_NAMES_SHORT = [
+  'Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'
+]
+
+const formatInvoiceBadge = (invoiceMonth: string) => {
+  const parts = invoiceMonth.split('-')
+  if (parts.length >= 2) {
+    const idx = parseInt(parts[1], 10) - 1
+    return `Fatura ${MONTH_NAMES_SHORT[idx] || parts[1]}/${parts[0].slice(2)}`
+  }
+  return `Fatura ${invoiceMonth}`
 }
 
 export const TransactionTable: React.FC<TransactionTableProps> = ({
@@ -32,19 +55,58 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({
   owners,
   cards,
   categories,
+  currentMonth,
   selectedOwnerId,
   onSelectOwner,
+  statusFilter: statusFilterProp,
+  onStatusFilterChange: onStatusFilterChangeProp,
+  forecastFilter: forecastFilterProp,
+  onForecastFilterChange: onForecastFilterChangeProp,
   onTogglePaid,
   onDeleteTransaction,
   onEditTransaction,
   isUpdatingId,
 }) => {
   const [searchTerm, setSearchTerm] = useState('')
-  const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'paid'>('all')
+  const [internalStatusFilter, setInternalStatusFilter] = useState<'all' | 'pending' | 'paid'>('all')
+  const [internalForecastFilter, setInternalForecastFilter] = useState<'all' | 'effective' | 'forecast'>('all')
+  const [isExporting, setIsExporting] = useState(false)
+
+  const statusFilter = statusFilterProp ?? internalStatusFilter
+  const setStatusFilter = onStatusFilterChangeProp ?? setInternalStatusFilter
+
+  const forecastFilter = forecastFilterProp ?? internalForecastFilter
+  const setForecastFilter = onForecastFilterChangeProp ?? setInternalForecastFilter
 
   const ownersMap = new Map(owners.map((o) => [o.id, o]))
   const cardsMap = new Map(cards.map((c) => [c.id, c]))
   const categoriesMap = new Map(categories.map((cat) => [cat.id, cat]))
+
+  const handleExportExcel = async () => {
+    try {
+      setIsExporting(true)
+      const blob = await exportTransactionsExcel({
+        month: currentMonth,
+        owner_id: selectedOwnerId,
+        is_paid: statusFilter === 'pending' ? false : statusFilter === 'paid' ? true : null,
+        is_forecast: forecastFilter === 'effective' ? false : forecastFilter === 'forecast' ? true : null,
+        search: searchTerm.trim() || undefined,
+      })
+      const downloadUrl = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = downloadUrl
+      a.download = `transacoes_${currentMonth || 'geral'}.xlsx`
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      window.URL.revokeObjectURL(downloadUrl)
+    } catch (err: any) {
+      console.error('Erro na exportação:', err)
+      alert(err.message || 'Erro ao exportar planilha Excel')
+    } finally {
+      setIsExporting(false)
+    }
+  }
 
   // Filter transactions
   const filtered = transactions.filter((tx) => {
@@ -55,6 +117,10 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({
     // Status filter
     if (statusFilter === 'pending' && tx.is_paid) return false
     if (statusFilter === 'paid' && !tx.is_paid) return false
+
+    // Forecast filter
+    if (forecastFilter === 'effective' && tx.is_forecast) return false
+    if (forecastFilter === 'forecast' && !tx.is_forecast) return false
 
     // Search filter
     if (searchTerm.trim()) {
@@ -94,6 +160,13 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({
         </span>
       )
     }
+    if (lower.includes('renata') || lower.includes('tia')) {
+      return (
+        <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-semibold bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
+          {name}
+        </span>
+      )
+    }
     return (
       <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-semibold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
         {name}
@@ -111,6 +184,21 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({
             <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
               {filtered.length}
             </span>
+            {(selectedOwnerId !== null || statusFilter !== 'all' || forecastFilter !== 'all' || searchTerm) && (
+              <button
+                type="button"
+                onClick={() => {
+                  onSelectOwner(null)
+                  setStatusFilter('all')
+                  setForecastFilter('all')
+                  setSearchTerm('')
+                }}
+                className="text-[11px] font-semibold text-rose-600 dark:text-rose-400 hover:underline bg-rose-50 dark:bg-rose-950/40 px-2 py-0.5 rounded-md border border-rose-200 dark:border-rose-900 cursor-pointer flex items-center gap-1"
+              >
+                <X className="w-3 h-3" />
+                Limpar filtros
+              </button>
+            )}
           </div>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
             Clique no status de pagamento para alternar entre quitado ou pendente
@@ -199,6 +287,56 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({
               Pagos
             </button>
           </div>
+
+          {/* Forecast Filter */}
+          <div className="flex items-center gap-1 bg-white dark:bg-slate-800 p-1 rounded-xl border border-slate-200 dark:border-slate-700 text-xs">
+            <button
+              onClick={() => setForecastFilter('all')}
+              className={`px-2.5 py-1 rounded-lg font-medium transition-all cursor-pointer ${
+                forecastFilter === 'all'
+                  ? 'bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 shadow-xs'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100'
+              }`}
+            >
+              Todos
+            </button>
+            <button
+              onClick={() => setForecastFilter('effective')}
+              className={`px-2.5 py-1 rounded-lg font-medium transition-all cursor-pointer ${
+                forecastFilter === 'effective'
+                  ? 'bg-emerald-600 text-white shadow-xs'
+                  : 'text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/40'
+              }`}
+            >
+              Efetivos
+            </button>
+            <button
+              onClick={() => setForecastFilter('forecast')}
+              className={`px-2.5 py-1 rounded-lg font-medium transition-all cursor-pointer ${
+                forecastFilter === 'forecast'
+                  ? 'bg-amber-600 text-white shadow-xs'
+                  : 'text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/40'
+              }`}
+            >
+              Previstos
+            </button>
+          </div>
+
+          {/* Export XLS / Excel Button */}
+          <button
+            type="button"
+            onClick={handleExportExcel}
+            disabled={isExporting}
+            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl font-bold text-xs bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs shadow-emerald-600/25 transition-all cursor-pointer active:scale-95 disabled:opacity-50 ml-auto sm:ml-0"
+            title="Exportar lançamentos filtrados para planilha Excel (.xls / .xlsx)"
+          >
+            {isExporting ? (
+              <Loader2 className="w-4 h-4 animate-spin text-white" />
+            ) : (
+              <FileSpreadsheet className="w-4 h-4 text-emerald-100" />
+            )}
+            <span>{isExporting ? 'Gerando...' : 'Exportar .XLS'}</span>
+          </button>
         </div>
       </div>
 
@@ -245,13 +383,45 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({
                     }`}
                   >
                     {/* Date */}
-                    <td className="py-3 px-4 text-xs text-slate-500 dark:text-slate-400 whitespace-nowrap">
-                      {formatDate(tx.dt_lcto)}
+                    <td className="py-3 px-4 text-xs whitespace-nowrap">
+                      <div className="font-semibold text-slate-800 dark:text-slate-200">
+                        {formatDate(tx.dt_lcto)}
+                      </div>
+                      {tx.invoice_month && tx.dt_lcto && tx.dt_lcto.slice(0, 7) !== tx.invoice_month && (
+                        <div className="mt-1">
+                          <span
+                            className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800"
+                            title={`Compra realizada em ${formatDate(tx.dt_lcto)}, cobrada na fatura de ${formatInvoiceBadge(tx.invoice_month)}`}
+                          >
+                            {formatInvoiceBadge(tx.invoice_month)}
+                          </span>
+                        </div>
+                      )}
                     </td>
 
                     {/* Description */}
                     <td className="py-3 px-4 font-medium text-slate-900 dark:text-slate-100">
-                      <div>{tx.description}</div>
+                      <div className="flex items-center gap-2">
+                        <span>{tx.description}</span>
+                        {tx.is_forecast && (
+                          <span
+                            className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-100 dark:bg-amber-950/80 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-700"
+                            title="Gasto previsto / estimado (pode ser ajustado quando a conta fechar)"
+                          >
+                            <Clock className="w-3 h-3 text-amber-600 dark:text-amber-400" />
+                            Previsto
+                          </span>
+                        )}
+                        {tx.comment && tx.comment.includes('Rateio') && (
+                          <span
+                            className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-purple-100 dark:bg-purple-950/80 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800"
+                            title="Despesa dividida entre mais de uma pessoa"
+                          >
+                            <Users className="w-3 h-3 text-purple-600 dark:text-purple-400" />
+                            Rateado
+                          </span>
+                        )}
+                      </div>
                       {tx.comment && (
                         <div className="text-[11px] text-slate-400 dark:text-slate-500 font-normal">{tx.comment}</div>
                       )}
@@ -279,34 +449,59 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({
                     </td>
 
                     {/* Value */}
-                    <td className="py-3 px-4 text-right font-bold text-slate-900 dark:text-slate-100 whitespace-nowrap">
-                      {formatCurrency(tx.value)}
+                    <td className="py-3 px-4 text-right font-bold whitespace-nowrap">
+                      {tx.entry_type === 'income' ? (
+                        <div className="flex flex-col items-end">
+                          <span className="text-emerald-600 dark:text-emerald-400 font-extrabold">
+                            + {formatCurrency(tx.value)}
+                          </span>
+                          <span className="inline-flex items-center px-1.5 py-0.2 rounded text-[10px] font-bold bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                            Receita
+                          </span>
+                        </div>
+                      ) : (
+                        <span className="text-slate-900 dark:text-slate-100">
+                          {formatCurrency(tx.value)}
+                        </span>
+                      )}
                     </td>
 
-                    {/* Status Button (Toggle Paid) */}
+                    {/* Status Button (Toggle Paid or Define Real for Forecasts) */}
                     <td className="py-3 px-4 text-center whitespace-nowrap">
-                      <button
-                        onClick={() => onTogglePaid(tx.id)}
-                        disabled={isToggling}
-                        title="Clique para alternar status de pagamento"
-                        className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold transition-all shadow-xs cursor-pointer ${
-                          tx.is_paid
-                            ? 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 hover:bg-emerald-200 dark:hover:bg-emerald-900 border border-emerald-300 dark:border-emerald-800'
-                            : 'bg-rose-100 dark:bg-rose-950/60 text-rose-800 dark:text-rose-300 hover:bg-rose-200 dark:hover:bg-rose-900 border border-rose-300 dark:border-rose-800'
-                        } disabled:opacity-50 active:scale-95`}
-                      >
-                        {tx.is_paid ? (
-                          <>
-                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-                            <span>Pago</span>
-                          </>
-                        ) : (
-                          <>
-                            <Clock className="w-3.5 h-3.5 text-rose-600 dark:text-rose-400" />
-                            <span>Pendente</span>
-                          </>
-                        )}
-                      </button>
+                      {tx.is_forecast && !tx.is_paid ? (
+                        <button
+                          type="button"
+                          onClick={() => onEditTransaction(tx)}
+                          title="Gasto previsto: clique para lançar o valor real da fatura e torná-lo efetivo"
+                          className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold transition-all shadow-xs bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900 border border-amber-300 dark:border-amber-700 cursor-pointer"
+                        >
+                          <Clock className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+                          <span>Definir Real</span>
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => onTogglePaid(tx.id)}
+                          disabled={isToggling}
+                          title="Clique para alternar status de pagamento"
+                          className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold transition-all shadow-xs cursor-pointer ${
+                            tx.is_paid
+                              ? 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 hover:bg-emerald-200 dark:hover:bg-emerald-900 border border-emerald-300 dark:border-emerald-800'
+                              : 'bg-rose-100 dark:bg-rose-950/60 text-rose-800 dark:text-rose-300 hover:bg-rose-200 dark:hover:bg-rose-900 border border-rose-300 dark:border-rose-800'
+                          } disabled:opacity-50 active:scale-95`}
+                        >
+                          {tx.is_paid ? (
+                            <>
+                              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                              <span>Pago</span>
+                            </>
+                          ) : (
+                            <>
+                              <Clock className="w-3.5 h-3.5 text-rose-600 dark:text-rose-400" />
+                              <span>Pendente</span>
+                            </>
+                          )}
+                        </button>
+                      )}
                     </td>
 
                     {/* Actions: Edit & Delete */}

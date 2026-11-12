@@ -17,8 +17,10 @@ class TransactionBase(BaseModel):
     total_parcs: int = Field(default=1, ge=1, description="Total de parcelas (ex: 1 para à vista, 10 para 10x)")
     cur_parcs: int = Field(default=1, ge=1, description="Parcela atual (ex: 1, 2, 3...)")
     comment: Optional[str] = Field(default=None, max_length=500, description="Observação livre")
+    invoice_month: Optional[str] = Field(default=None, description="Mês da fatura em que a conta será paga (YYYY-MM)")
     is_paid: bool = Field(default=False, description="Status de quitação da dívida pelo responsável")
     is_forecast: bool = Field(default=False, description="Indica se é parcela projetada para faturas futuras")
+    entry_type: str = Field(default="expense", description="'expense' (Despesa) ou 'income' (Receita)")
 
     @field_validator("description", mode="after")
     @classmethod
@@ -56,8 +58,10 @@ class TransactionUpdate(BaseModel):
     total_parcs: Optional[int] = Field(default=None, ge=1)
     cur_parcs: Optional[int] = Field(default=None, ge=1)
     comment: Optional[str] = Field(default=None, max_length=500)
+    invoice_month: Optional[str] = None
     is_paid: Optional[bool] = None
     is_forecast: Optional[bool] = None
+    entry_type: Optional[str] = None
 
     @field_validator("description", mode="after")
     @classmethod
@@ -90,3 +94,19 @@ class TransactionResponse(TransactionBase):
     id: int
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class SplitItem(BaseModel):
+    owner_id: int = Field(..., description="ID do responsável para esta fatia do rateio")
+    amount: float = Field(..., gt=0.0, description="Valor desta fatia em R$")
+    comment: Optional[str] = Field(default=None, description="Observação específica para esta fatia")
+    is_paid: Optional[bool] = Field(default=False, description="Status de pagamento desta fatia")
+
+
+class TransactionSplitRequest(BaseModel):
+    splits: list[SplitItem] = Field(..., min_length=2, description="Lista de pessoas e valores para dividir o lançamento")
+
+
+class ReplicateInstallmentsRequest(BaseModel):
+    generate_future: bool = Field(default=True, description="Se True, gera parcelas para os meses subsequentes")
+    generate_past: bool = Field(default=False, description="Se True, gera parcelas para os meses anteriores")

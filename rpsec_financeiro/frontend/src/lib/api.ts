@@ -1,4 +1,7 @@
 import {
+  BankAccount,
+  BankAccountBalanceItem,
+  BankAccountsSummary,
   Card,
   Category,
   DashboardSummaryResponse,
@@ -6,11 +9,17 @@ import {
   Goal,
   InvoiceConfirmRequest,
   InvoiceConfirmResponse,
+  InvoiceUpload,
   LivingScenario,
   MacroProjectionResponse,
   FinancialPrinciple,
   Owner,
+  OwnerSettleRequest,
+  OwnerSettleResponse,
+  ReplicateInstallmentsRequest,
+  SplitItem,
   Transaction,
+  TransactionSplitRequest,
 } from '../types'
 
 const BASE_URL = '/api/v1'
@@ -80,6 +89,54 @@ export async function deleteTransaction(id: number): Promise<{ message: string }
     method: 'DELETE',
   })
   if (!res.ok) throw new Error('Falha ao excluir transação')
+  return res.json()
+}
+
+export async function splitTransaction(
+  id: number,
+  splits: SplitItem[]
+): Promise<Transaction[]> {
+  const res = await fetch(`${BASE_URL}/transactions/${id}/split`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ splits }),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: 'Erro ao dividir lançamento' }))
+    throw new Error(err.detail || 'Falha ao dividir lançamento')
+  }
+  return res.json()
+}
+
+export async function replicateInstallments(
+  id: number,
+  options?: ReplicateInstallmentsRequest
+): Promise<Transaction[]> {
+  const res = await fetch(`${BASE_URL}/transactions/${id}/replicate-installments`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(options || { generate_future: true, generate_past: false }),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: 'Erro ao replicar parcelas' }))
+    throw new Error(err.detail || 'Falha ao replicar parcelas')
+  }
+  return res.json()
+}
+
+export async function settleOwnerDebt(
+  ownerId: number,
+  payload: OwnerSettleRequest
+): Promise<OwnerSettleResponse> {
+  const res = await fetch(`${BASE_URL}/owners/${ownerId}/settle`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: 'Erro ao quitar débito' }))
+    throw new Error(err.detail || 'Falha ao processar quitação')
+  }
   return res.json()
 }
 
@@ -175,7 +232,7 @@ export async function fetchCategories(): Promise<Category[]> {
   return res.json()
 }
 
-export async function createCategory(data: { description: string }): Promise<Category> {
+export async function createCategory(data: { description: string; fixed_cost?: number }): Promise<Category> {
   const res = await fetch(`${BASE_URL}/categories`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -188,7 +245,7 @@ export async function createCategory(data: { description: string }): Promise<Cat
   return res.json()
 }
 
-export async function updateCategory(id: number, data: { description: string }): Promise<Category> {
+export async function updateCategory(id: number, data: { description?: string; fixed_cost?: number }): Promise<Category> {
   const res = await fetch(`${BASE_URL}/categories/${id}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
@@ -213,11 +270,19 @@ export async function deleteCategory(id: number): Promise<{ detail: string }> {
 }
 
 export async function extractInvoiceFromPDF(
-  file: File,
+  fileOrFiles: File | File[],
   cardId?: number | null
 ): Promise<ExtractedInvoiceResponse> {
   const formData = new FormData()
-  formData.append('file', file)
+  if (Array.isArray(fileOrFiles)) {
+    fileOrFiles.forEach((f) => formData.append('files', f))
+    if (fileOrFiles.length > 0) {
+      formData.append('file', fileOrFiles[0])
+    }
+  } else {
+    formData.append('file', fileOrFiles)
+    formData.append('files', fileOrFiles)
+  }
   if (cardId) formData.append('card_id', String(cardId))
 
   const res = await fetch(`${BASE_URL}/invoices/extract`, {
@@ -246,11 +311,31 @@ export async function confirmInvoiceBatch(
   return res.json()
 }
 
+export async function fetchInvoiceUploads(): Promise<InvoiceUpload[]> {
+  const res = await fetch(`${BASE_URL}/invoices/uploads`)
+  if (!res.ok) throw new Error('Falha ao carregar histórico de faturas importadas')
+  return res.json()
+}
+
+export async function deleteInvoiceUpload(
+  id: number,
+  deleteTransactions = true
+): Promise<{ detail: string; upload_id: number; deleted_transactions_count: number }> {
+  const res = await fetch(`${BASE_URL}/invoices/uploads/${id}?delete_transactions=${deleteTransactions}`, {
+    method: 'DELETE',
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: 'Erro ao excluir registro de fatura' }))
+    throw new Error(err.detail || 'Falha ao excluir fatura importada')
+  }
+  return res.json()
+}
+
 // --- PLANNING & SPREADSHEET PROJECTION API ---
 
 export async function fetchMacroProjection(
   year: number = 2026,
-  accountBalance: number = 16638.40
+  accountBalance: number = 0.0
 ): Promise<MacroProjectionResponse> {
   const params = new URLSearchParams({
     year: String(year),
@@ -310,5 +395,123 @@ export async function fetchScenarios(): Promise<LivingScenario[]> {
 export async function fetchPrinciples(): Promise<FinancialPrinciple[]> {
   const res = await fetch(`${BASE_URL}/planning/principles`)
   if (!res.ok) throw new Error('Falha ao buscar princípios')
+  return res.json()
+}
+
+export async function exportTransactionsExcel(params: {
+  month?: string
+  owner_id?: number | null
+  card_id?: number | null
+  is_paid?: boolean | null
+  is_forecast?: boolean | null
+  search?: string
+}): Promise<Blob> {
+  const q = new URLSearchParams()
+  if (params.month) q.append('month', params.month)
+  if (params.owner_id !== undefined && params.owner_id !== null) q.append('owner_id', String(params.owner_id))
+  if (params.card_id !== undefined && params.card_id !== null) q.append('card_id', String(params.card_id))
+  if (params.is_paid !== undefined && params.is_paid !== null) q.append('is_paid', String(params.is_paid))
+  if (params.is_forecast !== undefined && params.is_forecast !== null) q.append('is_forecast', String(params.is_forecast))
+  if (params.search) q.append('search', params.search)
+
+  const res = await fetch(`${BASE_URL}/transactions/export?${q.toString()}`)
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: 'Erro ao exportar planilha' }))
+    throw new Error(err.detail || 'Falha ao exportar planilha Excel')
+  }
+  return res.blob()
+}
+
+// --- BANK ACCOUNTS & CDI YIELD API ---
+
+export async function fetchBankAccounts(): Promise<BankAccount[]> {
+  const res = await fetch(`${BASE_URL}/bank-accounts`)
+  if (!res.ok) throw new Error('Falha ao buscar contas bancárias')
+  return res.json()
+}
+
+export async function fetchBankAccountsSummary(): Promise<BankAccountsSummary> {
+  const res = await fetch(`${BASE_URL}/bank-accounts/summary`)
+  if (!res.ok) throw new Error('Falha ao buscar resumo de contas bancárias')
+  return res.json()
+}
+
+export async function createBankAccount(data: {
+  name: string
+  account_type?: string
+  cdi_rate?: number
+  cdi_monthly_rate?: number
+  notes?: string
+  initial_balances?: BankAccountBalanceItem[]
+}): Promise<BankAccount> {
+  const res = await fetch(`${BASE_URL}/bank-accounts`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: 'Erro ao cadastrar conta bancária' }))
+    throw new Error(err.detail || 'Falha ao cadastrar conta bancária')
+  }
+  return res.json()
+}
+
+export async function updateBankAccount(
+  id: number,
+  data: {
+    name?: string
+    account_type?: string
+    cdi_rate?: number
+    cdi_monthly_rate?: number
+    notes?: string
+  }
+): Promise<BankAccount> {
+  const res = await fetch(`${BASE_URL}/bank-accounts/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: 'Erro ao atualizar conta bancária' }))
+    throw new Error(err.detail || 'Falha ao atualizar conta bancária')
+  }
+  return res.json()
+}
+
+export async function updateBankAccountBalances(
+  id: number,
+  balances: BankAccountBalanceItem[]
+): Promise<BankAccount> {
+  const res = await fetch(`${BASE_URL}/bank-accounts/${id}/balances`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ balances }),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: 'Erro ao atualizar saldos da conta' }))
+    throw new Error(err.detail || 'Falha ao atualizar saldos da conta')
+  }
+  return res.json()
+}
+
+export async function deleteBankAccount(id: number): Promise<{ detail: string }> {
+  const res = await fetch(`${BASE_URL}/bank-accounts/${id}`, {
+    method: 'DELETE',
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: 'Erro ao excluir conta bancária' }))
+    throw new Error(err.detail || 'Falha ao excluir conta bancária')
+  }
+  return res.json()
+}
+
+export async function fetchFixedCostsSummary(): Promise<{
+  total_fixed_cost: number
+  count_with_fixed: number
+  total_categories: number
+  categories: { id: number; description: string; fixed_cost: number }[]
+}> {
+  const res = await fetch(`${BASE_URL}/categories/summary/fixed-costs`)
+  if (!res.ok) throw new Error('Falha ao buscar resumo de custos fixos')
   return res.json()
 }

@@ -422,6 +422,62 @@ async def test_confirm_invoice_batch_success(client: AsyncClient, db_session: As
 
 
 @pytest.mark.asyncio
+async def test_confirm_invoice_with_target_month_alignment(client: AsyncClient, db_session: AsyncSession):
+    """
+    Tests that when target_month is provided:
+    1. The actual purchase date (dt_lcto) from October is preserved (e.g. 2026-10-15).
+    2. The billing cycle (invoice_month) is set to the target invoice month (2026-11).
+    3. The transaction is correctly included in the November dashboard and transaction list.
+    """
+    payload = {
+        "card_id": 1,
+        "target_month": "2026-11",
+        "items": [
+            {
+                "purchase_date": "2026-10-15",
+                "description": "Shein Roupa Nova",
+                "value": 99.90,
+                "owner_id": 3,
+                "type_id": 5,
+                "total_parcs": 1,
+                "cur_parcs": 1,
+            }
+        ],
+    }
+
+    response = await client.post("/api/v1/invoices/confirm", json=payload)
+    assert response.status_code == 201
+    data = response.json()
+    assert data["confirmed_count"] == 1
+
+    created_tx = data["created_transactions"][0]
+    # Real purchase date is preserved
+    assert created_tx["dt_lcto"].startswith("2026-10-15")
+    # Invoice month is November 2026
+    assert created_tx["invoice_month"] == "2026-11"
+
+    # Verify it is queried in November dashboard summary
+    dash_res = await client.get("/api/v1/dashboard/summary?month=2026-11")
+    assert dash_res.status_code == 200
+    dash_data = dash_res.json()
+    irma_summary = next(o for o in dash_data["owners_summary"] if o["owner_id"] == 3)
+    assert irma_summary["total_amount"] >= 99.90
+
+    # Verify it is queried in GET /api/v1/transactions?month=2026-11
+    tx_res = await client.get("/api/v1/transactions?month=2026-11")
+    assert tx_res.status_code == 200
+    tx_list = tx_res.json()
+    assert any(t["description"] == "Shein Roupa Nova" for t in tx_list)
+
+    # Verify it is queried in November dashboard summary
+    dash_res = await client.get("/api/v1/dashboard/summary?month=2026-11")
+    assert dash_res.status_code == 200
+    dash_data = dash_res.json()
+    irma_summary = next(o for o in dash_data["owners_summary"] if o["owner_id"] == 3)
+    assert irma_summary["total_amount"] >= 99.90
+
+
+@pytest.mark.asyncio
 async def test_confirm_invoice_with_future_installments_projection(client: AsyncClient, db_session: AsyncSession):
     """
     Tests installment projection (RN01) during confirmation:
@@ -610,4 +666,63 @@ async def test_confirm_invoice_pydantic_schema_validations(client: AsyncClient):
     }
     resp = await client.post("/api/v1/invoices/confirm", json=bad_val_payload)
     assert resp.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_duplicate_invoice_upload_detection_and_history(client: AsyncClient):
+    """Verifies that uploaded invoices are tracked with SHA-256 and duplicate uploads are detected."""
+    # 1. Mock Gemini extraction
+    mock_resp = MagicMock()
+    mock_resp.text = json.dumps(SAMPLE_STRUCTURED_RESPONSE)
+    mock_resp.parsed = None
+
+    with patch("app.core.gemini.get_gemini_client") as mock_get_client:
+        mock_client_inst = MagicMock()
+        mock_client_inst.aio.models.generate_content = AsyncMock(return_value=mock_resp)
+        mock_get_client.return_value = mock_client_inst
+
+        # First upload
+        files = {"file": ("fatura_teste.pdf", SYNTHETIC_PDF_BYTES, "application/pdf")}
+        r1 = await client.post("/api/v1/invoices/extract", files=files)
+        assert r1.status_code == 200
+        data1 = r1.json()
+        assert data1["is_already_imported"] is False
+        assert data1["file_hash"] is not None
+        pdf_hash = data1["file_hash"]
+
+        # Confirm batch with file_hash
+        confirm_payload = {
+            "card_id": 1,
+            "target_month": "2026-11",
+            "file_hash": pdf_hash,
+            "filename": "fatura_teste.pdf",
+            "bank_or_issuer": "Nubank",
+            "items": [
+                {
+                    "description": "Compra Teste Anti-Duplicidade",
+                    "value": 150.0,
+                    "owner_id": 1,
+                    "type_id": 1,
+                    "cur_parcs": 1,
+                    "total_parcs": 1,
+                }
+            ],
+        }
+        r_confirm = await client.post("/api/v1/invoices/confirm", json=confirm_payload)
+        assert r_confirm.status_code == 201
+
+        # Second upload with the exact same file -> should detect duplicate
+        files2 = {"file": ("fatura_teste.pdf", SYNTHETIC_PDF_BYTES, "application/pdf")}
+        r2 = await client.post("/api/v1/invoices/extract", files=files2)
+        assert r2.status_code == 200
+        data2 = r2.json()
+        assert data2["is_already_imported"] is True
+        assert "já foi importado anteriormente" in data2["already_imported_message"]
+
+        # Check list of uploads
+        r_uploads = await client.get("/api/v1/invoices/uploads")
+        assert r_uploads.status_code == 200
+        uploads_list = r_uploads.json()
+        assert len(uploads_list) >= 1
+        assert any(u["file_hash"] == pdf_hash for u in uploads_list)
 

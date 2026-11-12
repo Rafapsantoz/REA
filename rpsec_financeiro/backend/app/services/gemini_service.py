@@ -230,11 +230,16 @@ async def check_duplicate_transaction(
     amount: float,
     description: str,
     card_id: Optional[int] = None,
-) -> bool:
+    target_month: Optional[str] = None,
+) -> tuple[bool, Optional[str]]:
     """
     Implements Business Rule RN02 (Invoice Duplicate Prevention).
     Verifies if a transaction with matching date, amount, and description already exists in transactions_fapp.
+    Returns (is_duplicate, reason_message).
     """
+    norm_target_desc = normalize_text(description)
+    target_value = round(abs(float(amount)), 2)
+
     try:
         clean_date = purchase_date.strip()
         if len(clean_date) >= 10:
@@ -244,9 +249,9 @@ async def check_duplicate_transaction(
             start_dt = datetime(year, month, day, 0, 0, 0, tzinfo=timezone.utc)
             end_dt = datetime(year, month, day, 23, 59, 59, 999999, tzinfo=timezone.utc)
         else:
-            return False
+            return False, None
     except Exception:
-        return False
+        return False, None
 
     query = select(Transaction).where(
         Transaction.dt_lcto >= start_dt,
@@ -259,15 +264,16 @@ async def check_duplicate_transaction(
     result = await db.execute(query)
     existing_transactions = result.scalars().all()
 
-    norm_target_desc = normalize_text(description)
-    target_value = round(abs(float(amount)), 2)
-
     for tx in existing_transactions:
         if abs(round(tx.value, 2) - target_value) < 0.01:
-            if normalize_text(tx.description) == norm_target_desc:
-                return True
+            norm_db_desc = normalize_text(tx.description)
+            if norm_db_desc == norm_target_desc or (
+                len(norm_target_desc) >= 6 and (norm_target_desc in norm_db_desc or norm_db_desc in norm_target_desc)
+            ):
+                dt_str = tx.dt_lcto.strftime("%d/%m/%Y") if tx.dt_lcto else (tx.invoice_month or "")
+                return True, f"Já cadastrado no sistema (ID #{tx.id} em {dt_str} - R$ {tx.value:.2f})"
 
-    return False
+    return False, None
 
 
 def add_months(dt: datetime, n: int) -> datetime:
@@ -280,22 +286,93 @@ def add_months(dt: datetime, n: int) -> datetime:
     return dt.replace(year=year, month=month, day=day)
 
 
+def add_months_to_str(month_str: str, n: int) -> str:
+    """Safely adds n months to a YYYY-MM string."""
+    try:
+        y, m = int(month_str[:4]), int(month_str[5:7])
+        total_m = m - 1 + n
+        new_y = y + total_m // 12
+        new_m = total_m % 12 + 1
+        return f"{new_y:04d}-{new_m:02d}"
+    except Exception:
+        return month_str
+
+
 async def extract_invoice_from_pdf(
     db: AsyncSession,
     pdf_bytes: bytes,
     card_id: Optional[int] = None,
+    mime_type: str = "application/pdf",
+    filename: str = "",
+    all_records: Optional[List[Tuple[str, bytes, str]]] = None,
 ) -> ExtractedInvoiceResponse:
     """
     Core AI ingestion pipeline:
-    1. Sends PDF bytes to Gemini API for structured multimodal extraction.
-    2. Validates and resolves card ID (from parameter or bank/issuer matching).
-    3. Loads active owners and categories from SQLite.
-    4. Enriches items with installment parsing, heuristic owner assignment, category normalization,
-       and duplicate detection (RN02).
-    5. Calculates invoice consolidated total if missing.
+    1. Detects file format(s) (PDF, Images pasted via Ctrl+V, Excel .xlsx, CSV).
+    2. Sends data to Gemini API for structured multimodal extraction (supports multiple images/prints).
+    3. Validates and resolves card ID (from parameter or bank/issuer matching).
+    4. Loads active owners and categories from SQLite.
+    5. Enriches items with installment parsing, heuristic owner assignment, category normalization,
+       duplicate detection (RN02), and entry_type (expense vs income).
+    6. Calculates invoice consolidated total if missing.
     """
-    # 1. Structured extraction via Gemini
-    extracted = await call_gemini_structured_extraction(pdf_bytes=pdf_bytes)
+    records_to_process = all_records if all_records else [(filename or "arquivo", pdf_bytes, mime_type)]
+
+    text_parts: List[str] = []
+    visual_files: List[Tuple[str, bytes, str]] = []
+
+    for fn, b_data, m_type in records_to_process:
+        lower_fn = fn.lower()
+        if lower_fn.endswith(".xlsx") or lower_fn.endswith(".xls") or "spreadsheet" in m_type:
+            try:
+                import openpyxl
+                from io import BytesIO
+                wb = openpyxl.load_workbook(BytesIO(b_data), data_only=True)
+                for sheet in wb.worksheets:
+                    text_parts.append(f"Aba: {sheet.title} (do arquivo {fn})")
+                    for row in sheet.iter_rows(values_only=True):
+                        if any(cell is not None for cell in row):
+                            row_str = " | ".join(str(cell).strip() if cell is not None else "" for cell in row)
+                            text_parts.append(row_str)
+            except Exception as e:
+                logger.warning(f"Falha ao ler Excel com openpyxl ({fn}): {e}. Tentando como texto...")
+                text_parts.append(b_data.decode("utf-8", errors="ignore"))
+        elif lower_fn.endswith(".csv") or "csv" in m_type:
+            try:
+                text_parts.append(b_data.decode("utf-8"))
+            except UnicodeDecodeError:
+                text_parts.append(b_data.decode("latin-1", errors="replace"))
+        else:
+            visual_files.append((fn, b_data, m_type))
+
+    combined_text = "\n".join(text_parts) if text_parts else None
+
+    # Structured extraction via Gemini
+    if visual_files and len(visual_files) > 1:
+        extracted = await call_gemini_structured_extraction(
+            pdf_bytes=None,
+            mime_type="image/png",
+            text_content=combined_text,
+            all_files=visual_files,
+        )
+    elif visual_files and len(visual_files) == 1:
+        single_fn, single_bytes, single_mime = visual_files[0]
+        extracted = await call_gemini_structured_extraction(
+            pdf_bytes=single_bytes,
+            mime_type=single_mime,
+            text_content=combined_text,
+        )
+    elif combined_text:
+        extracted = await call_gemini_structured_extraction(
+            pdf_bytes=None,
+            mime_type="text/plain",
+            text_content=combined_text,
+        )
+    else:
+        extracted = await call_gemini_structured_extraction(
+            pdf_bytes=pdf_bytes,
+            mime_type=mime_type,
+        )
 
     # 2. Resolve Card ID
     resolved_card_id = card_id
@@ -328,6 +405,7 @@ async def extract_invoice_from_pdf(
     categories_by_norm = {normalize_text(c.description): c for c in categories}
 
     # 4. Enrich each item
+    seen_batch_items: set[str] = set()
     for item in extracted.items:
         # Installment decomposition
         cur, tot = decompose_installments(
@@ -360,14 +438,26 @@ async def extract_invoice_from_pdf(
         item.card_id = resolved_card_id
 
         # Duplicate check (RN02)
-        is_dup = await check_duplicate_transaction(
+        is_dup, dup_reason = await check_duplicate_transaction(
             db=db,
             purchase_date=item.purchase_date,
             amount=item.amount,
             description=item.description,
             card_id=resolved_card_id,
+            target_month=extracted.invoice_month_year,
         )
+
+        # Checagem de duplicidade intra-lote (se enviou 2 fotos com o mesmo lançamento repetido)
+        item_date_str = (item.purchase_date or "").strip()
+        item_key = f"{item_date_str}_{normalize_text(item.description)}_{round(abs(float(item.amount)), 2)}"
+        if not is_dup and item_key in seen_batch_items:
+            is_dup = True
+            dup_reason = "Título duplicado detectado entre as imagens/prints enviados no mesmo lote"
+        seen_batch_items.add(item_key)
+
         item.is_duplicate = is_dup
+        item.is_duplicate_suspect = is_dup
+        item.duplicate_reason = dup_reason
 
     # 5. Consolidate total invoice amount
     if extracted.total_invoice_amount <= 0.0 and extracted.items:
@@ -444,9 +534,21 @@ async def confirm_invoice_transactions(
                     )
                 checked_categories[eff_type_id] = True
 
+        # Resolve target invoice month for billing cycle
+        eff_invoice_month = None
+        if request.target_month and re.match(r"^\d{4}-(0[1-9]|1[0-2])$", request.target_month.strip()):
+            eff_invoice_month = request.target_month.strip()
+        elif item.invoice_month and re.match(r"^\d{4}-(0[1-9]|1[0-2])$", item.invoice_month.strip()):
+            eff_invoice_month = item.invoice_month.strip()
+        elif item.dt_lcto:
+            eff_invoice_month = item.dt_lcto.strftime("%Y-%m")
+
+        tx_dt = item.dt_lcto
+        tx_comment = item.comment
+
         # Create primary transaction for this installment
         primary_tx = Transaction(
-            dt_lcto=item.dt_lcto,
+            dt_lcto=tx_dt,
             description=item.description,
             value=item.value,
             owner_id=item.owner_id,
@@ -456,17 +558,24 @@ async def confirm_invoice_transactions(
             cur_parcs=item.cur_parcs,
             is_paid=item.is_paid,
             is_forecast=item.is_forecast,
-            comment=item.comment,
+            entry_type=getattr(item, "entry_type", "expense") or "expense",
+            invoice_month=eff_invoice_month,
+            comment=tx_comment,
         )
         transactions_to_create.append(primary_tx)
 
         # Projections for future installments (RN01) if enabled
         if request.project_future_installments and item.total_parcs > item.cur_parcs:
             for p in range(item.cur_parcs + 1, item.total_parcs + 1):
-                future_dt = add_months(item.dt_lcto, p - item.cur_parcs)
+                future_dt = add_months(tx_dt, p - item.cur_parcs)
+                future_inv_month = (
+                    add_months_to_str(eff_invoice_month, p - item.cur_parcs)
+                    if eff_invoice_month
+                    else future_dt.strftime("%Y-%m")
+                )
                 proj_comment = (
-                    f"{item.comment} (Projeção {p}/{item.total_parcs})"
-                    if item.comment
+                    f"{tx_comment} (Projeção {p}/{item.total_parcs})"
+                    if tx_comment
                     else f"Parcela projetada automaticamente ({p}/{item.total_parcs})"
                 )
                 proj_tx = Transaction(
@@ -480,6 +589,8 @@ async def confirm_invoice_transactions(
                     cur_parcs=p,
                     is_paid=False,
                     is_forecast=True,
+                    entry_type=getattr(item, "entry_type", "expense") or "expense",
+                    invoice_month=future_inv_month,
                     comment=proj_comment,
                 )
                 transactions_to_create.append(proj_tx)

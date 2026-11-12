@@ -18,6 +18,7 @@ export interface Card {
 export interface Category {
   id: number
   description: string
+  fixed_cost?: number
   is_active: boolean
 }
 
@@ -33,6 +34,8 @@ export interface Transaction {
   total_parcs: number
   is_paid: boolean
   is_forecast: boolean
+  entry_type?: 'expense' | 'income'
+  invoice_month?: string | null
   comment?: string | null
   created_at: string
   updated_at?: string | null
@@ -42,6 +45,8 @@ export interface OwnerSummary {
   owner_id: number
   owner_name: string
   total_amount: number
+  effective_amount?: number
+  forecast_amount?: number
   paid_amount: number
   pending_amount: number
   status: 'Pago' | 'Pendente' | 'Parcial' | 'Sem despesas'
@@ -59,6 +64,9 @@ export interface DashboardSummaryResponse {
   month: string
   card_id?: number | null
   total_amount: number
+  total_effective?: number
+  total_forecast?: number
+  total_consolidated?: number
   total_paid: number
   total_pending: number
   owners_summary: OwnerSummary[]
@@ -75,7 +83,10 @@ export interface ExtractedInvoiceItem {
   category_id?: number | null
   suggested_owner?: string | null
   owner_id?: number | null
+  is_duplicate?: boolean
   is_duplicate_suspect?: boolean
+  duplicate_reason?: string | null
+  entry_type?: 'expense' | 'income'
 }
 
 export interface ExtractedInvoiceResponse {
@@ -84,6 +95,9 @@ export interface ExtractedInvoiceResponse {
   invoice_month_year?: string | null
   due_date?: string | null
   total_invoice_amount: number
+  file_hash?: string | null
+  is_already_imported?: boolean
+  already_imported_message?: string | null
   items: ExtractedInvoiceItem[]
 }
 
@@ -101,12 +115,19 @@ export interface InvoiceConfirmItem {
   total_parcs?: number
   is_paid?: boolean
   is_forecast?: boolean
+  entry_type?: 'expense' | 'income'
+  invoice_month?: string | null
   comment?: string | null
 }
 
 export interface InvoiceConfirmRequest {
   card_id?: number | null
+  target_month?: string | null
   project_future_installments?: boolean
+  file_hash?: string | null
+  filename?: string | null
+  bank_or_issuer?: string | null
+  replace_existing?: boolean
   items: InvoiceConfirmItem[]
 }
 
@@ -115,6 +136,19 @@ export interface InvoiceConfirmResponse {
   total_amount: number
   created_transactions: Transaction[]
   message: string
+}
+
+export interface InvoiceUpload {
+  id: number
+  file_hash: string
+  filename: string
+  card_id?: number | null
+  target_month: string
+  bank_or_issuer?: string | null
+  total_amount: number
+  items_count: number
+  uploaded_at: string
+  status: string
 }
 
 // --- PLANNING & SPREADSHEET PROJECTION TYPES ---
@@ -186,4 +220,70 @@ export interface MacroProjectionResponse {
   owners_matrix: Record<string, Record<string, number>>
   categories_matrix: Record<string, Record<string, number>>
   grand_total_year: number
+  categories_fixed_total?: number
+  bank_accounts_balance?: number
+  bank_accounts_owner_balance?: number
+  bank_accounts_yield?: number
+}
+
+// --- BANK ACCOUNTS & CDI YIELD TYPES ---
+
+export interface BankAccountBalanceItem {
+  owner_id: number
+  owner_name?: string | null
+  balance: number
+}
+
+export interface BankAccount {
+  id: number
+  name: string
+  account_type: string
+  cdi_rate: number
+  cdi_monthly_rate: number
+  notes?: string | null
+  balances: BankAccountBalanceItem[]
+  total_balance: number
+  monthly_yield: number
+  others_balance: number
+  owner_balance: number
+  net_with_yield: number
+}
+
+export interface BankAccountsSummary {
+  accounts: BankAccount[]
+  grand_total_balance: number
+  grand_total_monthly_yield: number
+  grand_total_others: number
+  grand_total_owner: number
+  grand_total_net_with_yield: number
+}
+
+export interface SplitItem {
+  owner_id: number
+  amount: number
+  comment?: string
+  is_paid?: boolean
+}
+
+export interface TransactionSplitRequest {
+  splits: SplitItem[]
+}
+
+export interface ReplicateInstallmentsRequest {
+  generate_future?: boolean
+  generate_past?: boolean
+}
+
+export interface OwnerSettleRequest {
+  payment_amount: number
+  month: string
+}
+
+export interface OwnerSettleResponse {
+  owner_id: number
+  settled_amount: number
+  fully_settled_count: number
+  partially_settled_count: number
+  remaining_pending: number
+  message: string
 }

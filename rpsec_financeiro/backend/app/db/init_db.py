@@ -1,5 +1,5 @@
 import logging
-from sqlalchemy import select, text
+from sqlalchemy import func, select, text
 from app.core.database import AsyncSessionLocal, Base, engine
 from app.models import Card, Category, Goal, Owner
 
@@ -20,27 +20,21 @@ INITIAL_CATEGORIES = [
     {"description": "Assinaturas"},
     {"description": "Transporte"},
     {"description": "Outros"},
+    {"description": "Gastos Previstos"},
 ]
 
 INITIAL_CARDS = [
     {"card_name": "Nubank", "total_limit": 5000.0, "payment_date": None, "due_day": 10},
 ]
 
-INITIAL_GOALS = [
-    {"title": "Cortina", "target_amount": 150.0, "saved_amount": 150.0, "category": "Essencial", "priority": "Média", "is_completed": True, "comment": "Cortina da sala"},
-    {"title": "Mesa", "target_amount": 350.0, "saved_amount": 350.0, "category": "Essencial", "priority": "Alta", "is_completed": True, "comment": "Mesa de trabalho home office"},
-    {"title": "Robô aspirador", "target_amount": 800.0, "saved_amount": 400.0, "category": "Conforto", "priority": "Média", "is_completed": False, "comment": "Robô aspirador para limpeza diária"},
-    {"title": "Cadeira Ergonômica", "target_amount": 900.0, "saved_amount": 0.0, "category": "Conforto", "priority": "Média", "is_completed": False, "comment": "Saúde postural no trabalho"},
-    {"title": "Monitor Secundário", "target_amount": 750.0, "saved_amount": 0.0, "category": "Essencial", "priority": "Alta", "is_completed": False, "comment": "Produtividade no código"},
-    {"title": "Headset", "target_amount": 250.0, "saved_amount": 0.0, "category": "Essencial", "priority": "Baixa", "is_completed": False, "comment": "Reuniões e calls"},
-    {"title": "Tela para Janela", "target_amount": 180.0, "saved_amount": 0.0, "category": "Essencial", "priority": "Média", "is_completed": False, "comment": "Proteção para cachorros"},
-]
+INITIAL_GOALS = []
 
 
 async def init_db() -> None:
     """
     Initializes database tables and seeds standard records idempotently.
     Enforces SQLite foreign keys, WAL mode, and automatic schema migrations.
+    Only seeds baseline master records if the corresponding tables are empty.
     """
     # 1. Create tables if they do not exist
     async with engine.begin() as conn:
@@ -59,38 +53,47 @@ async def init_db() -> None:
             except Exception as e:
                 logger.warning(f"Error checking/migrating cards_fapp table: {e}")
 
-    # 2. Seed initial data idempotently
+            # SQLite automatic migration check for invoice_month column in transactions_fapp
+            try:
+                res_tx = await conn.execute(text("PRAGMA table_info(transactions_fapp);"))
+                cols_tx = [row[1] for row in res_tx.fetchall()]
+                if "invoice_month" not in cols_tx:
+                    await conn.execute(text("ALTER TABLE transactions_fapp ADD COLUMN invoice_month VARCHAR(7);"))
+                    logger.info("Migrated transactions_fapp: added invoice_month column.")
+            except Exception as e:
+                logger.warning(f"Error checking/migrating transactions_fapp table: {e}")
+
+            # SQLite automatic migration check for fixed_cost column in type_fapp (Categories)
+            try:
+                res_cat = await conn.execute(text("PRAGMA table_info(type_fapp);"))
+                cols_cat = [row[1] for row in res_cat.fetchall()]
+                if "fixed_cost" not in cols_cat:
+                    await conn.execute(text("ALTER TABLE type_fapp ADD COLUMN fixed_cost FLOAT DEFAULT 0.0;"))
+                    logger.info("Migrated type_fapp: added fixed_cost column.")
+            except Exception as e:
+                logger.warning(f"Error checking/migrating type_fapp table: {e}")
+
+    # 2. Seed initial data idempotently (only if tables are empty)
     async with AsyncSessionLocal() as session:
         # Seed Owners
-        for owner_data in INITIAL_OWNERS:
-            stmt = select(Owner).where(Owner.name == owner_data["name"])
-            existing = await session.scalar(stmt)
-            if not existing:
+        owner_count = await session.scalar(select(func.count(Owner.id)))
+        if owner_count == 0:
+            for owner_data in INITIAL_OWNERS:
                 session.add(Owner(**owner_data))
                 logger.info(f"Seeded owner: {owner_data['name']}")
 
         # Seed Categories
-        for cat_data in INITIAL_CATEGORIES:
-            stmt = select(Category).where(Category.description == cat_data["description"])
-            existing = await session.scalar(stmt)
-            if not existing:
+        cat_count = await session.scalar(select(func.count(Category.id)))
+        if cat_count == 0:
+            for cat_data in INITIAL_CATEGORIES:
                 session.add(Category(**cat_data))
                 logger.info(f"Seeded category: {cat_data['description']}")
 
         # Seed Cards
-        for card_data in INITIAL_CARDS:
-            stmt = select(Card).where(Card.card_name == card_data["card_name"])
-            existing = await session.scalar(stmt)
-            if not existing:
+        card_count = await session.scalar(select(func.count(Card.id)))
+        if card_count == 0:
+            for card_data in INITIAL_CARDS:
                 session.add(Card(**card_data))
                 logger.info(f"Seeded card: {card_data['card_name']}")
-
-        # Seed Goals
-        for goal_data in INITIAL_GOALS:
-            stmt = select(Goal).where(Goal.title == goal_data["title"])
-            existing = await session.scalar(stmt)
-            if not existing:
-                session.add(Goal(**goal_data))
-                logger.info(f"Seeded goal: {goal_data['title']}")
 
         await session.commit()

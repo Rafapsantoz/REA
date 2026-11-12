@@ -1,5 +1,5 @@
 import logging
-from typing import List, Optional
+from typing import List, Optional, Tuple
 from fastapi import HTTPException, status
 from google import genai
 from google.genai import types
@@ -10,33 +10,38 @@ from app.schemas.invoice import ExtractedInvoiceResponse
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_GEMINI_MODEL = "gemini-3.5-flash"
+DEFAULT_GEMINI_MODEL = "gemini-3-flash-preview"
 
 # Lista ordenada de modelos para fallback automático em caso de 503 (alta demanda) ou 404
 FALLBACK_CANDIDATE_MODELS: List[str] = [
+    "gemini-3-flash-preview",
+    "gemini-3.5-flash-lite",
     "gemini-3.5-flash",
     "gemini-3.6-flash",
-    "gemini-3.5-flash-lite",
-    "gemini-3-flash-preview",
     "gemini-3.8-flash",
 ]
 
 EXTRACTION_SYSTEM_INSTRUCTION = (
     "Você é um especialista contábil e de extração de dados financeiros de alta precisão. "
-    "Sua função é analisar arquivos PDF de faturas de cartão de crédito e extrair todas as "
-    "compras e parcelas em formato estritamente estruturado."
+    "Sua função é analisar faturas, comprovantes, fotos, recibos ou planilhas financeiras e extrair todas as "
+    "transações, compras, entradas e parcelas em formato estritamente estruturado."
 )
 
-EXTRACTION_PROMPT = """Você é um especialista contábil e de extração de dados financeiros.
-Analise o arquivo PDF da fatura do cartão de crédito anexado.
+EXTRACTION_PROMPT = """Você é um especialista contábil e de extração de dados financeiros de alta precisão.
+Analise os arquivos/documentos anexados (PDF de fatura, prints/fotos de comprovantes colados via Ctrl+V ou dados de planilha).
 
 Instruções:
-1. Extraia cada compra realizada no período da fatura.
-2. Ignore pagamentos de faturas anteriores, estornos duplicados ou linhas de juros/encargos (classifique encargos como Outros se existirem).
-3. Detecte compras parceladas observando padrões como '01/03', '2/10', 'Parcela 04 de 06'. Extraia a parcela atual e o total de parcelas.
-4. Identifique se a fatura lista cartões adicionais (muitas faturas separam os gastos por nome do portador impresso no cartão adicional: ex: 'Cartão Final 1234 - NOME DA MÃE'). Se houver, popule o campo suggested_owner com o nome do portador!
-5. Sugira a categoria mais adequada para cada compra entre: Mercado, Lazer, Farmácia, Restaurante, Assinaturas, Roupas, Transporte, Outros.
-6. Extraia o nome do banco ou emissor identificado (ex: Nubank, Inter, Itaú, C6, Bradesco, Santander), o mês/ano de referência da fatura (ex: 2026-11), a data de vencimento (se disponível) e o valor total consolidado da fatura.
+1. Se houver múltiplas imagens ou arquivos (ex: múltiplos prints de comprovantes ou páginas sequenciais de faturas coladas), analise TODAS as imagens e consolide todas as transações em uma única lista em 'items', sem perder nenhum lançamento.
+2. Extraia cada transação identificada (data da compra, descrição do item/estabelecimento, valor).
+3. Para cada transação, defina o campo 'entry_type':
+   - "expense": para despesas, compras no cartão, saídas, boletos, contas pagas, tarifas bancárias.
+   - "income": para receitas, salários, PIX recebidos, pagamentos de clientes, depósitos, estornos creditados.
+   Se não for explicitamente uma entrada/receita, classifique como "expense".
+4. Ignore pagamentos de faturas anteriores que sejam consolidados ou linhas informativas que dupliquem lançamentos.
+5. Detecte compras parceladas observando padrões como '01/03', '2/10', 'Parcela 04 de 06'. Extraia a parcela atual e o total de parcelas.
+6. Identifique se a fatura/recibo lista pessoas ou cartões adicionais (ex: 'Cartão Final 1234 - NOME DA MÃE', 'Fulano'). Se houver, popule o campo suggested_owner com o nome da pessoa!
+7. Sugira a categoria mais adequada para cada compra entre: Mercado, Lazer, Farmácia, Restaurante, Assinaturas, Roupas, Transporte, Outros.
+8. Extraia o nome do banco ou emissor identificado (ex: Nubank, Inter, Itaú, C6, Mercado Pago, PicPay, Bradesco, Santander), o mês/ano de referência (ex: 2026-11), a data de vencimento (se disponível) e o valor total consolidado.
 """
 
 
@@ -55,19 +60,22 @@ def get_gemini_client(api_key: Optional[str] = None) -> genai.Client:
 
 
 async def call_gemini_structured_extraction(
-    pdf_bytes: bytes,
+    pdf_bytes: Optional[bytes] = None,
     client: Optional[genai.Client] = None,
     model_name: Optional[str] = None,
+    mime_type: str = "application/pdf",
+    text_content: Optional[str] = None,
+    all_files: Optional[List[Tuple[str, bytes, str]]] = None,
 ) -> ExtractedInvoiceResponse:
     """
-    Sends PDF bytes to Gemini API using async structured generation.
+    Sends file bytes (PDF, images, multiple pasted screenshots) or spreadsheet text content to Gemini API using async structured generation.
     Returns validated ExtractedInvoiceResponse.
     Implements automatic multi-model fallback cascade in case of 503 high-demand or 404 model retirement.
     """
-    if not pdf_bytes:
+    if not pdf_bytes and not text_content and not all_files:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Arquivo PDF vazio fornecido para extração.",
+            detail="Nenhum arquivo ou conteúdo fornecido para extração.",
         )
 
     primary_model = model_name or getattr(settings, "GEMINI_MODEL", None) or DEFAULT_GEMINI_MODEL
@@ -80,10 +88,22 @@ async def call_gemini_structured_extraction(
 
     genai_client = client or get_gemini_client()
 
-    pdf_part = types.Part.from_bytes(
-        data=pdf_bytes,
-        mime_type="application/pdf",
-    )
+    contents_payload = []
+    if all_files:
+        for fname, bdata, mtype in all_files:
+            if bdata and mtype:
+                contents_payload.append(types.Part.from_bytes(data=bdata, mime_type=mtype))
+    elif pdf_bytes:
+        file_part = types.Part.from_bytes(
+            data=pdf_bytes,
+            mime_type=mime_type,
+        )
+        contents_payload.append(file_part)
+
+    if text_content:
+        contents_payload.append(f"--- DADOS DA TABELA/PLANILHA EXTRAÍDA ---\n{text_content}")
+
+    contents_payload.append(EXTRACTION_PROMPT)
 
     config = types.GenerateContentConfig(
         response_mime_type="application/json",
@@ -97,10 +117,10 @@ async def call_gemini_structured_extraction(
 
     for attempt_model in models_to_try:
         try:
-            logger.info(f"Tentando extração de fatura via Gemini com o modelo: {attempt_model}")
+            logger.info(f"Tentando extração de dados via Gemini ({mime_type}) com o modelo: {attempt_model}")
             response = await genai_client.aio.models.generate_content(
                 model=attempt_model,
-                contents=[pdf_part, EXTRACTION_PROMPT],
+                contents=contents_payload,
                 config=config,
             )
             # Se a resposta foi gerada com sucesso, interrompe a esteira de fallback

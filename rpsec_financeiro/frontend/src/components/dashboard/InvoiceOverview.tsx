@@ -2,6 +2,7 @@ import React from 'react'
 import {
   AlertTriangle,
   CheckCircle,
+  Clock,
   CreditCard,
   PieChart,
   ShoppingBag,
@@ -12,20 +13,38 @@ import { formatCurrency } from '../../lib/formatters'
 
 interface InvoiceOverviewProps {
   totalAmount: number
+  totalEffective?: number
+  totalForecast?: number
+  totalConsolidated?: number
   totalPaid: number
   totalPending: number
   categoriesSummary: CategorySummary[]
   cardName?: string
+  statusFilter?: 'all' | 'pending' | 'paid'
+  onStatusFilterChange?: (status: 'all' | 'pending' | 'paid') => void
+  forecastFilter?: 'all' | 'effective' | 'forecast'
+  onForecastFilterChange?: (forecast: 'all' | 'effective' | 'forecast') => void
 }
 
 export const InvoiceOverview: React.FC<InvoiceOverviewProps> = ({
   totalAmount,
+  totalEffective,
+  totalForecast,
+  totalConsolidated,
   totalPaid,
   totalPending,
   categoriesSummary,
   cardName = 'Nubank Principal',
+  statusFilter = 'all',
+  onStatusFilterChange,
+  forecastFilter = 'all',
+  onForecastFilterChange,
 }) => {
-  const percentPaid = totalAmount > 0 ? Math.round((totalPaid / totalAmount) * 100) : 0
+  const effective = totalEffective ?? totalAmount
+  const forecast = totalForecast ?? 0
+  const consolidated = totalConsolidated ?? (effective + forecast)
+  const baseForPercent = consolidated > 0 ? consolidated : effective
+  const percentPaid = baseForPercent > 0 ? Math.round((totalPaid / baseForPercent) * 100) : 0
 
   const getCategoryColor = (name: string, index: number) => {
     const palette = [
@@ -49,14 +68,14 @@ export const InvoiceOverview: React.FC<InvoiceOverviewProps> = ({
         <div className="absolute right-0 top-0 translate-x-8 -translate-y-8 w-48 h-48 bg-emerald-500/10 rounded-full blur-2xl pointer-events-none" />
 
         <div>
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
               <span className="p-2 rounded-xl bg-white/10 backdrop-blur-md">
                 <CreditCard className="w-5 h-5 text-emerald-400" />
               </span>
               <div>
                 <p className="text-xs uppercase tracking-wider text-slate-400 font-semibold">
-                  Fechamento Consolidado
+                  Fechamento Consolidado & Estimativas
                 </p>
                 <h4 className="text-sm font-medium text-slate-200">{cardName}</h4>
               </div>
@@ -68,11 +87,64 @@ export const InvoiceOverview: React.FC<InvoiceOverviewProps> = ({
             </div>
           </div>
 
-          <div className="my-3">
-            <p className="text-xs text-slate-400 font-medium">Valor Total da Fatura</p>
-            <p className="text-4xl font-extrabold tracking-tight text-white mt-0.5">
-              {formatCurrency(totalAmount)}
-            </p>
+          {/* DUAL TOTALS: CONSOLIDATED vs LIQUID (EFFECTIVE) & FORECAST */}
+          <div className="my-3 grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+            {/* TOTAL CONSOLIDADO */}
+            <div className="bg-white/5 border border-white/10 rounded-xl p-3.5 flex flex-col justify-between">
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-[11px] uppercase tracking-wider text-indigo-300 font-bold">
+                  Total Consolidado
+                </span>
+                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+                  Líquido + Previsto
+                </span>
+              </div>
+              <div className="text-3xl font-black tracking-tight text-white mt-0.5">
+                {formatCurrency(consolidated)}
+              </div>
+              <p className="text-[11px] text-slate-400 mt-1">
+                Saída total esperada da conta no mês
+              </p>
+            </div>
+
+            {/* TOTAL LÍQUIDO & PREVISTO */}
+            <div className="bg-white/5 border border-white/10 rounded-xl p-3.5 flex flex-col justify-between">
+              <div className="flex items-baseline justify-between gap-2">
+                <div>
+                  <span className="text-[10px] uppercase tracking-wider text-emerald-400 font-bold block">
+                    Total Líquido (Efetivo)
+                  </span>
+                  <span className="text-xl font-extrabold text-white">
+                    {formatCurrency(effective)}
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => onForecastFilterChange?.(forecastFilter === 'forecast' ? 'all' : 'forecast')}
+                  title="Clique para filtrar apenas os gastos previstos / estimativas"
+                  className={`text-right p-1.5 rounded-lg transition-all cursor-pointer ${
+                    forecastFilter === 'forecast'
+                      ? 'bg-amber-400/20 ring-1 ring-amber-300'
+                      : 'hover:bg-white/5'
+                  }`}
+                >
+                  <span className="text-[10px] uppercase tracking-wider text-amber-400 font-bold block flex items-center justify-end gap-1">
+                    Previsto / Estimado
+                    {forecastFilter === 'forecast' && (
+                      <span className="text-[9px] bg-amber-400 text-slate-900 px-1 rounded font-bold">Ativo</span>
+                    )}
+                  </span>
+                  <span className="text-base font-bold text-amber-300">
+                    {formatCurrency(forecast)}
+                  </span>
+                </button>
+              </div>
+              <p className="text-[11px] text-slate-400 mt-1">
+                {forecast > 0
+                  ? `${formatCurrency(effective)} confirmados + ${formatCurrency(forecast)} estimados`
+                  : 'Nenhum gasto previsto pendente neste mês'}
+              </p>
+            </div>
           </div>
         </div>
 
@@ -85,22 +157,51 @@ export const InvoiceOverview: React.FC<InvoiceOverviewProps> = ({
             />
           </div>
 
-          {/* Subtotals */}
+          {/* Subtotals with Click-to-Filter */}
           <div className="grid grid-cols-2 gap-4 pt-3 border-t border-slate-700/60 text-sm">
-            <div className="flex items-center gap-2.5">
-              <div className="w-3 h-3 rounded-full bg-emerald-400" />
+            <button
+              type="button"
+              onClick={() => onStatusFilterChange?.(statusFilter === 'paid' ? 'all' : 'paid')}
+              title="Clique para filtrar todos os lançamentos quitados deste mês"
+              className={`flex items-center gap-2.5 p-2 rounded-xl transition-all text-left cursor-pointer ${
+                statusFilter === 'paid'
+                  ? 'bg-emerald-500/20 ring-1 ring-emerald-400'
+                  : 'hover:bg-white/5'
+              }`}
+            >
+              <div className="w-3 h-3 rounded-full bg-emerald-400 shrink-0" />
               <div>
-                <p className="text-xs text-slate-400">Total Quitado</p>
+                <p className="text-xs text-slate-400 flex items-center gap-1">
+                  Total Quitado
+                  {statusFilter === 'paid' && (
+                    <span className="text-[10px] text-emerald-300 font-bold">(Ativo ✓)</span>
+                  )}
+                </p>
                 <p className="font-bold text-emerald-300">{formatCurrency(totalPaid)}</p>
               </div>
-            </div>
-            <div className="flex items-center gap-2.5">
-              <div className="w-3 h-3 rounded-full bg-rose-400" />
+            </button>
+
+            <button
+              type="button"
+              onClick={() => onStatusFilterChange?.(statusFilter === 'pending' ? 'all' : 'pending')}
+              title="Clique para filtrar todos os lançamentos pendentes deste mês"
+              className={`flex items-center gap-2.5 p-2 rounded-xl transition-all text-left cursor-pointer ${
+                statusFilter === 'pending'
+                  ? 'bg-rose-500/20 ring-1 ring-rose-400'
+                  : 'hover:bg-white/5'
+              }`}
+            >
+              <div className="w-3 h-3 rounded-full bg-rose-400 shrink-0" />
               <div>
-                <p className="text-xs text-slate-400">Total Pendente</p>
+                <p className="text-xs text-slate-400 flex items-center gap-1">
+                  Total Pendente
+                  {statusFilter === 'pending' && (
+                    <span className="text-[10px] text-rose-300 font-bold">(Ativo ✓)</span>
+                  )}
+                </p>
                 <p className="font-bold text-rose-300">{formatCurrency(totalPending)}</p>
               </div>
-            </div>
+            </button>
           </div>
         </div>
       </div>
