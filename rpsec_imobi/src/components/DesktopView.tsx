@@ -113,7 +113,120 @@ export const DesktopView: React.FC<DesktopViewProps> = ({
       </div>
 
       {/* ═════════════════════════════════════════════════════════════
-          1º BLOCO: INFORMAÇÕES SOBRE CONTRATOS (CARDS / KPIS)
+          1º BLOCO (NO TOPO): PESQUISA DE CONTRATOS & FILTROS DE STATUS
+          FILTRAGEM POR NOME DO INQUILINO OU NÚMERO DO CONTRATO
+      ═════════════════════════════════════════════════════════════ */}
+      <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-3.5">
+        
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <span className="text-xs font-bold text-rose-600 dark:text-rose-400 uppercase tracking-wider flex items-center gap-1.5">
+            <Search className="w-4 h-4" />
+            Pesquisa Rápida de Contratos
+          </span>
+          <span className="text-[11px] text-slate-500 dark:text-slate-400">
+            Filtre por <strong>Nome do Inquilino</strong> ou pelo <strong>Número do Contrato</strong>
+          </span>
+        </div>
+
+        {/* Campo de Entrada de Busca */}
+        <div className="relative">
+          <Search className="w-5 h-5 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+          <input
+            type="text"
+            placeholder="Pesquise por Nome do Inquilino (ex: Simone, Mariana) ou Número do Contrato (ex: 85, 72)..."
+            value={busca}
+            onChange={(e) => setBusca(e.target.value)}
+            className="w-full text-xs sm:text-sm pl-11 pr-24 py-3 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-rose-500/30 font-medium"
+          />
+          {busca && (
+            <button
+              onClick={() => setBusca('')}
+              className="absolute right-3 top-1/2 -translate-y-1/2 px-2.5 py-1 text-xs text-slate-400 hover:text-slate-700 dark:hover:text-white rounded-lg hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors"
+            >
+              Limpar
+            </button>
+          )}
+        </div>
+
+        {/* Atalhos Rápidos de Demonstração & Abas de Status */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1 border-t border-slate-100 dark:border-slate-800/80">
+          
+          {/* Abas de Status com Encerrados em Vermelho */}
+          <div className="flex flex-wrap items-center bg-slate-100 dark:bg-slate-950 p-1 rounded-xl border border-slate-200 dark:border-slate-800">
+            <button
+              onClick={() => setStatusFilter('todos')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                statusFilter === 'todos'
+                  ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm'
+                  : 'text-slate-500 hover:text-slate-900 dark:hover:text-slate-200'
+              }`}
+            >
+              Todos ({contratos.length})
+            </button>
+            <button
+              onClick={() => setStatusFilter('pendente')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                statusFilter === 'pendente'
+                  ? 'bg-amber-500 text-white shadow-sm'
+                  : 'text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/40'
+              }`}
+            >
+              <span className="w-2 h-2 rounded-full bg-amber-400"></span>
+              <span>Com Pendência ({contratosPendentes.length})</span>
+            </button>
+            <button
+              onClick={() => setStatusFilter('ativo')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                statusFilter === 'ativo'
+                  ? 'bg-emerald-600 text-white shadow-sm'
+                  : 'text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40'
+              }`}
+            >
+              <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
+              <span>Ativos ({contratosAtivos.length})</span>
+            </button>
+            <button
+              onClick={() => setStatusFilter('encerrado')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                statusFilter === 'encerrado'
+                  ? 'bg-red-600 text-white shadow-sm'
+                  : 'text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40'
+              }`}
+            >
+              <span className="w-2 h-2 rounded-full bg-red-500"></span>
+              <span>Encerrados ({contratosEncerrados.length})</span>
+            </button>
+          </div>
+
+          {/* Atalhos Rápidos por Inquilino ou Contrato */}
+          <div className="flex flex-wrap items-center gap-1.5 text-xs">
+            <span className="text-[11px] text-slate-400 font-semibold mr-1">Atalhos:</span>
+            <button
+              onClick={() => setBusca('Simone')}
+              className="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-rose-500 hover:text-white transition-colors text-[11px] font-semibold"
+            >
+              👤 Simone (Contrato 85)
+            </button>
+            <button
+              onClick={() => setBusca('Mariana')}
+              className="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-rose-500 hover:text-white transition-colors text-[11px] font-semibold"
+            >
+              👤 Mariana (Contrato 72)
+            </button>
+            <button
+              onClick={() => setBusca('61')}
+              className="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-red-500 hover:text-white transition-colors text-[11px] font-semibold text-red-600 dark:text-red-400"
+            >
+              🔴 Contrato 61 (Encerrado)
+            </button>
+          </div>
+
+        </div>
+
+      </div>
+
+      {/* ═════════════════════════════════════════════════════════════
+          2º BLOCO: INFORMAÇÕES SOBRE CONTRATOS (CARDS / KPIS)
       ═════════════════════════════════════════════════════════════ */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         
@@ -171,28 +284,29 @@ export const DesktopView: React.FC<DesktopViewProps> = ({
           </p>
         </div>
 
-        {/* Card 3: Contratos Encerrados */}
+        {/* Card 3: Contratos Encerrados (EM VERMELHO CONFORME SOLICITADO) */}
         <div 
           onClick={() => setStatusFilter('encerrado')}
           className={`p-5 rounded-2xl border transition-all cursor-pointer ${
             statusFilter === 'encerrado'
-              ? 'bg-slate-200 dark:bg-slate-800 border-slate-400 dark:border-slate-600 shadow-lg'
-              : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-slate-400'
+              ? 'bg-red-500/10 border-red-500/50 dark:bg-red-950/40 shadow-lg'
+              : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-red-400'
           }`}
         >
           <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
-              <Key className="w-4 h-4 text-slate-400" />
+            <span className="text-xs font-bold text-red-600 dark:text-red-400 uppercase tracking-wider flex items-center gap-1.5">
+              <Key className="w-4 h-4 text-red-500" />
               Contratos Encerrados
             </span>
+            <span className="w-2.5 h-2.5 rounded-full bg-red-500"></span>
           </div>
           <div className="flex items-baseline gap-2">
-            <span className="text-3xl font-black text-slate-900 dark:text-white">
+            <span className="text-3xl font-black text-red-600 dark:text-red-400">
               {contratosEncerrados.length}
             </span>
             <span className="text-xs text-slate-500">histórico arquivado</span>
           </div>
-          <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-2">
+          <p className="text-[11px] text-red-600 dark:text-red-400 mt-2 font-medium">
             Quitados com vistoria de saída e Sabesp/CPFL baixadas
           </p>
         </div>
@@ -213,118 +327,6 @@ export const DesktopView: React.FC<DesktopViewProps> = ({
           <p className="text-[11px] text-indigo-600 dark:text-indigo-400 mt-2 font-medium">
             Retidos em conta garantia / custódia
           </p>
-        </div>
-
-      </div>
-
-      {/* ═════════════════════════════════════════════════════════════
-          2º BLOCO: PESQUISA (ABAIXO DAS INFORMAÇÕES SOBRE CONTRATOS)
-          FILTRAGEM POR NOME DO INQUILINO OU NÚMERO DO CONTRATO
-      ═════════════════════════════════════════════════════════════ */}
-      <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-3.5">
-        
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-          <span className="text-xs font-bold text-rose-600 dark:text-rose-400 uppercase tracking-wider flex items-center gap-1.5">
-            <Search className="w-4 h-4" />
-            Pesquisa de Contratos
-          </span>
-          <span className="text-[11px] text-slate-500 dark:text-slate-400">
-            Filtre por <strong>Nome do Inquilino</strong> ou pelo <strong>Número do Contrato</strong>
-          </span>
-        </div>
-
-        {/* Campo de Entrada de Busca */}
-        <div className="relative">
-          <Search className="w-5 h-5 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
-          <input
-            type="text"
-            placeholder="Pesquise por Nome do Inquilino (ex: Simone, Mariana) ou Número do Contrato (ex: 85, 72)..."
-            value={busca}
-            onChange={(e) => setBusca(e.target.value)}
-            className="w-full text-xs sm:text-sm pl-11 pr-24 py-3 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-rose-500/30 font-medium"
-          />
-          {busca && (
-            <button
-              onClick={() => setBusca('')}
-              className="absolute right-3 top-1/2 -translate-y-1/2 px-2.5 py-1 text-xs text-slate-400 hover:text-slate-700 dark:hover:text-white rounded-lg hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors"
-            >
-              Limpar
-            </button>
-          )}
-        </div>
-
-        {/* Atalhos Rápidos de Demonstração & Abas de Status */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1 border-t border-slate-100 dark:border-slate-800/80">
-          
-          {/* Abas de Status */}
-          <div className="flex flex-wrap items-center bg-slate-100 dark:bg-slate-950 p-1 rounded-xl border border-slate-200 dark:border-slate-800">
-            <button
-              onClick={() => setStatusFilter('todos')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                statusFilter === 'todos'
-                  ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm'
-                  : 'text-slate-500 hover:text-slate-900 dark:hover:text-slate-200'
-              }`}
-            >
-              Todos ({contratos.length})
-            </button>
-            <button
-              onClick={() => setStatusFilter('pendente')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
-                statusFilter === 'pendente'
-                  ? 'bg-amber-500 text-white shadow-sm'
-                  : 'text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/40'
-              }`}
-            >
-              <span className="w-2 h-2 rounded-full bg-amber-400"></span>
-              <span>Com Pendência ({contratosPendentes.length})</span>
-            </button>
-            <button
-              onClick={() => setStatusFilter('ativo')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
-                statusFilter === 'ativo'
-                  ? 'bg-emerald-600 text-white shadow-sm'
-                  : 'text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40'
-              }`}
-            >
-              <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
-              <span>Ativos ({contratosAtivos.length})</span>
-            </button>
-            <button
-              onClick={() => setStatusFilter('encerrado')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                statusFilter === 'encerrado'
-                  ? 'bg-slate-700 text-white shadow-sm'
-                  : 'text-slate-500 hover:text-slate-900 dark:hover:text-slate-200'
-              }`}
-            >
-              Encerrados ({contratosEncerrados.length})
-            </button>
-          </div>
-
-          {/* Atalhos Rápidos por Inquilino ou Contrato */}
-          <div className="flex flex-wrap items-center gap-1.5 text-xs">
-            <span className="text-[11px] text-slate-400 font-semibold mr-1">Atalhos:</span>
-            <button
-              onClick={() => setBusca('Simone')}
-              className="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-rose-500 hover:text-white transition-colors text-[11px] font-semibold"
-            >
-              👤 Simone (Contrato 85)
-            </button>
-            <button
-              onClick={() => setBusca('Mariana')}
-              className="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-rose-500 hover:text-white transition-colors text-[11px] font-semibold"
-            >
-              👤 Mariana (Contrato 72)
-            </button>
-            <button
-              onClick={() => setBusca('61')}
-              className="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-rose-500 hover:text-white transition-colors text-[11px] font-semibold"
-            >
-              🔢 Contrato 61
-            </button>
-          </div>
-
         </div>
 
       </div>
@@ -370,7 +372,7 @@ export const DesktopView: React.FC<DesktopViewProps> = ({
                       ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20'
                       : contrato.status === 'pendente'
                         ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20'
-                        : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400 border border-slate-200 dark:border-slate-700'
+                        : 'bg-red-500/10 text-red-600 dark:text-red-400 border border-red-500/30'
                   }`}>
                     <span className="text-[10px] uppercase tracking-wider font-semibold opacity-70">Nº</span>
                     <span className="text-lg font-black leading-none">{contrato.numeroOrdem}</span>
@@ -378,7 +380,11 @@ export const DesktopView: React.FC<DesktopViewProps> = ({
 
                   <div className="space-y-1">
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className="font-extrabold text-base text-slate-900 dark:text-white">
+                      <span className={`font-extrabold text-base ${
+                        contrato.status === 'encerrado'
+                          ? 'text-red-600 dark:text-red-400'
+                          : 'text-slate-900 dark:text-white'
+                      }`}>
                         Inquilino: {contrato.locatario.nome}
                       </span>
                       
@@ -397,8 +403,9 @@ export const DesktopView: React.FC<DesktopViewProps> = ({
                       )}
 
                       {contrato.status === 'encerrado' && (
-                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-300 border border-slate-300 dark:border-slate-700">
-                          ⚪ Encerrado & Quitado
+                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-red-100 text-red-800 dark:bg-red-950/80 dark:text-red-400 border border-red-300 dark:border-red-800 flex items-center gap-1">
+                          <span className="w-1.5 h-1.5 rounded-full bg-red-500"></span>
+                          Contrato Encerrado & Quitado
                         </span>
                       )}
 

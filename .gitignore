@@ -43,6 +43,7 @@ rpsec_ddtank/data/test_debug/
 rpsec_ddtank/data/*.png
 
 # Logs e arquivos de sistema
+*.tsbuildinfo
 *.log
 .DS_Store
 Thumbs.db
