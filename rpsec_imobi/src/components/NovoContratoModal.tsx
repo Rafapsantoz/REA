@@ -230,7 +230,7 @@ export const NovoContratoModal: React.FC<NovoContratoModalProps> = ({
 
         {/* Formulário */}
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">Nº Ordem Contrato *</label>
               <input
@@ -242,14 +242,12 @@ export const NovoContratoModal: React.FC<NovoContratoModalProps> = ({
                 className="w-full text-xs p-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 font-bold"
               />
             </div>
-            <div className="sm:col-span-2">
-              <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">Endereço do Imóvel *</label>
+            <div>
+              <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">Dia Vencimento *</label>
               <input
-                type="text"
-                required
-                value={imovelEndereco}
-                onChange={(e) => setImovelEndereco(e.target.value)}
-                placeholder="Rua, número e bairro"
+                type="number"
+                value={vencimentoDia}
+                onChange={(e) => setVencimentoDia(Number(e.target.value))}
                 className="w-full text-xs p-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700"
               />
             </div>
@@ -312,7 +310,7 @@ export const NovoContratoModal: React.FC<NovoContratoModalProps> = ({
           </div>
 
           {/* Valores & Garantia */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">Valor Aluguel (R$)</label>
               <input
@@ -320,15 +318,6 @@ export const NovoContratoModal: React.FC<NovoContratoModalProps> = ({
                 value={aluguelValor}
                 onChange={(e) => setAluguelValor(Number(e.target.value))}
                 className="w-full text-xs p-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 font-bold text-emerald-500"
-              />
-            </div>
-            <div>
-              <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">Dia Vencimento</label>
-              <input
-                type="number"
-                value={vencimentoDia}
-                onChange={(e) => setVencimentoDia(Number(e.target.value))}
-                className="w-full text-xs p-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700"
               />
             </div>
             <div>

@@ -1,14 +1,12 @@
 import React from 'react';
-import { Building2, Smartphone, Monitor, ShieldCheck, PhoneCall, Sun, Moon } from 'lucide-react';
+import { Building2, ShieldCheck, PhoneCall, Sun, Moon } from 'lucide-react';
 
 interface NavbarProps {
-  currentView: 'desktop' | 'mobile';
-  onViewChange: (view: 'desktop' | 'mobile') => void;
   theme: 'light' | 'dark';
   onToggleTheme: () => void;
 }
 
-export const Navbar: React.FC<NavbarProps> = ({ currentView, onViewChange, theme, onToggleTheme }) => {
+export const Navbar: React.FC<NavbarProps> = ({ theme, onToggleTheme }) => {
   return (
     <header className="sticky top-0 z-50 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 transition-colors duration-200">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -32,33 +30,6 @@ export const Navbar: React.FC<NavbarProps> = ({ currentView, onViewChange, theme
                 <span>Mococa/SP</span>
               </p>
             </div>
-          </div>
-
-          {/* Seletor de Modo: Desktop vs Mobile */}
-          <div className="flex items-center bg-slate-100 dark:bg-slate-950/80 p-1 rounded-xl border border-slate-200 dark:border-slate-800">
-            <button
-              onClick={() => onViewChange('desktop')}
-              className={`flex items-center space-x-2 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-                currentView === 'desktop'
-                  ? 'bg-gradient-to-r from-rose-600 to-rose-700 text-white shadow-md shadow-rose-950/20'
-                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
-              }`}
-            >
-              <Monitor className="w-4 h-4" />
-              <span>vDesktop</span>
-            </button>
-
-            <button
-              onClick={() => onViewChange('mobile')}
-              className={`flex items-center space-x-2 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-                currentView === 'mobile'
-                  ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md shadow-emerald-950/20'
-                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
-              }`}
-            >
-              <Smartphone className="w-4 h-4" />
-              <span>vMobile</span>
-            </button>
           </div>
 
           {/* Botão de Tema + Contato / Status */}

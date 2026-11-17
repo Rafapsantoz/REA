@@ -202,7 +202,9 @@ export const ContratoChecklistModal: React.FC<ContratoChecklistModalProps> = ({
                 )}
               </div>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 flex items-center gap-2">
-                <span><strong>Imóvel:</strong> {contrato.imovelEndereco} — {contrato.imovelBairro}, {contrato.imovelCidade}</span>
+                <span><strong>Locador:</strong> {contrato.locador.nome}</span>
+                <span>•</span>
+                <span><strong>Inquilino:</strong> {contrato.locatario.nome}</span>
                 <span>•</span>
                 <span><strong>Aluguel:</strong> R$ {contrato.valores.aluguel.toLocaleString('pt-BR')},00</span>
               </p>

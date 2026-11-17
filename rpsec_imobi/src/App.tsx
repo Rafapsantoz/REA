@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Navbar } from './components/Navbar';
 import { DesktopView } from './components/DesktopView';
-import { MobileView } from './components/MobileView';
 import { INITIAL_CLIENTES, INITIAL_IMOVEIS, INITIAL_VISITAS } from './mockData';
 import { INITIAL_CONTRATOS } from './mockContratos';
 import { Cliente, Imovel, VisitaLead, ContratoLocacaoCompleto } from './types';
@@ -9,7 +8,6 @@ import { Sparkles, CheckCircle2 } from 'lucide-react';
 import { ToastProvider } from './components/Toast';
 
 export function App() {
-  const [currentView, setCurrentView] = useState<'desktop' | 'mobile'>('desktop');
   const [clientes, setClientes] = useState<Cliente[]>(INITIAL_CLIENTES);
   const [imoveis, setImoveis] = useState<Imovel[]>(INITIAL_IMOVEIS);
   const [visitas, setVisitas] = useState<VisitaLead[]>(INITIAL_VISITAS);
@@ -85,38 +83,25 @@ export function App() {
       <div className="min-h-screen bg-slate-100 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col transition-colors duration-200">
         {/* Top Navigation com Botão de Tema */}
         <Navbar 
-          currentView={currentView} 
-          onViewChange={setCurrentView}
           theme={theme}
           onToggleTheme={toggleTheme}
         />
 
         {/* Main Content Area */}
         <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          {currentView === 'desktop' ? (
-            <DesktopView
-              clientes={clientes}
-              imoveis={imoveis}
-              visitas={visitas}
-              contratos={contratos}
-              onAddImovel={handleAddImovel}
-              onAddCliente={handleAddCliente}
-              onUpdateImovelStatus={handleUpdateImovelStatus}
-              onUpdateClienteStatus={handleUpdateClienteStatus}
-              onUpdateImovel={handleUpdateImovel}
-              onUpdateContrato={handleUpdateContrato}
-              onAddContrato={handleAddContrato}
-            />
-          ) : (
-            <MobileView
-              clientes={clientes}
-              imoveis={imoveis}
-              visitas={visitas}
-              onUpdateVisitaStatus={handleUpdateVisitaStatus}
-              onAddClienteNota={handleAddClienteNota}
-              onUpdateImovelStatus={handleUpdateImovelStatus}
-            />
-          )}
+          <DesktopView
+            clientes={clientes}
+            imoveis={imoveis}
+            visitas={visitas}
+            contratos={contratos}
+            onAddImovel={handleAddImovel}
+            onAddCliente={handleAddCliente}
+            onUpdateImovelStatus={handleUpdateImovelStatus}
+            onUpdateClienteStatus={handleUpdateClienteStatus}
+            onUpdateImovel={handleUpdateImovel}
+            onUpdateContrato={handleUpdateContrato}
+            onAddContrato={handleAddContrato}
+          />
         </main>
 
         {/* Footer com Roteiro da Proposta Comercial RPsecti */}

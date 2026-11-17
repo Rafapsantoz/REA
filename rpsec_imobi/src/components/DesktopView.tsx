@@ -416,13 +416,8 @@ export const DesktopView: React.FC<DesktopViewProps> = ({
                       )}
                     </div>
 
-                    <p className="text-xs text-slate-600 dark:text-slate-300 flex items-center gap-1.5">
-                      <Building className="w-3.5 h-3.5 text-slate-400" />
-                      <span><strong>Imóvel:</strong> {contrato.imovelEndereco} ({contrato.imovelBairro}, {contrato.imovelCidade})</span>
-                    </p>
-
-                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500 dark:text-slate-400 pt-0.5">
-                      <span><strong>Proprietário:</strong> {contrato.locador.nome}</span>
+                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500 dark:text-slate-400 pt-1">
+                      <span><strong>Proprietário (Locador):</strong> {contrato.locador.nome}</span>
                       <span>•</span>
                       <span><strong>Telefone Inquilino:</strong> {contrato.locatario.telefone}</span>
                       <span>•</span>
