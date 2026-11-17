@@ -64,9 +64,6 @@ export const DesktopView: React.FC<DesktopViewProps> = ({
   const contratosAtivos = contratos.filter(c => c.status === 'ativo');
   const contratosEncerrados = contratos.filter(c => c.status === 'encerrado');
 
-  const receitaAtivaTotal = contratosAtivos.reduce((acc, c) => acc + c.valores.aluguel, 0);
-  const caucaoTotalCustodia = contratosAtivos.reduce((acc, c) => acc + (c.valores.caucaoValor || 0), 0);
-
   // Filtragem estrita por Nome do Inquilino ou Número do Contrato
   const contratosFiltrados = contratos.filter(c => {
     // Filtro por status
@@ -226,9 +223,9 @@ export const DesktopView: React.FC<DesktopViewProps> = ({
       </div>
 
       {/* ═════════════════════════════════════════════════════════════
-          2º BLOCO: INFORMAÇÕES SOBRE CONTRATOS (CARDS / KPIS)
+          2º BLOCO: STATUS DOS CONTRATOS (SIMPLES E DIRETO)
       ═════════════════════════════════════════════════════════════ */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         
         {/* Card 1: Com Pendência / Abertura */}
         <div 
@@ -280,11 +277,11 @@ export const DesktopView: React.FC<DesktopViewProps> = ({
             <span className="text-xs text-slate-500">contratos regulares</span>
           </div>
           <p className="text-[11px] text-emerald-700 dark:text-emerald-300 mt-2 font-medium">
-            R$ {receitaAtivaTotal.toLocaleString('pt-BR')},00 / mês sob administração
+            ✅ 100% das etapas cumpridas e vigência ativa
           </p>
         </div>
 
-        {/* Card 3: Contratos Encerrados (EM VERMELHO CONFORME SOLICITADO) */}
+        {/* Card 3: Contratos Encerrados (EM VERMELHO) */}
         <div 
           onClick={() => setStatusFilter('encerrado')}
           className={`p-5 rounded-2xl border transition-all cursor-pointer ${
@@ -308,24 +305,6 @@ export const DesktopView: React.FC<DesktopViewProps> = ({
           </div>
           <p className="text-[11px] text-red-600 dark:text-red-400 mt-2 font-medium">
             Quitados com vistoria de saída e Sabesp/CPFL baixadas
-          </p>
-        </div>
-
-        {/* Card 4: Garantias e Caução em Custódia */}
-        <div className="p-5 rounded-2xl border bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider flex items-center gap-1.5">
-              <Shield className="w-4 h-4 text-indigo-500" />
-              Garantias & Caução
-            </span>
-          </div>
-          <div className="flex items-baseline gap-2">
-            <span className="text-3xl font-black text-slate-900 dark:text-white">
-              R$ {caucaoTotalCustodia.toLocaleString('pt-BR')},00
-            </span>
-          </div>
-          <p className="text-[11px] text-indigo-600 dark:text-indigo-400 mt-2 font-medium">
-            Retidos em conta garantia / custódia
           </p>
         </div>
 
