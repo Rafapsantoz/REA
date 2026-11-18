@@ -35,19 +35,21 @@ interface ContratoChecklistModalProps {
   contrato: ContratoLocacaoCompleto;
   onClose: () => void;
   onUpdateContrato: (contratoAtualizado: ContratoLocacaoCompleto) => void;
+  initialTab?: 'abertura' | 'encerramento' | 'anexos';
 }
 
 export const ContratoChecklistModal: React.FC<ContratoChecklistModalProps> = ({
   contrato: initialContrato,
   onClose,
-  onUpdateContrato
+  onUpdateContrato,
+  initialTab
 }) => {
   const { showToast } = useToast();
   const [contrato, setContrato] = useState<ContratoLocacaoCompleto>(initialContrato);
   
   // Abas internas: Abertura vs Encerramento vs Anexos
   const [activeTab, setActiveTab] = useState<'abertura' | 'encerramento' | 'anexos'>(
-    initialContrato.processoAtivo === 'encerramento' ? 'encerramento' : 'abertura'
+    initialTab || (initialContrato.processoAtivo === 'encerramento' ? 'encerramento' : 'abertura')
   );
 
   // Estados de cálculo
@@ -276,29 +278,40 @@ export const ContratoChecklistModal: React.FC<ContratoChecklistModalProps> = ({
               </button>
             )}
 
-            {contrato.status === 'ativo' && contrato.processoAtivo !== 'encerramento' && (
-              <button
-                onClick={handleIniciarEncerramento}
-                className="px-4 py-2.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 border border-rose-500/30 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all"
-              >
-                <AlertTriangle className="w-4 h-4 text-rose-500" />
-                <span>Iniciar Processo de Rescisão / Saída 🚪</span>
-              </button>
+            {contrato.status === 'ativo' && (
+              <>
+                {(activeTab === 'encerramento' || contrato.processoAtivo === 'encerramento') ? (
+                  <button
+                    onClick={handleConcluirEncerramento}
+                    disabled={!progressoEncerramento.estaAptoParaEncerrar}
+                    className={`px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 shadow-sm transition-all ${
+                      progressoEncerramento.estaAptoParaEncerrar
+                        ? 'bg-red-600 hover:bg-red-700 text-white shadow-red-900/30 cursor-pointer animate-pulse'
+                        : 'bg-slate-200 dark:bg-slate-800 text-slate-400 dark:text-slate-500 cursor-not-allowed opacity-70'
+                    }`}
+                    title={!progressoEncerramento.estaAptoParaEncerrar ? "Complete as 13 etapas de rescisão para encerrar o contrato" : "Finalizar encerramento do contrato"}
+                  >
+                    <Lock className="w-4 h-4" />
+                    <span>{progressoEncerramento.estaAptoParaEncerrar ? "Concluir Encerramento Definitivo ⚪" : `Faltam ${progressoEncerramento.total - progressoEncerramento.concluidos} etapas para Encerrar`}</span>
+                  </button>
+                ) : (
+                  <button
+                    onClick={handleIniciarEncerramento}
+                    className="px-4 py-2.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 border border-rose-500/30 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer"
+                    title="Ir para o checklist de rescisão e encerramento"
+                  >
+                    <AlertTriangle className="w-4 h-4 text-rose-500" />
+                    <span>Iniciar Processo de Rescisão / Saída 🚪</span>
+                  </button>
+                )}
+              </>
             )}
 
-            {contrato.processoAtivo === 'encerramento' && contrato.status !== 'encerrado' && (
-              <button
-                onClick={handleConcluirEncerramento}
-                disabled={!progressoEncerramento.estaAptoParaEncerrar}
-                className={`px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 shadow-sm transition-all ${
-                  progressoEncerramento.estaAptoParaEncerrar
-                    ? 'bg-slate-900 hover:bg-black dark:bg-white dark:hover:bg-slate-200 text-white dark:text-slate-900 cursor-pointer'
-                    : 'bg-slate-200 dark:bg-slate-800 text-slate-400 dark:text-slate-500 cursor-not-allowed opacity-70'
-                }`}
-              >
-                <Lock className="w-4 h-4" />
-                <span>{progressoEncerramento.estaAptoParaEncerrar ? "Concluir Encerramento Definitivo ⚪" : `Faltam ${progressoEncerramento.total - progressoEncerramento.concluidos} etapas para Encerrar`}</span>
-              </button>
+            {contrato.status === 'encerrado' && (
+              <span className="px-3.5 py-2 rounded-xl text-xs font-bold bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-300 flex items-center gap-1.5 border border-slate-300 dark:border-slate-700">
+                <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                <span>Contrato Encerrado & Arquivado</span>
+              </span>
             )}
           </div>
         </div>
@@ -1499,6 +1512,44 @@ export const ContratoChecklistModal: React.FC<ContratoChecklistModalProps> = ({
                     </label>
                   </div>
                 </div>
+              </div>
+
+              {/* CARD DE CONCLUSÃO DEFINITIVA DO ENCERRAMENTO */}
+              <div className="p-5 bg-gradient-to-r from-red-500/10 via-rose-500/10 to-slate-900/10 border-2 border-red-500/30 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-4 mt-6">
+                <div>
+                  <h4 className="font-black text-sm text-red-600 dark:text-red-400 flex items-center gap-2">
+                    <Lock className="w-4 h-4" />
+                    {contrato.status === 'encerrado'
+                      ? 'Contrato Encerrado & Quitado ⚪'
+                      : 'Finalização do Encerramento do Contrato'}
+                  </h4>
+                  <p className="text-xs text-slate-600 dark:text-slate-300 mt-1">
+                    {contrato.status === 'encerrado'
+                      ? 'Este contrato já foi finalizado, vistoriado e arquivado com sucesso no histórico da imobiliária.'
+                      : progressoEncerramento.estaAptoParaEncerrar
+                        ? 'Todas as 13 etapas de vistoria, rescisão, Sabesp, CPFL e chaves foram cumpridas. O contrato está apto para quitação final.'
+                        : `Atenção: ainda faltam ${progressoEncerramento.total - progressoEncerramento.concluidos} etapas obrigatórias do checklist para permitir o encerramento seguro.`}
+                  </p>
+                </div>
+
+                {contrato.status !== 'encerrado' && (
+                  <button
+                    onClick={handleConcluirEncerramento}
+                    disabled={!progressoEncerramento.estaAptoParaEncerrar}
+                    className={`px-5 py-3 rounded-xl text-xs font-black flex items-center gap-2 shadow-lg transition-all whitespace-nowrap ${
+                      progressoEncerramento.estaAptoParaEncerrar
+                        ? 'bg-red-600 hover:bg-red-700 text-white shadow-red-900/30 cursor-pointer animate-pulse'
+                        : 'bg-slate-200 dark:bg-slate-800 text-slate-400 dark:text-slate-500 cursor-not-allowed opacity-70'
+                    }`}
+                  >
+                    <Lock className="w-4 h-4" />
+                    <span>
+                      {progressoEncerramento.estaAptoParaEncerrar
+                        ? 'Concluir Encerramento Definitivo ⚪'
+                        : `Faltam ${progressoEncerramento.total - progressoEncerramento.concluidos} etapas`}
+                    </span>
+                  </button>
+                )}
               </div>
 
             </div>

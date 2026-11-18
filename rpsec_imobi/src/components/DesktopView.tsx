@@ -18,7 +18,8 @@ import {
   X,
   Phone,
   Sparkles,
-  ArrowRight
+  ArrowRight,
+  Lock
 } from 'lucide-react';
 import { ContratoLocacaoCompleto, Imovel, Cliente } from '../types';
 import { calcularProgressoAbertura, calcularProgressoEncerramento } from '../mockContratos';
@@ -57,6 +58,7 @@ export const DesktopView: React.FC<DesktopViewProps> = ({
 
   // Modais
   const [contratoSelecionado, setContratoSelecionado] = useState<ContratoLocacaoCompleto | null>(null);
+  const [abaInicialModal, setAbaInicialModal] = useState<'abertura' | 'encerramento' | 'anexos'>('abertura');
   const [modalNovoAberto, setModalNovoAberto] = useState(false);
 
   // Contadores & Métricas dos Contratos
@@ -102,10 +104,10 @@ export const DesktopView: React.FC<DesktopViewProps> = ({
 
         <button
           onClick={() => setModalNovoAberto(true)}
-          className="px-4 py-2.5 bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-500 hover:to-red-500 text-white rounded-xl text-xs font-bold flex items-center gap-2 shadow-md shadow-rose-900/20 self-start md:self-auto transition-all"
+          className="px-4 py-2.5 bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-500 hover:to-red-500 text-white rounded-xl text-xs font-bold flex items-center gap-2 shadow-md shadow-rose-900/20 self-start md:self-auto transition-all cursor-pointer"
         >
           <PlusCircle className="w-4 h-4" />
-          <span>+ Novo Contrato de Locação</span>
+          <span>+ Novo Contrato</span>
         </button>
       </div>
 
@@ -472,15 +474,38 @@ export const DesktopView: React.FC<DesktopViewProps> = ({
                     </span>
                   </div>
 
-                  {/* Botão de Ação: Ver Informações & Checklist */}
-                  <button
-                    onClick={() => setContratoSelecionado(contrato)}
-                    className="px-4 py-2.5 bg-slate-900 hover:bg-black dark:bg-white dark:hover:bg-slate-200 text-white dark:text-slate-900 rounded-xl text-xs font-bold flex items-center gap-2 shadow-sm transition-all whitespace-nowrap cursor-pointer"
-                  >
-                    <Eye className="w-4 h-4" />
-                    <span>Ver Informações & Checklist</span>
-                    <ChevronRight className="w-3.5 h-3.5 opacity-60" />
-                  </button>
+                  {/* Botões de Ação */}
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button
+                      onClick={() => {
+                        setAbaInicialModal('abertura');
+                        setContratoSelecionado(contrato);
+                      }}
+                      className="px-3.5 py-2.5 bg-slate-900 hover:bg-black dark:bg-white dark:hover:bg-slate-200 text-white dark:text-slate-900 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-sm transition-all whitespace-nowrap cursor-pointer"
+                    >
+                      <Eye className="w-4 h-4" />
+                      <span>Ver Informações & Checklist</span>
+                      <ChevronRight className="w-3.5 h-3.5 opacity-60" />
+                    </button>
+
+                    {contrato.status === 'ativo' && (
+                      <button
+                        onClick={() => {
+                          setAbaInicialModal('encerramento');
+                          setContratoSelecionado(contrato);
+                        }}
+                        className={`px-3 py-2.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all whitespace-nowrap cursor-pointer ${
+                          contrato.processoAtivo === 'encerramento'
+                            ? 'bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30 hover:bg-amber-500/25'
+                            : 'bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 dark:hover:bg-rose-900/50 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800'
+                        }`}
+                        title="Abrir checklist de rescisão e encerramento deste contrato"
+                      >
+                        <Lock className="w-3.5 h-3.5 text-rose-500" />
+                        <span>{contrato.processoAtivo === 'encerramento' ? 'Continuar Encerramento (13 etapas)' : 'Encerrar Contrato 🚪'}</span>
+                      </button>
+                    )}
+                  </div>
 
                 </div>
 
@@ -494,6 +519,7 @@ export const DesktopView: React.FC<DesktopViewProps> = ({
       {contratoSelecionado && (
         <ContratoChecklistModal
           contrato={contratoSelecionado}
+          initialTab={abaInicialModal}
           onClose={() => setContratoSelecionado(null)}
           onUpdateContrato={(atualizado) => {
             onUpdateContrato(atualizado);
