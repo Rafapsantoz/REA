@@ -107,7 +107,7 @@ export const DesktopView: React.FC<DesktopViewProps> = ({
           className="px-4 py-2.5 bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-500 hover:to-red-500 text-white rounded-xl text-xs font-bold flex items-center gap-2 shadow-md shadow-rose-900/20 self-start md:self-auto transition-all cursor-pointer"
         >
           <PlusCircle className="w-4 h-4" />
-          <span>+ Novo Contrato</span>
+          <span>Novo Contrato</span>
         </button>
       </div>
 
