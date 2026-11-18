@@ -4,7 +4,6 @@ import { DesktopView } from './components/DesktopView';
 import { INITIAL_CLIENTES, INITIAL_IMOVEIS, INITIAL_VISITAS } from './mockData';
 import { INITIAL_CONTRATOS } from './mockContratos';
 import { Cliente, Imovel, VisitaLead, ContratoLocacaoCompleto } from './types';
-import { Sparkles, CheckCircle2 } from 'lucide-react';
 import { ToastProvider } from './components/Toast';
 
 export function App() {
@@ -104,16 +103,15 @@ export function App() {
           />
         </main>
 
-        {/* Footer com Roteiro da Proposta Comercial RPsecti */}
-        <footer className="border-t border-slate-200 dark:border-slate-900 bg-white dark:bg-slate-950/80 py-4 px-4 text-center text-xs text-slate-500 dark:text-slate-400 transition-colors duration-200">
-          <div className="max-w-4xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2">
-            <div className="flex items-center gap-2 text-slate-700 dark:text-slate-300">
-              <Sparkles className="w-4 h-4 text-rose-500" />
-              <span><strong>Proposta Reunião Sábado:</strong> Criação R$ 990 a R$ 1.200 + R$ 490/mês</span>
+        {/* Rodapé Institucional com Copyrights RPsecti */}
+        <footer className="border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 py-4 px-4 text-xs text-slate-500 dark:text-slate-400 transition-colors duration-200">
+          <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2 text-center sm:text-left">
+            <div className="flex items-center gap-2 font-medium">
+              <span>© {new Date().getFullYear()} Manoel Jerônimo Imóveis • CRECI 278536. Todos os direitos reservados.</span>
             </div>
-            <div className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400 text-[11px]">
-              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
-              <span>Sem licenças por usuário • Hospedagem na Nuvem RPsecti • PWA no Celular</span>
+            <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
+              <span>Desenvolvido e mantido por</span>
+              <strong className="text-slate-800 dark:text-slate-200 font-bold">RPsecti Soluções Inteligentes</strong>
             </div>
           </div>
         </footer>
