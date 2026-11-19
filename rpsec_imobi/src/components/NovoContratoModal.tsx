@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
-import { X, FileText, CheckCircle2, Building, DollarSign, Calendar, Users, Shield, Plus, Trash2, Heart, Mail } from 'lucide-react';
+import React, { useState, useMemo, useEffect } from 'react';
+import { X, FileText, CheckCircle2, Building, DollarSign, Calendar, Users, Shield, Plus, Trash2, Heart, Mail, Check } from 'lucide-react';
 import { ContratoLocacaoCompleto, Imovel, Cliente, Corretor } from '../types';
+import { INITIAL_CORRETORES } from '../mockCorretores';
 import { useToast } from './Toast';
 
 interface NovoContratoModalProps {
@@ -9,6 +10,7 @@ interface NovoContratoModalProps {
   imoveis: Imovel[];
   clientes: Cliente[];
   corretores?: Corretor[];
+  contratos?: ContratoLocacaoCompleto[];
 }
 
 export const NovoContratoModal: React.FC<NovoContratoModalProps> = ({
@@ -16,14 +18,52 @@ export const NovoContratoModal: React.FC<NovoContratoModalProps> = ({
   onAddContrato,
   imoveis,
   clientes,
-  corretores = []
+  corretores = [],
+  contratos = []
 }) => {
   const { showToast } = useToast();
 
-  const [numeroOrdem, setNumeroOrdem] = useState('86');
-  const [corretorResponsavel, setCorretorResponsavel] = useState<string>(
-    corretores.length > 0 ? corretores[0].nome : 'Manoel Jerônimo'
-  );
+  // Autoincremento inteligente do número de ordem do contrato
+  const proximoNumeroSugerido = useMemo(() => {
+    if (!contratos || contratos.length === 0) return '86';
+    const numeros = contratos
+      .map(c => parseInt(c.numeroOrdem.replace(/\D/g, ''), 10))
+      .filter(n => !isNaN(n) && n > 0);
+    if (numeros.length === 0) return '1';
+    const maxNum = Math.max(...numeros);
+    return String(maxNum + 1);
+  }, [contratos]);
+
+  const [numeroOrdem, setNumeroOrdem] = useState(proximoNumeroSugerido);
+
+  useEffect(() => {
+    setNumeroOrdem(proximoNumeroSugerido);
+  }, [proximoNumeroSugerido]);
+
+  // Lista consolidada de corretores disponíveis
+  const listaCorretores = useMemo(() => {
+    return corretores.length > 0 ? corretores : INITIAL_CORRETORES;
+  }, [corretores]);
+
+  // Seleção múltipla de corretores responsáveis (pode ser mais de um)
+  const [corretoresSelecionados, setCorretoresSelecionados] = useState<string[]>(() => {
+    const manoel = listaCorretores.find(c => c.nome.toLowerCase().includes('manoel'));
+    if (manoel) return [manoel.nome];
+    if (listaCorretores.length > 0) return [listaCorretores[0].nome];
+    return ['Manoel Jerônimo'];
+  });
+
+  const toggleCorretor = (nome: string) => {
+    if (corretoresSelecionados.includes(nome)) {
+      if (corretoresSelecionados.length <= 1) {
+        showToast("O contrato precisa ter pelo menos 1 corretor responsável.", 'error');
+        return;
+      }
+      setCorretoresSelecionados(prev => prev.filter(n => n !== nome));
+    } else {
+      setCorretoresSelecionados(prev => [...prev, nome]);
+    }
+  };
   const [imovelId, setImovelId] = useState<number>(imoveis[0]?.id || 1);
   const [imovelEndereco, setImovelEndereco] = useState('Rua Santos Dumont, 410, Centro, Mococa/SP');
   const [imovelBairro, setImovelBairro] = useState('Centro');
@@ -97,6 +137,11 @@ export const NovoContratoModal: React.FC<NovoContratoModalProps> = ({
       return;
     }
 
+    if (corretoresSelecionados.length === 0) {
+      showToast("Selecione ao menos 1 corretor responsável pelo contrato.", 'error');
+      return;
+    }
+
     const novoContrato: ContratoLocacaoCompleto = {
       id: `ctr-${Date.now()}`,
       numeroOrdem: numeroOrdem || `${Date.now()}`,
@@ -104,7 +149,8 @@ export const NovoContratoModal: React.FC<NovoContratoModalProps> = ({
       imovelEndereco: imovelEndereco,
       imovelBairro: imovelBairro,
       imovelCidade: imovelCidade,
-      corretorResponsavel: corretorResponsavel,
+      corretorResponsavel: corretoresSelecionados[0] || 'Manoel Jerônimo',
+      corretoresResponsaveis: corretoresSelecionados,
       status: 'pendente', // Sempre inicia como pendente até 100% da abertura
       processoAtivo: 'abertura',
       locador: {
@@ -285,47 +331,106 @@ export const NovoContratoModal: React.FC<NovoContratoModalProps> = ({
 
         {/* Formulário com rolagem independente */}
         <form onSubmit={handleSubmit} className="p-6 space-y-4 overflow-y-auto flex-1">
+          {/* Parâmetros Básicos: Nº Contrato, Vencimento e Repasse */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div>
-              <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">Nº Ordem Contrato *</label>
+              <div className="flex items-center justify-between mb-1">
+                <label className="text-xs font-bold text-slate-700 dark:text-slate-300">Nº Ordem Contrato *</label>
+                <span className="text-[10px] font-semibold text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/60 px-1.5 py-0.5 rounded border border-rose-200 dark:border-rose-800">
+                  Autoincremento
+                </span>
+              </div>
               <input
                 type="text"
                 required
                 value={numeroOrdem}
                 onChange={(e) => setNumeroOrdem(e.target.value)}
-                placeholder="Ex: 86"
-                className="w-full text-xs p-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 font-bold"
+                placeholder={`Sugerido: ${proximoNumeroSugerido}`}
+                className="w-full text-xs p-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 font-black text-rose-600 dark:text-rose-400"
               />
             </div>
             <div>
               <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">Dia Vencimento *</label>
               <input
                 type="number"
+                min="1"
+                max="31"
                 value={vencimentoDia}
                 onChange={(e) => setVencimentoDia(Number(e.target.value))}
-                className="w-full text-xs p-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700"
+                className="w-full text-xs p-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 font-semibold"
               />
             </div>
             <div>
-              <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1 flex items-center gap-1.5">
+              <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">Dia Repasse Locador *</label>
+              <input
+                type="number"
+                min="1"
+                max="31"
+                value={repasseDia}
+                onChange={(e) => setRepasseDia(Number(e.target.value))}
+                className="w-full text-xs p-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 font-semibold"
+              />
+            </div>
+          </div>
+
+          {/* Seleção de Múltiplos Corretores Responsáveis */}
+          <div className="p-3.5 bg-slate-50 dark:bg-slate-950 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-2">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+              <label className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
                 <Shield className="w-3.5 h-3.5 text-rose-500" />
-                <span>Corretor Responsável *</span>
+                <span>Corretores Responsáveis pelo Contrato *</span>
+                <span className="text-[11px] font-normal text-slate-400 hidden sm:inline">
+                  (Clique para marcar/desmarcar; pode selecionar mais de um)
+                </span>
               </label>
-              <select
-                value={corretorResponsavel}
-                onChange={(e) => setCorretorResponsavel(e.target.value)}
-                className="w-full text-xs p-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 font-semibold"
-              >
-                {corretores.length > 0 ? (
-                  corretores.map(c => (
-                    <option key={c.id} value={c.nome}>
-                      {c.nome} (CRECI {c.creci})
-                    </option>
-                  ))
-                ) : (
-                  <option value="Manoel Jerônimo">Manoel Jerônimo (CRECI 278536)</option>
-                )}
-              </select>
+              <div className="flex items-center gap-1.5">
+                <span className="text-[10px] font-bold text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/60 px-2 py-0.5 rounded-full border border-rose-200 dark:border-rose-800">
+                  {corretoresSelecionados.length} selecionado{corretoresSelecionados.length > 1 ? 's' : ''}
+                </span>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1">
+              {listaCorretores.map(c => {
+                const isSelected = corretoresSelecionados.includes(c.nome);
+                return (
+                  <button
+                    type="button"
+                    key={c.id || c.nome}
+                    onClick={() => toggleCorretor(c.nome)}
+                    className={`p-2.5 rounded-xl border text-left flex items-center justify-between transition-all cursor-pointer ${
+                      isSelected
+                        ? 'bg-rose-50 dark:bg-rose-950/40 border-rose-400 dark:border-rose-600 shadow-sm ring-1 ring-rose-400'
+                        : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold flex-shrink-0 ${
+                        isSelected 
+                          ? 'bg-rose-600 text-white' 
+                          : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
+                      }`}>
+                        {c.nome.charAt(0)}
+                      </div>
+                      <div className="min-w-0 truncate">
+                        <p className={`text-xs truncate ${isSelected ? 'font-bold text-rose-950 dark:text-rose-100' : 'font-medium text-slate-700 dark:text-slate-300'}`}>
+                          {c.nome}
+                        </p>
+                        <p className="text-[10px] text-slate-400 font-medium truncate">
+                          CRECI {c.creci}
+                        </p>
+                      </div>
+                    </div>
+                    <div className={`w-5 h-5 rounded-md flex items-center justify-center flex-shrink-0 text-xs transition-colors ml-2 ${
+                      isSelected 
+                        ? 'bg-rose-600 text-white' 
+                        : 'border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800'
+                    }`}>
+                      {isSelected ? <Check className="w-3.5 h-3.5 stroke-[3]" /> : null}
+                    </div>
+                  </button>
+                );
+              })}
             </div>
           </div>
 

@@ -87,6 +87,10 @@ export function App() {
     setContratos(prev => [novoContrato, ...prev]);
   };
 
+  const handleDeleteContrato = (id: string) => {
+    setContratos(prev => prev.filter(c => c.id !== id));
+  };
+
   // Handlers de Corretores
   const handleAddCorretor = (novo: Corretor) => {
     setCorretores(prev => [novo, ...prev]);
@@ -128,6 +132,7 @@ export function App() {
               onUpdateImovel={handleUpdateImovel}
               onUpdateContrato={handleUpdateContrato}
               onAddContrato={handleAddContrato}
+              onDeleteContrato={handleDeleteContrato}
             />
           )}
 

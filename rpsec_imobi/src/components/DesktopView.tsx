@@ -19,7 +19,8 @@ import {
   Phone,
   Sparkles,
   ArrowRight,
-  Lock
+  Lock,
+  Trash2
 } from 'lucide-react';
 import { ContratoLocacaoCompleto, Imovel, Cliente, Corretor } from '../types';
 import { calcularProgressoAbertura, calcularProgressoEncerramento } from '../mockContratos';
@@ -31,6 +32,7 @@ interface DesktopViewProps {
   contratos: ContratoLocacaoCompleto[];
   onUpdateContrato: (contratoAtualizado: ContratoLocacaoCompleto) => void;
   onAddContrato: (novoContrato: ContratoLocacaoCompleto) => void;
+  onDeleteContrato?: (id: string) => void;
   imoveis?: Imovel[];
   clientes?: Cliente[];
   corretores?: Corretor[];
@@ -46,11 +48,24 @@ export const DesktopView: React.FC<DesktopViewProps> = ({
   contratos,
   onUpdateContrato,
   onAddContrato,
+  onDeleteContrato,
   imoveis = [],
   clientes = [],
   corretores = []
 }) => {
   const { showToast } = useToast();
+
+  const handleExcluirContrato = (id: string, numeroOrdem: string, inquilinoNome: string) => {
+    const confirmar = window.confirm(
+      `Deseja realmente excluir o contrato em abertura Nº ${numeroOrdem} (Inquilino: ${inquilinoNome})?\n\nEsta proposta/minuta será removida definitivamente.`
+    );
+    if (confirmar) {
+      if (onDeleteContrato) {
+        onDeleteContrato(id);
+        showToast(`Contrato Nº ${numeroOrdem} excluído com sucesso!`, 'info');
+      }
+    }
+  };
 
   // Filtro de status: todos | pendente_abertura | pendente_fechamento | ativo | encerrado
   const [statusFilter, setStatusFilter] = useState<'todos' | 'pendente_abertura' | 'pendente_fechamento' | 'ativo' | 'encerrado'>('todos');
@@ -470,6 +485,13 @@ export const DesktopView: React.FC<DesktopViewProps> = ({
                       <span><strong>Telefone Inquilino:</strong> {contrato.locatario.telefone}</span>
                       <span>•</span>
                       <span><strong>Vigência:</strong> {contrato.vigencia.inicio} a {contrato.vigencia.fim}</span>
+                      <span>•</span>
+                      <span className="flex items-center gap-1 text-rose-600 dark:text-rose-400 font-medium">
+                        <Shield className="w-3 h-3 text-rose-500" />
+                        <strong>Corretor(es):</strong> {contrato.corretoresResponsaveis && contrato.corretoresResponsaveis.length > 0
+                          ? contrato.corretoresResponsaveis.join(', ')
+                          : (contrato.corretorResponsavel || 'Manoel Jerônimo')}
+                      </span>
                     </div>
 
                     {/* BADGES DE ALERTAS IMEDIATOS: PENDÊNCIAS DE ABERTURA */}
@@ -577,21 +599,48 @@ export const DesktopView: React.FC<DesktopViewProps> = ({
                       <ChevronRight className="w-3.5 h-3.5 opacity-60" />
                     </button>
 
-                    {contrato.status !== 'encerrado' && (
+                    {/* Caso 1: Contrato em abertura e pendente (NUNCA botão de encerramento; exibir botão de exclusão de minuta) */}
+                    {!isEncerramento && contrato.status === 'pendente' && (
                       <button
+                        type="button"
+                        onClick={() => handleExcluirContrato(contrato.id, contrato.numeroOrdem, contrato.locatario.nome)}
+                        className="px-3 py-2.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all whitespace-nowrap cursor-pointer bg-red-50 hover:bg-red-100 dark:bg-red-950/40 dark:hover:bg-red-900/50 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-800 shadow-sm"
+                        title="Excluir minuta/contrato em processo de abertura"
+                      >
+                        <Trash2 className="w-3.5 h-3.5 text-red-500" />
+                        <span>Excluir Contrato 🗑️</span>
+                      </button>
+                    )}
+
+                    {/* Caso 2: Contrato ativo regular (exibe botão de Encerrar Contrato para iniciar checklist de rescisão) */}
+                    {!isEncerramento && contrato.status === 'ativo' && (
+                      <button
+                        type="button"
                         onClick={() => {
                           setAbaInicialModal('encerramento');
                           setContratoSelecionado(contrato);
                         }}
-                        className={`px-3 py-2.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all whitespace-nowrap cursor-pointer ${
-                          isEncerramento
-                            ? 'bg-orange-500/15 text-orange-700 dark:text-orange-300 border border-orange-500/30 hover:bg-orange-500/25'
-                            : 'bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 dark:hover:bg-rose-900/50 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800'
-                        }`}
+                        className="px-3 py-2.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all whitespace-nowrap cursor-pointer bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 dark:hover:bg-rose-900/50 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800 shadow-sm"
                         title="Abrir checklist de rescisão e encerramento deste contrato"
                       >
                         <Lock className="w-3.5 h-3.5 text-rose-500" />
-                        <span>{isEncerramento ? 'Continuar Fechamento (13 etapas) 🚪' : 'Encerrar Contrato 🚪'}</span>
+                        <span>Encerrar Contrato 🚪</span>
+                      </button>
+                    )}
+
+                    {/* Caso 3: Contrato em processo ativo de encerramento (Continuar Fechamento) */}
+                    {isEncerramento && contrato.status !== 'encerrado' && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setAbaInicialModal('encerramento');
+                          setContratoSelecionado(contrato);
+                        }}
+                        className="px-3 py-2.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all whitespace-nowrap cursor-pointer bg-orange-500/15 text-orange-700 dark:text-orange-300 border border-orange-500/30 hover:bg-orange-500/25 shadow-sm"
+                        title="Continuar checklist de rescisão e encerramento"
+                      >
+                        <Lock className="w-3.5 h-3.5 text-orange-500" />
+                        <span>Continuar Fechamento (13 etapas) 🚪</span>
                       </button>
                     )}
                   </div>
@@ -609,6 +658,7 @@ export const DesktopView: React.FC<DesktopViewProps> = ({
         <ContratoChecklistModal
           contrato={contratoSelecionado}
           initialTab={abaInicialModal}
+          corretores={corretores}
           onClose={() => setContratoSelecionado(null)}
           onUpdateContrato={(atualizado) => {
             onUpdateContrato(atualizado);
@@ -625,6 +675,7 @@ export const DesktopView: React.FC<DesktopViewProps> = ({
           imoveis={imoveis}
           clientes={clientes}
           corretores={corretores}
+          contratos={contratos}
         />
       )}
 

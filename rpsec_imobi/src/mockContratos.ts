@@ -10,6 +10,8 @@ export const INITIAL_CONTRATOS: ContratoLocacaoCompleto[] = [
     imovelEndereco: "Rua Francisco Lima de Souza Dias, 195",
     imovelBairro: "Jd. Santa Clara",
     imovelCidade: "Mococa/SP",
+    corretorResponsavel: "Manoel Jerônimo",
+    corretoresResponsaveis: ["Manoel Jerônimo", "Carla Mendes"],
     status: "pendente",
     processoAtivo: "abertura",
     locador: {
@@ -232,6 +234,8 @@ export const INITIAL_CONTRATOS: ContratoLocacaoCompleto[] = [
     imovelEndereco: "Av. Gabriel do Ó, 340, Apto 22",
     imovelBairro: "Parque das Azaleias",
     imovelCidade: "Mococa/SP",
+    corretorResponsavel: "Carla Mendes",
+    corretoresResponsaveis: ["Carla Mendes"],
     status: "ativo",
     processoAtivo: "abertura",
     locador: {
@@ -389,6 +393,8 @@ export const INITIAL_CONTRATOS: ContratoLocacaoCompleto[] = [
     imovelEndereco: "Rua Almirante Barroso, 88",
     imovelBairro: "Jd. São Domingos",
     imovelCidade: "Mococa/SP",
+    corretorResponsavel: "Manoel Jerônimo",
+    corretoresResponsaveis: ["Manoel Jerônimo"],
     status: "encerrado",
     processoAtivo: "encerramento",
     locador: {

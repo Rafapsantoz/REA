@@ -29,8 +29,9 @@ import {
   Heart,
   Building
 } from 'lucide-react';
-import { ContratoLocacaoCompleto, Morador, Testemunha, AnexoArquivo, LocatarioAdicional } from '../types';
+import { ContratoLocacaoCompleto, Morador, Testemunha, AnexoArquivo, LocatarioAdicional, Corretor } from '../types';
 import { calcularProgressoAbertura, calcularProgressoEncerramento } from '../mockContratos';
+import { INITIAL_CORRETORES } from '../mockCorretores';
 import { useToast } from './Toast';
 
 interface ContratoChecklistModalProps {
@@ -38,16 +39,43 @@ interface ContratoChecklistModalProps {
   onClose: () => void;
   onUpdateContrato: (contratoAtualizado: ContratoLocacaoCompleto) => void;
   initialTab?: 'abertura' | 'encerramento' | 'anexos';
+  corretores?: Corretor[];
 }
 
 export const ContratoChecklistModal: React.FC<ContratoChecklistModalProps> = ({
   contrato: initialContrato,
   onClose,
   onUpdateContrato,
-  initialTab
+  initialTab,
+  corretores = []
 }) => {
   const { showToast } = useToast();
   const [contrato, setContrato] = useState<ContratoLocacaoCompleto>(initialContrato);
+  
+  const listaCorretoresDisponiveis = corretores && corretores.length > 0 ? corretores : INITIAL_CORRETORES;
+
+  const handleToggleCorretor = (nomeCorretor: string) => {
+    const atuais = contrato.corretoresResponsaveis || (contrato.corretorResponsavel ? [contrato.corretorResponsavel] : ['Manoel Jerônimo']);
+    if (atuais.includes(nomeCorretor)) {
+      if (atuais.length <= 1) {
+        showToast("O contrato precisa ter ao menos um corretor responsável.", 'error');
+        return;
+      }
+      const novos = atuais.filter(c => c !== nomeCorretor);
+      setContrato(prev => ({
+        ...prev,
+        corretoresResponsaveis: novos,
+        corretorResponsavel: novos[0] || prev.corretorResponsavel
+      }));
+    } else {
+      const novos = [...atuais, nomeCorretor];
+      setContrato(prev => ({
+        ...prev,
+        corretoresResponsaveis: novos,
+        corretorResponsavel: novos[0] || prev.corretorResponsavel
+      }));
+    }
+  };
   
   // Abas internas: Abertura vs Encerramento vs Anexos
   const [activeTab, setActiveTab] = useState<'abertura' | 'encerramento' | 'anexos'>(
@@ -347,6 +375,10 @@ export const ContratoChecklistModal: React.FC<ContratoChecklistModalProps> = ({
                 </span>
                 <span>•</span>
                 <span><strong>Aluguel:</strong> R$ {contrato.valores.aluguel.toLocaleString('pt-BR')},00</span>
+                <span>•</span>
+                <span className="text-rose-600 dark:text-rose-400 font-medium">
+                  <strong>Corretor(es):</strong> {contrato.corretoresResponsaveis?.join(', ') || contrato.corretorResponsavel || 'Manoel Jerônimo'}
+                </span>
               </p>
             </div>
           </div>
@@ -534,6 +566,58 @@ export const ContratoChecklistModal: React.FC<ContratoChecklistModalProps> = ({
                       <Plus className="w-3.5 h-3.5" />
                       <span>Adicionar Locatário</span>
                     </button>
+                  </div>
+                </div>
+
+                {/* BLOCO 0: CORRETORES RESPONSÁVEIS */}
+                <div className="space-y-3 p-4 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <span className="text-xs font-bold text-rose-700 dark:text-rose-400 uppercase tracking-wider flex items-center gap-1.5">
+                      <Shield className="w-3.5 h-3.5 text-rose-500" />
+                      Corretores Responsáveis pelo Contrato (Co-responsabilidade / Parceria)
+                    </span>
+                    <span className="text-[10px] text-slate-400 font-medium">
+                      Clique no corretor para adicionar ou remover da gestão
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                    {listaCorretoresDisponiveis.map(c => {
+                      const selecionados = contrato.corretoresResponsaveis || (contrato.corretorResponsavel ? [contrato.corretorResponsavel] : ['Manoel Jerônimo']);
+                      const isSelected = selecionados.includes(c.nome);
+
+                      return (
+                        <button
+                          type="button"
+                          key={c.id || c.nome}
+                          onClick={() => handleToggleCorretor(c.nome)}
+                          className={`p-2.5 rounded-xl border text-left flex items-center justify-between transition-all cursor-pointer ${
+                            isSelected
+                              ? 'bg-rose-50 dark:bg-rose-950/40 border-rose-400 dark:border-rose-600 shadow-sm ring-1 ring-rose-400'
+                              : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
+                          }`}
+                        >
+                          <div className="flex items-center gap-2 min-w-0">
+                            <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold flex-shrink-0 ${
+                              isSelected ? 'bg-rose-600 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
+                            }`}>
+                              {c.nome.charAt(0)}
+                            </div>
+                            <div className="min-w-0 truncate">
+                              <p className={`text-xs truncate ${isSelected ? 'font-bold text-rose-950 dark:text-rose-100' : 'font-medium text-slate-700 dark:text-slate-300'}`}>
+                                {c.nome}
+                              </p>
+                              <p className="text-[10px] text-slate-400 font-medium">CRECI {c.creci}</p>
+                            </div>
+                          </div>
+                          <span className={`w-5 h-5 rounded-md flex items-center justify-center flex-shrink-0 text-xs font-bold ${
+                            isSelected ? 'bg-rose-600 text-white' : 'border border-slate-300 dark:border-slate-600'
+                          }`}>
+                            {isSelected ? '✓' : ''}
+                          </span>
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
 

@@ -255,7 +255,8 @@ export interface ContratoLocacaoCompleto {
   imovelEndereco: string;
   imovelBairro: string;
   imovelCidade: string;
-  corretorResponsavel?: string; // Nome ou ID do corretor responsável
+  corretorResponsavel?: string; // Nome ou ID do corretor principal
+  corretoresResponsaveis?: string[]; // Lista de corretores responsáveis (pode ser mais de um)
   
   status: StatusContrato; // 'pendente' | 'ativo' | 'encerrado'
   processoAtivo: ProcessoContrato; // 'abertura' | 'encerramento'
