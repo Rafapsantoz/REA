@@ -57,7 +57,7 @@ export const DesktopView: React.FC<DesktopViewProps> = ({
 
   const handleExcluirContrato = (id: string, numeroOrdem: string, inquilinoNome: string) => {
     const confirmar = window.confirm(
-      `Deseja realmente excluir o contrato em abertura Nº ${numeroOrdem} (Inquilino: ${inquilinoNome})?\n\nEsta proposta/minuta será removida definitivamente.`
+      `Deseja realmente excluir o Contrato Nº ${numeroOrdem} (Inquilino: ${inquilinoNome})?\n\nEsta ação não poderá ser desfeita.`
     );
     if (confirmar) {
       if (onDeleteContrato) {
@@ -405,8 +405,20 @@ export const DesktopView: React.FC<DesktopViewProps> = ({
             return (
               <div 
                 key={contrato.id}
-                className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 shadow-sm hover:shadow-md transition-all flex flex-col lg:flex-row lg:items-center justify-between gap-5"
+                className="relative bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 pr-12 lg:pr-14 shadow-sm hover:shadow-md transition-all flex flex-col lg:flex-row lg:items-center justify-between gap-5 group"
               >
+                {/* Lixeira no canto superior direito do card do contrato */}
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleExcluirContrato(contrato.id, contrato.numeroOrdem, contrato.locatario.nome);
+                  }}
+                  className="absolute top-3.5 right-3.5 p-2 text-slate-300 dark:text-slate-600 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 rounded-xl transition-all cursor-pointer z-10"
+                  title={`Excluir Contrato Nº ${contrato.numeroOrdem}`}
+                >
+                  <Trash2 className="w-4 h-4 transition-colors" />
+                </button>
                 
                 {/* Lado Esquerdo: Identificação do Contrato, Inquilino e Imóvel */}
                 <div className="flex items-start gap-4 flex-1">
@@ -599,20 +611,7 @@ export const DesktopView: React.FC<DesktopViewProps> = ({
                       <ChevronRight className="w-3.5 h-3.5 opacity-60" />
                     </button>
 
-                    {/* Caso 1: Contrato em abertura e pendente (NUNCA botão de encerramento; exibir botão de exclusão de minuta) */}
-                    {!isEncerramento && contrato.status === 'pendente' && (
-                      <button
-                        type="button"
-                        onClick={() => handleExcluirContrato(contrato.id, contrato.numeroOrdem, contrato.locatario.nome)}
-                        className="px-3 py-2.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all whitespace-nowrap cursor-pointer bg-red-50 hover:bg-red-100 dark:bg-red-950/40 dark:hover:bg-red-900/50 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-800 shadow-sm"
-                        title="Excluir minuta/contrato em processo de abertura"
-                      >
-                        <Trash2 className="w-3.5 h-3.5 text-red-500" />
-                        <span>Excluir Contrato 🗑️</span>
-                      </button>
-                    )}
-
-                    {/* Caso 2: Contrato ativo regular (exibe botão de Encerrar Contrato para iniciar checklist de rescisão) */}
+                    {/* Caso 1: Contrato ativo regular (exibe botão de Encerrar Contrato para iniciar checklist de rescisão) */}
                     {!isEncerramento && contrato.status === 'ativo' && (
                       <button
                         type="button"
