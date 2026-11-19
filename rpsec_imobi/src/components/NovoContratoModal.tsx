@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { X, FileText, CheckCircle2, Building, DollarSign, Calendar, Users, Shield, Plus, Trash2, Heart } from 'lucide-react';
-import { ContratoLocacaoCompleto, Imovel, Cliente } from '../types';
+import { X, FileText, CheckCircle2, Building, DollarSign, Calendar, Users, Shield, Plus, Trash2, Heart, Mail } from 'lucide-react';
+import { ContratoLocacaoCompleto, Imovel, Cliente, Corretor } from '../types';
 import { useToast } from './Toast';
 
 interface NovoContratoModalProps {
@@ -8,17 +8,22 @@ interface NovoContratoModalProps {
   onAddContrato: (novoContrato: ContratoLocacaoCompleto) => void;
   imoveis: Imovel[];
   clientes: Cliente[];
+  corretores?: Corretor[];
 }
 
 export const NovoContratoModal: React.FC<NovoContratoModalProps> = ({
   onClose,
   onAddContrato,
   imoveis,
-  clientes
+  clientes,
+  corretores = []
 }) => {
   const { showToast } = useToast();
 
   const [numeroOrdem, setNumeroOrdem] = useState('86');
+  const [corretorResponsavel, setCorretorResponsavel] = useState<string>(
+    corretores.length > 0 ? corretores[0].nome : 'Manoel Jerônimo'
+  );
   const [imovelId, setImovelId] = useState<number>(imoveis[0]?.id || 1);
   const [imovelEndereco, setImovelEndereco] = useState('Rua Santos Dumont, 410, Centro, Mococa/SP');
   const [imovelBairro, setImovelBairro] = useState('Centro');
@@ -77,6 +82,16 @@ export const NovoContratoModal: React.FC<NovoContratoModalProps> = ({
       return;
     }
 
+    if (!locadorEmail.trim() || !locadorEmail.includes('@')) {
+      showToast("O endereço de e-mail do proprietário é obrigatório.", 'error');
+      return;
+    }
+
+    if (!locatarioEmail.trim() || !locatarioEmail.includes('@')) {
+      showToast("O endereço de e-mail do locatário principal é obrigatório.", 'error');
+      return;
+    }
+
     if (temConjugeLocador && !conjugeNome.trim()) {
       showToast("Você marcou que o proprietário possui cônjuge. Informe o nome do cônjuge.", 'error');
       return;
@@ -89,6 +104,7 @@ export const NovoContratoModal: React.FC<NovoContratoModalProps> = ({
       imovelEndereco: imovelEndereco,
       imovelBairro: imovelBairro,
       imovelCidade: imovelCidade,
+      corretorResponsavel: corretorResponsavel,
       status: 'pendente', // Sempre inicia como pendente até 100% da abertura
       processoAtivo: 'abertura',
       locador: {
@@ -269,7 +285,7 @@ export const NovoContratoModal: React.FC<NovoContratoModalProps> = ({
 
         {/* Formulário com rolagem independente */}
         <form onSubmit={handleSubmit} className="p-6 space-y-4 overflow-y-auto flex-1">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div>
               <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">Nº Ordem Contrato *</label>
               <input
@@ -289,6 +305,27 @@ export const NovoContratoModal: React.FC<NovoContratoModalProps> = ({
                 onChange={(e) => setVencimentoDia(Number(e.target.value))}
                 className="w-full text-xs p-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700"
               />
+            </div>
+            <div>
+              <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1 flex items-center gap-1.5">
+                <Shield className="w-3.5 h-3.5 text-rose-500" />
+                <span>Corretor Responsável *</span>
+              </label>
+              <select
+                value={corretorResponsavel}
+                onChange={(e) => setCorretorResponsavel(e.target.value)}
+                className="w-full text-xs p-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 font-semibold"
+              >
+                {corretores.length > 0 ? (
+                  corretores.map(c => (
+                    <option key={c.id} value={c.nome}>
+                      {c.nome} (CRECI {c.creci})
+                    </option>
+                  ))
+                ) : (
+                  <option value="Manoel Jerônimo">Manoel Jerônimo (CRECI 278536)</option>
+                )}
+              </select>
             </div>
           </div>
 
@@ -315,7 +352,7 @@ export const NovoContratoModal: React.FC<NovoContratoModalProps> = ({
               </label>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
               <div>
                 <label className="text-[11px] text-slate-500 block mb-0.5">Nome do Proprietário *</label>
                 <input
@@ -334,6 +371,20 @@ export const NovoContratoModal: React.FC<NovoContratoModalProps> = ({
                   placeholder="(19) 99781-2345"
                   value={locadorTelefone}
                   onChange={(e) => setLocadorTelefone(e.target.value)}
+                  className="w-full text-xs p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-medium"
+                />
+              </div>
+              <div>
+                <label className="text-[11px] text-slate-500 block mb-0.5 flex items-center gap-1">
+                  <Mail className="w-3 h-3 text-rose-500" />
+                  <span>Endereço de E-mail *</span>
+                </label>
+                <input
+                  type="email"
+                  required
+                  placeholder="proprietario@email.com"
+                  value={locadorEmail}
+                  onChange={(e) => setLocadorEmail(e.target.value)}
                   className="w-full text-xs p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-medium"
                 />
               </div>
@@ -440,7 +491,7 @@ export const NovoContratoModal: React.FC<NovoContratoModalProps> = ({
                 </span>
                 <span className="text-[10px] text-slate-400 font-medium">Responsável principal</span>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-4 gap-2">
                 <input
                   type="text"
                   required
@@ -463,6 +514,14 @@ export const NovoContratoModal: React.FC<NovoContratoModalProps> = ({
                   onChange={(e) => setLocatarioTelefone(e.target.value)}
                   className="text-xs p-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700"
                 />
+                <input
+                  type="email"
+                  required
+                  placeholder="Endereço de E-mail *"
+                  value={locatarioEmail}
+                  onChange={(e) => setLocatarioEmail(e.target.value)}
+                  className="text-xs p-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 font-medium"
+                />
               </div>
             </div>
 
@@ -484,7 +543,7 @@ export const NovoContratoModal: React.FC<NovoContratoModalProps> = ({
                     <span>Remover</span>
                   </button>
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                <div className="grid grid-cols-1 sm:grid-cols-4 gap-2">
                   <input
                     type="text"
                     required
@@ -506,6 +565,13 @@ export const NovoContratoModal: React.FC<NovoContratoModalProps> = ({
                     value={loc.telefone}
                     onChange={(e) => handleUpdateLocatario(loc.id, 'telefone', e.target.value)}
                     className="text-xs p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700"
+                  />
+                  <input
+                    type="email"
+                    placeholder="Endereço de E-mail *"
+                    value={loc.email || ''}
+                    onChange={(e) => handleUpdateLocatario(loc.id, 'email', e.target.value)}
+                    className="text-xs p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-medium"
                   />
                 </div>
               </div>

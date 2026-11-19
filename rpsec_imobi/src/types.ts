@@ -220,6 +220,24 @@ export interface AnexoArquivo {
   dataUpload: string;
 }
 
+export interface Corretor {
+  id: string;
+  nome: string;
+  creci: string;
+  email: string;
+  telefone: string;
+  cpf?: string;
+  cargo: string; // Ex: "Corretor de Imóveis", "Especialista em Locação", "Coordenador Comercial", "Avaliador Perito"
+  especialidades: string[]; // Ex: ["Locação Residencial", "Comercial", "Vistoria"]
+  comissaoPadrao?: number; // Percentual padrão, ex: 50%
+  status: 'ativo' | 'inativo';
+  dataCadastro: string;
+  totalContratos?: number;
+  totalImoveis?: number;
+  avatarUrl?: string;
+  bio?: string;
+}
+
 export interface LocatarioAdicional {
   id: string;
   nome: string;
@@ -237,6 +255,7 @@ export interface ContratoLocacaoCompleto {
   imovelEndereco: string;
   imovelBairro: string;
   imovelCidade: string;
+  corretorResponsavel?: string; // Nome ou ID do corretor responsável
   
   status: StatusContrato; // 'pendente' | 'ativo' | 'encerrado'
   processoAtivo: ProcessoContrato; // 'abertura' | 'encerramento'

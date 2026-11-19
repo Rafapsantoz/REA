@@ -63,6 +63,7 @@ export const ContratoChecklistModal: React.FC<ContratoChecklistModalProps> = ({
   const [novoMoradorVinculo, setNovoMoradorVinculo] = useState('Filho(a)');
   const [novoMoradorCpf, setNovoMoradorCpf] = useState('');
   const [novoMoradorRg, setNovoMoradorRg] = useState('');
+  const [novoMoradorEmail, setNovoMoradorEmail] = useState('');
   const [mostrarAddMorador, setMostrarAddMorador] = useState(false);
 
   const handleSalvar = () => {
@@ -127,6 +128,7 @@ export const ContratoChecklistModal: React.FC<ContratoChecklistModalProps> = ({
       vinculo: novoMoradorVinculo,
       cpf: novoMoradorCpf || "Não informado",
       rg: novoMoradorRg || "Não informado",
+      email: novoMoradorEmail.trim() || undefined,
       documentosAnexados: true
     };
     const novosMoradores = [...contrato.moradores, novo];
@@ -141,6 +143,7 @@ export const ContratoChecklistModal: React.FC<ContratoChecklistModalProps> = ({
     setNovoMoradorNome('');
     setNovoMoradorCpf('');
     setNovoMoradorRg('');
+    setNovoMoradorEmail('');
     setMostrarAddMorador(false);
     showToast(`${novo.nome} vinculado ao imóvel com sucesso.`, 'success');
   };
@@ -527,7 +530,7 @@ export const ContratoChecklistModal: React.FC<ContratoChecklistModalProps> = ({
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-4 gap-2.5">
-                    <div className="sm:col-span-2">
+                    <div>
                       <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 mb-0.5">Nome do Proprietário</label>
                       <input
                         type="text"
@@ -551,6 +554,15 @@ export const ContratoChecklistModal: React.FC<ContratoChecklistModalProps> = ({
                         type="text"
                         value={contrato.locador.telefone}
                         onChange={(e) => handleUpdateLocador('telefone', e.target.value)}
+                        className="w-full text-xs p-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 mb-0.5">Endereço de E-mail</label>
+                      <input
+                        type="email"
+                        value={contrato.locador.email}
+                        onChange={(e) => handleUpdateLocador('email', e.target.value)}
                         className="w-full text-xs p-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700"
                       />
                     </div>
@@ -634,7 +646,7 @@ export const ContratoChecklistModal: React.FC<ContratoChecklistModalProps> = ({
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-4 gap-2.5">
-                    <div className="sm:col-span-2">
+                    <div>
                       <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 mb-0.5">Nome do Titular</label>
                       <input
                         type="text"
@@ -661,6 +673,15 @@ export const ContratoChecklistModal: React.FC<ContratoChecklistModalProps> = ({
                         className="w-full text-xs p-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700"
                       />
                     </div>
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 mb-0.5">Endereço de E-mail</label>
+                      <input
+                        type="email"
+                        value={contrato.locatario.email}
+                        onChange={(e) => handleUpdateLocatarioPrincipal('email', e.target.value)}
+                        className="w-full text-xs p-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 font-medium"
+                      />
+                    </div>
                   </div>
 
                   {/* CO-LOCATÁRIOS ADICIONAIS */}
@@ -681,7 +702,7 @@ export const ContratoChecklistModal: React.FC<ContratoChecklistModalProps> = ({
                         </button>
                       </div>
                       <div className="grid grid-cols-1 sm:grid-cols-4 gap-2">
-                        <div className="sm:col-span-2">
+                        <div>
                           <input
                             type="text"
                             placeholder="Nome Completo *"
@@ -706,6 +727,15 @@ export const ContratoChecklistModal: React.FC<ContratoChecklistModalProps> = ({
                             value={loc.telefone}
                             onChange={(e) => handleAtualizarLocatario(loc.id, 'telefone', e.target.value)}
                             className="w-full text-xs p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-indigo-200 dark:border-indigo-800/80"
+                          />
+                        </div>
+                        <div>
+                          <input
+                            type="email"
+                            placeholder="Endereço de E-mail *"
+                            value={loc.email || ''}
+                            onChange={(e) => handleAtualizarLocatario(loc.id, 'email', e.target.value)}
+                            className="w-full text-xs p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-indigo-200 dark:border-indigo-800/80 font-medium"
                           />
                         </div>
                       </div>
@@ -1036,10 +1066,10 @@ export const ContratoChecklistModal: React.FC<ContratoChecklistModalProps> = ({
                 {/* Formulário rápido de adicionar morador */}
                 {mostrarAddMorador && (
                   <div className="p-3 mb-3 bg-white dark:bg-slate-900 rounded-xl border border-rose-200 dark:border-rose-900/50 space-y-2 animate-fade-in">
-                    <div className="grid grid-cols-1 sm:grid-cols-4 gap-2">
+                    <div className="grid grid-cols-1 sm:grid-cols-5 gap-2">
                       <input
                         type="text"
-                        placeholder="Nome do Morador"
+                        placeholder="Nome do Morador *"
                         value={novoMoradorNome}
                         onChange={(e) => setNovoMoradorNome(e.target.value)}
                         className="text-xs p-2 rounded bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700"
@@ -1067,6 +1097,13 @@ export const ContratoChecklistModal: React.FC<ContratoChecklistModalProps> = ({
                         placeholder="RG"
                         value={novoMoradorRg}
                         onChange={(e) => setNovoMoradorRg(e.target.value)}
+                        className="text-xs p-2 rounded bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700"
+                      />
+                      <input
+                        type="email"
+                        placeholder="Endereço de E-mail"
+                        value={novoMoradorEmail}
+                        onChange={(e) => setNovoMoradorEmail(e.target.value)}
                         className="text-xs p-2 rounded bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700"
                       />
                     </div>

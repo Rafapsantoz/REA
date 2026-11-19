@@ -21,7 +21,7 @@ import {
   ArrowRight,
   Lock
 } from 'lucide-react';
-import { ContratoLocacaoCompleto, Imovel, Cliente } from '../types';
+import { ContratoLocacaoCompleto, Imovel, Cliente, Corretor } from '../types';
 import { calcularProgressoAbertura, calcularProgressoEncerramento } from '../mockContratos';
 import { ContratoChecklistModal } from './ContratoChecklistModal';
 import { NovoContratoModal } from './NovoContratoModal';
@@ -33,6 +33,7 @@ interface DesktopViewProps {
   onAddContrato: (novoContrato: ContratoLocacaoCompleto) => void;
   imoveis?: Imovel[];
   clientes?: Cliente[];
+  corretores?: Corretor[];
   onAddImovel?: (novo: Imovel) => void;
   onAddCliente?: (novo: Cliente) => void;
   onUpdateImovelStatus?: (id: number, status: Imovel['status']) => void;
@@ -46,7 +47,8 @@ export const DesktopView: React.FC<DesktopViewProps> = ({
   onUpdateContrato,
   onAddContrato,
   imoveis = [],
-  clientes = []
+  clientes = [],
+  corretores = []
 }) => {
   const { showToast } = useToast();
 
@@ -548,6 +550,7 @@ export const DesktopView: React.FC<DesktopViewProps> = ({
           onAddContrato={onAddContrato}
           imoveis={imoveis}
           clientes={clientes}
+          corretores={corretores}
         />
       )}
 

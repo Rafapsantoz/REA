@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Navbar } from './components/Navbar';
 import { DesktopView } from './components/DesktopView';
+import { AdminView } from './components/AdminView';
 import { INITIAL_CLIENTES, INITIAL_IMOVEIS, INITIAL_VISITAS } from './mockData';
 import { INITIAL_CONTRATOS } from './mockContratos';
-import { Cliente, Imovel, VisitaLead, ContratoLocacaoCompleto } from './types';
+import { INITIAL_CORRETORES } from './mockCorretores';
+import { Cliente, Imovel, VisitaLead, ContratoLocacaoCompleto, Corretor } from './types';
 import { ToastProvider } from './components/Toast';
 
 export function App() {
@@ -11,6 +13,26 @@ export function App() {
   const [imoveis, setImoveis] = useState<Imovel[]>(INITIAL_IMOVEIS);
   const [visitas, setVisitas] = useState<VisitaLead[]>(INITIAL_VISITAS);
   const [contratos, setContratos] = useState<ContratoLocacaoCompleto[]>(INITIAL_CONTRATOS);
+
+  // Aba Principal do Sistema: 'contratos' (Painel Operacional) ou 'admin' (Administração & Corretores)
+  const [currentTab, setCurrentTab] = useState<'contratos' | 'admin'>('contratos');
+
+  // Gestão de Corretores com persistência local
+  const [corretores, setCorretores] = useState<Corretor[]>(() => {
+    const saved = localStorage.getItem('rpsec_imobi_corretores');
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {
+        console.error('Falha ao restaurar corretores locais:', e);
+      }
+    }
+    return INITIAL_CORRETORES;
+  });
+
+  useEffect(() => {
+    localStorage.setItem('rpsec_imobi_corretores', JSON.stringify(corretores));
+  }, [corretores]);
 
   // Gerenciamento de Tema (Claro / Escuro) com persistência
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
@@ -57,18 +79,6 @@ export function App() {
     setVisitas(prev => prev.map(v => v.id === id ? { ...v, status } : v));
   };
 
-  const handleAddClienteNota = (clienteId: string, nota: string) => {
-    setClientes(prev => prev.map(c => {
-      if (c.id === clienteId) {
-        return {
-          ...c,
-          notas: [nota, ...c.notas]
-        };
-      }
-      return c;
-    }));
-  };
-
   const handleUpdateContrato = (contratoAtualizado: ContratoLocacaoCompleto) => {
     setContratos(prev => prev.map(c => c.id === contratoAtualizado.id ? contratoAtualizado : c));
   };
@@ -77,30 +87,59 @@ export function App() {
     setContratos(prev => [novoContrato, ...prev]);
   };
 
+  // Handlers de Corretores
+  const handleAddCorretor = (novo: Corretor) => {
+    setCorretores(prev => [novo, ...prev]);
+  };
+
+  const handleUpdateCorretor = (corretorAtualizado: Corretor) => {
+    setCorretores(prev => prev.map(c => c.id === corretorAtualizado.id ? corretorAtualizado : c));
+  };
+
+  const handleDeleteCorretor = (id: string) => {
+    setCorretores(prev => prev.filter(c => c.id !== id));
+  };
+
   return (
     <ToastProvider>
       <div className="min-h-screen bg-slate-100 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col transition-colors duration-200">
-        {/* Top Navigation com Botão de Tema */}
+        {/* Top Navigation com Abas de Contratos & Administração */}
         <Navbar 
           theme={theme}
           onToggleTheme={toggleTheme}
+          currentTab={currentTab}
+          onTabChange={setCurrentTab}
+          totalCorretores={corretores.length}
         />
 
         {/* Main Content Area */}
         <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <DesktopView
-            clientes={clientes}
-            imoveis={imoveis}
-            visitas={visitas}
-            contratos={contratos}
-            onAddImovel={handleAddImovel}
-            onAddCliente={handleAddCliente}
-            onUpdateImovelStatus={handleUpdateImovelStatus}
-            onUpdateClienteStatus={handleUpdateClienteStatus}
-            onUpdateImovel={handleUpdateImovel}
-            onUpdateContrato={handleUpdateContrato}
-            onAddContrato={handleAddContrato}
-          />
+          {currentTab === 'contratos' && (
+            <DesktopView
+              clientes={clientes}
+              imoveis={imoveis}
+              visitas={visitas}
+              contratos={contratos}
+              corretores={corretores}
+              onAddImovel={handleAddImovel}
+              onAddCliente={handleAddCliente}
+              onUpdateImovelStatus={handleUpdateImovelStatus}
+              onUpdateClienteStatus={handleUpdateClienteStatus}
+              onUpdateImovel={handleUpdateImovel}
+              onUpdateContrato={handleUpdateContrato}
+              onAddContrato={handleAddContrato}
+            />
+          )}
+
+          {currentTab === 'admin' && (
+            <AdminView
+              corretores={corretores}
+              contratos={contratos}
+              onAddCorretor={handleAddCorretor}
+              onUpdateCorretor={handleUpdateCorretor}
+              onDeleteCorretor={handleDeleteCorretor}
+            />
+          )}
         </main>
 
         {/* Rodapé Institucional com Copyrights RPsecti */}
