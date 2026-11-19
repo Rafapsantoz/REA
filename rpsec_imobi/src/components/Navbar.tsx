@@ -1,5 +1,5 @@
 import React from 'react';
-import { Building2, ShieldCheck, PhoneCall, Sun, Moon, FileText, Shield } from 'lucide-react';
+import { Building2, ShieldCheck, PhoneCall, Sun, Moon, FileText, Shield, LogOut } from 'lucide-react';
 
 interface NavbarProps {
   theme: 'light' | 'dark';
@@ -7,6 +7,8 @@ interface NavbarProps {
   currentTab: 'contratos' | 'admin';
   onTabChange: (tab: 'contratos' | 'admin') => void;
   totalCorretores?: number;
+  usuarioLogado?: { nome: string; email: string; cargo: string; avatar: string } | null;
+  onLogout?: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({ 
@@ -14,7 +16,9 @@ export const Navbar: React.FC<NavbarProps> = ({
   onToggleTheme,
   currentTab,
   onTabChange,
-  totalCorretores = 0
+  totalCorretores = 0,
+  usuarioLogado,
+  onLogout
 }) => {
   return (
     <header className="sticky top-0 z-50 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 transition-colors duration-200">
@@ -96,6 +100,35 @@ export const Navbar: React.FC<NavbarProps> = ({
                 </>
               )}
             </button>
+
+            {/* Usuário Logado & Botão de Sair */}
+            {usuarioLogado && (
+              <div className="flex items-center gap-2 pl-2 border-l border-slate-200 dark:border-slate-800">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-rose-600 to-red-700 text-white font-bold flex items-center justify-center text-xs shadow-sm">
+                    {usuarioLogado.avatar || usuarioLogado.nome.charAt(0)}
+                  </div>
+                  <div className="hidden sm:block text-left leading-tight">
+                    <span className="text-xs font-bold text-slate-800 dark:text-slate-200 block truncate max-w-[120px]">
+                      {usuarioLogado.nome}
+                    </span>
+                    <span className="text-[10px] text-slate-400 block truncate max-w-[120px]">
+                      {usuarioLogado.cargo}
+                    </span>
+                  </div>
+                </div>
+
+                {onLogout && (
+                  <button
+                    onClick={onLogout}
+                    title="Desconectar / Sair do Sistema"
+                    className="p-2 text-slate-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 rounded-xl transition-all cursor-pointer"
+                  >
+                    <LogOut className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
+            )}
 
             <div className="hidden lg:flex items-center space-x-4 pl-2 border-l border-slate-200 dark:border-slate-800">
               <div className="text-right">

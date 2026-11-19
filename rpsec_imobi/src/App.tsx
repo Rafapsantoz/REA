@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Navbar } from './components/Navbar';
 import { DesktopView } from './components/DesktopView';
 import { AdminView } from './components/AdminView';
+import { LoginView } from './components/LoginView';
 import { INITIAL_CLIENTES, INITIAL_IMOVEIS, INITIAL_VISITAS } from './mockData';
 import { INITIAL_CONTRATOS } from './mockContratos';
 import { INITIAL_CORRETORES } from './mockCorretores';
@@ -9,6 +10,33 @@ import { Cliente, Imovel, VisitaLead, ContratoLocacaoCompleto, Corretor } from '
 import { ToastProvider } from './components/Toast';
 
 export function App() {
+  // Controle de Sessão de Acesso / Demonstração Privada
+  const [usuarioLogado, setUsuarioLogado] = useState<{ nome: string; email: string; cargo: string; avatar: string } | null>(() => {
+    const savedLocal = localStorage.getItem('rpsec_auth_session');
+    if (savedLocal) {
+      try {
+        return JSON.parse(savedLocal);
+      } catch (e) {
+        console.error('Falha ao restaurar sessão local:', e);
+      }
+    }
+    const savedSession = sessionStorage.getItem('rpsec_auth_session');
+    if (savedSession) {
+      try {
+        return JSON.parse(savedSession);
+      } catch (e) {
+        console.error('Falha ao restaurar sessão temporária:', e);
+      }
+    }
+    return null;
+  });
+
+  const handleLogout = () => {
+    localStorage.removeItem('rpsec_auth_session');
+    sessionStorage.removeItem('rpsec_auth_session');
+    setUsuarioLogado(null);
+  };
+
   const [clientes, setClientes] = useState<Cliente[]>(INITIAL_CLIENTES);
   const [imoveis, setImoveis] = useState<Imovel[]>(INITIAL_IMOVEIS);
   const [visitas, setVisitas] = useState<VisitaLead[]>(INITIAL_VISITAS);
@@ -104,6 +132,18 @@ export function App() {
     setCorretores(prev => prev.filter(c => c.id !== id));
   };
 
+  // Se não estiver logado, exibe a tela de login exclusiva da imobiliária
+  if (!usuarioLogado) {
+    return (
+      <ToastProvider>
+        <LoginView 
+          onLoginSuccess={setUsuarioLogado} 
+          theme={theme} 
+        />
+      </ToastProvider>
+    );
+  }
+
   return (
     <ToastProvider>
       <div className="min-h-screen bg-slate-100 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col transition-colors duration-200">
@@ -114,6 +154,8 @@ export function App() {
           currentTab={currentTab}
           onTabChange={setCurrentTab}
           totalCorretores={corretores.length}
+          usuarioLogado={usuarioLogado}
+          onLogout={handleLogout}
         />
 
         {/* Main Content Area */}
