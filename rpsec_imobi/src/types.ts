@@ -220,6 +220,16 @@ export interface AnexoArquivo {
   dataUpload: string;
 }
 
+export interface LocatarioAdicional {
+  id: string;
+  nome: string;
+  cpf: string;
+  rg?: string;
+  profissao?: string;
+  telefone: string;
+  email?: string;
+}
+
 export interface ContratoLocacaoCompleto {
   id: string;
   numeroOrdem: string; // Ex: "85"
@@ -246,6 +256,8 @@ export interface ContratoLocacaoCompleto {
       rg?: string;
       profissao?: string;
       telefone?: string;
+      email?: string;
+      regimeBens?: string;
     };
   };
 
@@ -261,15 +273,8 @@ export interface ContratoLocacaoCompleto {
     email: string;
   };
 
-  segundoLocatario?: {
-    nome: string;
-    cpf: string;
-    rg: string;
-    profissao?: string;
-    rendaEstimada?: number;
-    telefone?: string;
-    email?: string;
-  };
+  segundoLocatario?: LocatarioAdicional;
+  locatariosAdicionais?: LocatarioAdicional[];
 
   testemunhas: Testemunha[];
   moradores: Morador[];

@@ -25,9 +25,11 @@ import {
   CheckSquare, 
   Square,
   Lock,
-  ArrowRight
+  ArrowRight,
+  Heart,
+  Building
 } from 'lucide-react';
-import { ContratoLocacaoCompleto, Morador, Testemunha, AnexoArquivo } from '../types';
+import { ContratoLocacaoCompleto, Morador, Testemunha, AnexoArquivo, LocatarioAdicional } from '../types';
 import { calcularProgressoAbertura, calcularProgressoEncerramento } from '../mockContratos';
 import { useToast } from './Toast';
 
@@ -170,6 +172,98 @@ export const ContratoChecklistModal: React.FC<ContratoChecklistModalProps> = ({
     }
   };
 
+  // Gestão de Locador e Cônjuge
+  const handleToggleConjugeLocador = (hasSpouse: boolean) => {
+    if (hasSpouse) {
+      setContrato(prev => ({
+        ...prev,
+        locador: {
+          ...prev.locador,
+          conjuge: {
+            nome: prev.locador.conjuge?.nome || '',
+            cpf: prev.locador.conjuge?.cpf || '',
+            telefone: prev.locador.conjuge?.telefone || '',
+            email: prev.locador.conjuge?.email || '',
+            regimeBens: prev.locador.conjuge?.regimeBens || 'Comunhão Parcial de Bens'
+          }
+        }
+      }));
+    } else {
+      setContrato(prev => ({
+        ...prev,
+        locador: {
+          ...prev.locador,
+          conjuge: undefined
+        }
+      }));
+    }
+  };
+
+  const handleUpdateConjugeLocador = (field: string, value: string) => {
+    setContrato(prev => ({
+      ...prev,
+      locador: {
+        ...prev.locador,
+        conjuge: {
+          ...prev.locador.conjuge,
+          nome: prev.locador.conjuge?.nome || '',
+          [field]: value
+        }
+      }
+    }));
+  };
+
+  const handleUpdateLocador = (field: string, value: string) => {
+    setContrato(prev => ({
+      ...prev,
+      locador: {
+        ...prev.locador,
+        [field]: value
+      }
+    }));
+  };
+
+  // Gestão de Locatários (Principal e Co-locatários)
+  const handleUpdateLocatarioPrincipal = (field: string, value: string) => {
+    setContrato(prev => ({
+      ...prev,
+      locatario: {
+        ...prev.locatario,
+        [field]: value
+      }
+    }));
+  };
+
+  const handleAdicionarLocatario = () => {
+    const novoLoc: LocatarioAdicional = {
+      id: `loc_${Date.now()}`,
+      nome: '',
+      cpf: '',
+      telefone: '',
+      email: ''
+    };
+    setContrato(prev => ({
+      ...prev,
+      locatariosAdicionais: [...(prev.locatariosAdicionais || []), novoLoc]
+    }));
+    showToast("Novo co-locatário adicionado.", 'info');
+  };
+
+  const handleRemoverLocatario = (id: string) => {
+    setContrato(prev => ({
+      ...prev,
+      locatariosAdicionais: (prev.locatariosAdicionais || []).filter(l => l.id !== id)
+    }));
+    showToast("Co-locatário removido.", 'info');
+  };
+
+  const handleAtualizarLocatario = (id: string, field: string, value: string) => {
+    setContrato(prev => ({
+      ...prev,
+      locatariosAdicionais: (prev.locatariosAdicionais || []).map(l => l.id === id ? { ...l, [field]: value } : l)
+    }));
+  };
+
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/80 backdrop-blur-sm flex justify-center p-2 sm:p-4 md:p-6 animate-fade-in">
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl w-full max-w-5xl shadow-2xl flex flex-col max-h-[92vh] overflow-hidden">
@@ -203,10 +297,24 @@ export const ContratoChecklistModal: React.FC<ContratoChecklistModalProps> = ({
                   </span>
                 )}
               </div>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 flex items-center gap-2">
-                <span><strong>Locador:</strong> {contrato.locador.nome}</span>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 flex flex-wrap items-center gap-2">
+                <span>
+                  <strong>Locador:</strong> {contrato.locador.nome}
+                  {contrato.locador.conjuge?.nome && (
+                    <span className="text-rose-600 dark:text-rose-400 ml-1 font-medium">
+                      (Cônjuge: {contrato.locador.conjuge.nome})
+                    </span>
+                  )}
+                </span>
                 <span>•</span>
-                <span><strong>Inquilino:</strong> {contrato.locatario.nome}</span>
+                <span>
+                  <strong>Inquilino:</strong> {contrato.locatario.nome}
+                  {contrato.locatariosAdicionais && contrato.locatariosAdicionais.length > 0 && (
+                    <span className="text-indigo-600 dark:text-indigo-400 ml-1 font-medium">
+                      (+{contrato.locatariosAdicionais.length} co-locatário{contrato.locatariosAdicionais.length > 1 ? 's' : ''})
+                    </span>
+                  )}
+                </span>
                 <span>•</span>
                 <span><strong>Aluguel:</strong> R$ {contrato.valores.aluguel.toLocaleString('pt-BR')},00</span>
               </p>
@@ -372,6 +480,239 @@ export const ContratoChecklistModal: React.FC<ContratoChecklistModalProps> = ({
           {/* ========================================================= */}
           {activeTab === 'abertura' && (
             <div className="space-y-6">
+
+              {/* CARD 0: PARTES DO CONTRATO (PROPRIETÁRIO, CÔNJUGE E LOCATÁRIOS) */}
+              <div className="bg-slate-50 dark:bg-slate-950 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-4">
+                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 dark:border-slate-800 pb-3">
+                  <div className="flex items-center gap-2">
+                    <Building className="w-5 h-5 text-rose-600 dark:text-rose-400" />
+                    <div>
+                      <h3 className="font-bold text-sm text-slate-900 dark:text-white">
+                        0. Qualificação das Partes Contratantes
+                      </h3>
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                        Proprietário, Cônjuge (vênia conjugal) e Inquilinos (co-locatários solidários)
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={handleAdicionarLocatario}
+                      className="px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/50 dark:hover:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all shadow-sm cursor-pointer"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>Adicionar Locatário</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* BLOCO 1: PROPRIETÁRIO (LOCADOR) */}
+                <div className="space-y-3 p-4 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <span className="text-xs font-bold text-rose-700 dark:text-rose-400 uppercase tracking-wider flex items-center gap-1.5">
+                      <span className="w-2 h-2 rounded-full bg-rose-500"></span>
+                      Proprietário (Locador)
+                    </span>
+                    <label className="flex items-center gap-2 text-xs font-semibold text-slate-700 dark:text-slate-300 cursor-pointer bg-slate-50 dark:bg-slate-950 px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-700 hover:border-rose-400 transition-colors">
+                      <input
+                        type="checkbox"
+                        checked={!!contrato.locador.conjuge}
+                        onChange={(e) => handleToggleConjugeLocador(e.target.checked)}
+                        className="rounded text-rose-600 focus:ring-rose-500 w-3.5 h-3.5"
+                      />
+                      <Heart className={`w-3.5 h-3.5 ${contrato.locador.conjuge ? 'text-rose-500 fill-rose-500' : 'text-slate-400'}`} />
+                      <span>Possui Cônjuge (Casado / União Estável)</span>
+                    </label>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-4 gap-2.5">
+                    <div className="sm:col-span-2">
+                      <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 mb-0.5">Nome do Proprietário</label>
+                      <input
+                        type="text"
+                        value={contrato.locador.nome}
+                        onChange={(e) => handleUpdateLocador('nome', e.target.value)}
+                        className="w-full text-xs p-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 font-medium"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 mb-0.5">CPF</label>
+                      <input
+                        type="text"
+                        value={contrato.locador.cpf}
+                        onChange={(e) => handleUpdateLocador('cpf', e.target.value)}
+                        className="w-full text-xs p-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 mb-0.5">Telefone / WhatsApp</label>
+                      <input
+                        type="text"
+                        value={contrato.locador.telefone}
+                        onChange={(e) => handleUpdateLocador('telefone', e.target.value)}
+                        className="w-full text-xs p-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700"
+                      />
+                    </div>
+                  </div>
+
+                  {/* DADOS CONDICIONAIS DO CÔNJUGE DO LOCADOR */}
+                  {contrato.locador.conjuge && (
+                    <div className="p-3.5 bg-rose-50/60 dark:bg-rose-950/20 rounded-xl border border-rose-200 dark:border-rose-900/60 space-y-2 animate-fade-in mt-2">
+                      <div className="flex items-center gap-2">
+                        <Heart className="w-4 h-4 text-rose-600 dark:text-rose-400 fill-rose-600 dark:fill-rose-400" />
+                        <span className="text-xs font-bold text-rose-800 dark:text-rose-300 uppercase tracking-wide">
+                          Dados do Cônjuge (Vênia Conjugal Obrigatória)
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-4 gap-2">
+                        <div className="sm:col-span-2">
+                          <input
+                            type="text"
+                            placeholder="Nome Completo do Cônjuge *"
+                            value={contrato.locador.conjuge.nome || ''}
+                            onChange={(e) => handleUpdateConjugeLocador('nome', e.target.value)}
+                            className="w-full text-xs p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-rose-200 dark:border-rose-800/80 font-medium"
+                          />
+                        </div>
+                        <div>
+                          <input
+                            type="text"
+                            placeholder="CPF do Cônjuge"
+                            value={contrato.locador.conjuge.cpf || ''}
+                            onChange={(e) => handleUpdateConjugeLocador('cpf', e.target.value)}
+                            className="w-full text-xs p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-rose-200 dark:border-rose-800/80"
+                          />
+                        </div>
+                        <div>
+                          <input
+                            type="text"
+                            placeholder="Telefone / WhatsApp"
+                            value={contrato.locador.conjuge.telefone || ''}
+                            onChange={(e) => handleUpdateConjugeLocador('telefone', e.target.value)}
+                            className="w-full text-xs p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-rose-200 dark:border-rose-800/80"
+                          />
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+                        <div>
+                          <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 mb-0.5">Regime de Bens</label>
+                          <select
+                            value={contrato.locador.conjuge.regimeBens || 'Comunhão Parcial de Bens'}
+                            onChange={(e) => handleUpdateConjugeLocador('regimeBens', e.target.value)}
+                            className="w-full text-xs p-2 rounded-xl bg-white dark:bg-slate-900 border border-rose-200 dark:border-rose-800/80"
+                          >
+                            <option value="Comunhão Parcial de Bens">Comunhão Parcial de Bens</option>
+                            <option value="Comunhão Universal de Bens">Comunhão Universal de Bens</option>
+                            <option value="Separação Total de Bens">Separação Total de Bens</option>
+                            <option value="Participação Final nos Aquestos">Participação Final nos Aquestos</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 mb-0.5">E-mail do Cônjuge (para assinatura digital)</label>
+                          <input
+                            type="email"
+                            placeholder="email.conjuge@exemplo.com"
+                            value={contrato.locador.conjuge.email || ''}
+                            onChange={(e) => handleUpdateConjugeLocador('email', e.target.value)}
+                            className="w-full text-xs p-2 rounded-xl bg-white dark:bg-slate-900 border border-rose-200 dark:border-rose-800/80"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* BLOCO 2: INQUILINOS / LOCATÁRIOS */}
+                <div className="space-y-3 p-4 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-indigo-700 dark:text-indigo-400 uppercase tracking-wider flex items-center gap-1.5">
+                      <span className="w-2 h-2 rounded-full bg-indigo-500"></span>
+                      1º Locatário (Titular Principal)
+                    </span>
+                    <span className="text-[10px] text-slate-400">Responsável financeiro principal</span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-4 gap-2.5">
+                    <div className="sm:col-span-2">
+                      <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 mb-0.5">Nome do Titular</label>
+                      <input
+                        type="text"
+                        value={contrato.locatario.nome}
+                        onChange={(e) => handleUpdateLocatarioPrincipal('nome', e.target.value)}
+                        className="w-full text-xs p-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 font-medium"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 mb-0.5">CPF</label>
+                      <input
+                        type="text"
+                        value={contrato.locatario.cpf}
+                        onChange={(e) => handleUpdateLocatarioPrincipal('cpf', e.target.value)}
+                        className="w-full text-xs p-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 mb-0.5">Telefone / WhatsApp</label>
+                      <input
+                        type="text"
+                        value={contrato.locatario.telefone}
+                        onChange={(e) => handleUpdateLocatarioPrincipal('telefone', e.target.value)}
+                        className="w-full text-xs p-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700"
+                      />
+                    </div>
+                  </div>
+
+                  {/* CO-LOCATÁRIOS ADICIONAIS */}
+                  {(contrato.locatariosAdicionais || []).map((loc, idx) => (
+                    <div key={loc.id} className="p-3.5 bg-indigo-50/60 dark:bg-indigo-950/20 rounded-xl border border-indigo-200 dark:border-indigo-800/60 space-y-2 animate-fade-in mt-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-indigo-700 dark:text-indigo-300 uppercase tracking-wide flex items-center gap-1.5">
+                          <span className="w-2 h-2 rounded-full bg-indigo-400"></span>
+                          {idx + 2}º Locatário (Co-inquilino Solidário)
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoverLocatario(loc.id)}
+                          className="text-rose-500 hover:text-rose-700 dark:hover:text-rose-400 p-1 hover:bg-rose-100 dark:hover:bg-rose-950/40 rounded-lg transition-colors flex items-center gap-1 text-[11px] font-bold cursor-pointer"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                          <span>Remover</span>
+                        </button>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-4 gap-2">
+                        <div className="sm:col-span-2">
+                          <input
+                            type="text"
+                            placeholder="Nome Completo *"
+                            value={loc.nome}
+                            onChange={(e) => handleAtualizarLocatario(loc.id, 'nome', e.target.value)}
+                            className="w-full text-xs p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-indigo-200 dark:border-indigo-800/80 font-medium"
+                          />
+                        </div>
+                        <div>
+                          <input
+                            type="text"
+                            placeholder="CPF"
+                            value={loc.cpf}
+                            onChange={(e) => handleAtualizarLocatario(loc.id, 'cpf', e.target.value)}
+                            className="w-full text-xs p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-indigo-200 dark:border-indigo-800/80"
+                          />
+                        </div>
+                        <div>
+                          <input
+                            type="text"
+                            placeholder="Telefone / WhatsApp"
+                            value={loc.telefone}
+                            onChange={(e) => handleAtualizarLocatario(loc.id, 'telefone', e.target.value)}
+                            className="w-full text-xs p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-indigo-200 dark:border-indigo-800/80"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
 
               {/* CARD 1: TESTEMUNHAS OBRIGATÓRIAS (2) */}
               <div className="bg-slate-50 dark:bg-slate-950 p-5 rounded-2xl border border-slate-200 dark:border-slate-800">

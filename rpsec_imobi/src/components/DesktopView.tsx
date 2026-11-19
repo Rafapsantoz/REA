@@ -368,6 +368,12 @@ export const DesktopView: React.FC<DesktopViewProps> = ({
                       }`}>
                         Inquilino: {contrato.locatario.nome}
                       </span>
+
+                      {contrato.locatariosAdicionais && contrato.locatariosAdicionais.length > 0 && (
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-100 text-indigo-800 dark:bg-indigo-950 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
+                          +{contrato.locatariosAdicionais.length} co-locatário{contrato.locatariosAdicionais.length > 1 ? 's' : ''}
+                        </span>
+                      )}
                       
                       {contrato.status === 'ativo' && (
                         <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-400 border border-emerald-300 dark:border-emerald-800 flex items-center gap-1">
@@ -398,7 +404,14 @@ export const DesktopView: React.FC<DesktopViewProps> = ({
                     </div>
 
                     <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500 dark:text-slate-400 pt-1">
-                      <span><strong>Proprietário (Locador):</strong> {contrato.locador.nome}</span>
+                      <span>
+                        <strong>Proprietário (Locador):</strong> {contrato.locador.nome}
+                        {contrato.locador.conjuge?.nome && (
+                          <span className="text-rose-600 dark:text-rose-400 font-medium ml-1">
+                            (Casado(a) c/ {contrato.locador.conjuge.nome})
+                          </span>
+                        )}
+                      </span>
                       <span>•</span>
                       <span><strong>Telefone Inquilino:</strong> {contrato.locatario.telefone}</span>
                       <span>•</span>

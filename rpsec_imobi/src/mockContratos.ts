@@ -26,7 +26,9 @@ export const INITIAL_CONTRATOS: ContratoLocacaoCompleto[] = [
         cpf: "056.634.458-03",
         rg: "16.525.762-3",
         profissao: "Empresário",
-        telefone: "(16) 99739-2323"
+        telefone: "(16) 99739-2323",
+        email: "marcelli.marcos@gmail.com",
+        regimeBens: "Comunhão Parcial de Bens"
       }
     },
     locatario: {
@@ -41,14 +43,25 @@ export const INITIAL_CONTRATOS: ContratoLocacaoCompleto[] = [
       email: "goncalvessimone1717@gmail.com"
     },
     segundoLocatario: {
+      id: "loc_85_1",
       nome: "Carlos Henrique Delfino",
       cpf: "105.706.308-86",
       rg: "21.905.320",
       profissao: "Açougueiro",
-      rendaEstimada: 2500,
       telefone: "(19) 98816-9376",
       email: "delfinocarlos.50@gmail.com"
     },
+    locatariosAdicionais: [
+      {
+        id: "loc_85_1",
+        nome: "Carlos Henrique Delfino",
+        cpf: "105.706.308-86",
+        rg: "21.905.320",
+        profissao: "Açougueiro",
+        telefone: "(19) 98816-9376",
+        email: "delfinocarlos.50@gmail.com"
+      }
+    ],
     testemunhas: [
       {
         nome: "Sara Cristina Mariano Mamede",
