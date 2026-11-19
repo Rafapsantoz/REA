@@ -26,6 +26,7 @@ import { ContratoLocacaoCompleto, Imovel, Cliente, Corretor } from '../types';
 import { calcularProgressoAbertura, calcularProgressoEncerramento } from '../mockContratos';
 import { ContratoChecklistModal } from './ContratoChecklistModal';
 import { NovoContratoModal } from './NovoContratoModal';
+import { ConfirmModal } from './ConfirmModal';
 import { useToast } from './Toast';
 
 interface DesktopViewProps {
@@ -55,16 +56,32 @@ export const DesktopView: React.FC<DesktopViewProps> = ({
 }) => {
   const { showToast } = useToast();
 
+  const [modalConfirmacao, setModalConfirmacao] = useState<{
+    aberto: boolean;
+    titulo: string;
+    mensagem: string;
+    nomeItem?: string;
+    onConfirmar: () => void;
+  }>({
+    aberto: false,
+    titulo: '',
+    mensagem: '',
+    onConfirmar: () => {}
+  });
+
   const handleExcluirContrato = (id: string, numeroOrdem: string, inquilinoNome: string) => {
-    const confirmar = window.confirm(
-      `Deseja realmente excluir o Contrato Nº ${numeroOrdem} (Inquilino: ${inquilinoNome})?\n\nEsta ação não poderá ser desfeita.`
-    );
-    if (confirmar) {
-      if (onDeleteContrato) {
-        onDeleteContrato(id);
-        showToast(`Contrato Nº ${numeroOrdem} excluído com sucesso!`, 'info');
+    setModalConfirmacao({
+      aberto: true,
+      titulo: 'Confirmar Exclusão de Contrato',
+      mensagem: `Deseja realmente excluir permanentemente o Contrato Nº ${numeroOrdem}? Todos os dados de checklist, pendências e vínculos serão removidos.`,
+      nomeItem: `Contrato Nº ${numeroOrdem} • Locatário(a): ${inquilinoNome}`,
+      onConfirmar: () => {
+        if (onDeleteContrato) {
+          onDeleteContrato(id);
+          showToast(`Contrato Nº ${numeroOrdem} excluído com sucesso!`, 'info');
+        }
       }
-    }
+    });
   };
 
   // Filtro de status: todos | pendente_abertura | pendente_fechamento | ativo | encerrado
@@ -416,6 +433,7 @@ export const DesktopView: React.FC<DesktopViewProps> = ({
                   }}
                   className="absolute top-3.5 right-3.5 p-2 text-slate-300 dark:text-slate-600 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 rounded-xl transition-all cursor-pointer z-10"
                   title={`Excluir Contrato Nº ${contrato.numeroOrdem}`}
+                  aria-label={`Excluir Contrato Nº ${contrato.numeroOrdem}`}
                 >
                   <Trash2 className="w-4 h-4 transition-colors" />
                 </button>
@@ -677,6 +695,17 @@ export const DesktopView: React.FC<DesktopViewProps> = ({
           contratos={contratos}
         />
       )}
+
+      {/* MODAL CUSTOMIZADO DE CONFIRMAÇÃO DE EXCLUSÃO */}
+      <ConfirmModal
+        isOpen={modalConfirmacao.aberto}
+        title={modalConfirmacao.titulo}
+        message={modalConfirmacao.mensagem}
+        itemName={modalConfirmacao.nomeItem}
+        confirmText="Sim, Excluir Contrato"
+        onClose={() => setModalConfirmacao(prev => ({ ...prev, aberto: false }))}
+        onConfirm={modalConfirmacao.onConfirmar}
+      />
 
     </div>
   );

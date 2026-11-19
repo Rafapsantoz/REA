@@ -21,6 +21,7 @@ import {
 import { Corretor, ContratoLocacaoCompleto } from '../types';
 import { DEFAULT_CARGOS } from '../mockCorretores';
 import { NovoCorretorModal } from './NovoCorretorModal';
+import { ConfirmModal } from './ConfirmModal';
 import { useToast } from './Toast';
 
 interface AdminViewProps {
@@ -43,7 +44,23 @@ export const AdminView: React.FC<AdminViewProps> = ({
   const [busca, setBusca] = useState('');
   const [filtroStatus, setFiltroStatus] = useState<'todos' | 'ativo' | 'inativo'>('todos');
   const [modalNovoAberto, setModalNovoAberto] = useState(false);
-  const [subAba, setSubAba] = useState<'corretores' | 'empresa'>('corretores');
+  const [subAba, setSubAba] = useState<'corretores' | 'cargos' | 'empresa'>('corretores');
+
+  // Estado do Modal Customizado de Confirmação de Exclusão
+  const [modalConfirmacao, setModalConfirmacao] = useState<{
+    aberto: boolean;
+    titulo: string;
+    mensagem: string;
+    nomeItem?: string;
+    confirmText?: string;
+    onConfirmar: () => void;
+  }>({
+    aberto: false,
+    titulo: '',
+    mensagem: '',
+    confirmText: 'Sim, Excluir',
+    onConfirmar: () => {}
+  });
 
   // Gestão / Cadastro de Cargos & Funções da Equipe
   const [cargos, setCargos] = useState<string[]>(() => {
@@ -60,13 +77,14 @@ export const AdminView: React.FC<AdminViewProps> = ({
   const [mostrarAddCargo, setMostrarAddCargo] = useState(false);
   const [novoCargoInput, setNovoCargoInput] = useState('');
 
-  const handleCadastrarCargo = () => {
-    const limpo = novoCargoInput.trim();
+  const handleCadastrarCargo = (nomeCustomizado?: string) => {
+    const valor = nomeCustomizado !== undefined ? nomeCustomizado : novoCargoInput;
+    const limpo = valor.trim();
     if (!limpo) {
       showToast('Digite o nome do cargo ou função para cadastrar.', 'error');
       return;
     }
-    if (cargos.includes(limpo)) {
+    if (cargos.some(c => c.toLowerCase() === limpo.toLowerCase())) {
       showToast(`O cargo "${limpo}" já está cadastrado.`, 'error');
       return;
     }
@@ -83,10 +101,24 @@ export const AdminView: React.FC<AdminViewProps> = ({
       showToast('A imobiliária precisa manter pelo menos um cargo cadastrado.', 'error');
       return;
     }
-    const novos = cargos.filter(c => c !== cargoParaRemover);
-    setCargos(novos);
-    localStorage.setItem('rpsec_imobi_cargos', JSON.stringify(novos));
-    showToast(`Cargo "${cargoParaRemover}" removido da lista.`, 'info');
+    const corretoresComEsseCargo = corretores.filter(c => c.cargo === cargoParaRemover);
+    const avisoVinculo = corretoresComEsseCargo.length > 0 
+      ? ` ⚠️ Atenção: Existem atualmente ${corretoresComEsseCargo.length} corretor(es) vinculados a esta função (${corretoresComEsseCargo.map(c => c.nome).join(', ')}).` 
+      : '';
+
+    setModalConfirmacao({
+      aberto: true,
+      titulo: 'Confirmar Exclusão de Cargo / Função',
+      mensagem: `Deseja remover esta função da lista de cargos da imobiliária?${avisoVinculo}`,
+      nomeItem: `Cargo: "${cargoParaRemover}"`,
+      confirmText: 'Sim, Excluir Função',
+      onConfirmar: () => {
+        const novos = cargos.filter(c => c !== cargoParaRemover);
+        setCargos(novos);
+        localStorage.setItem('rpsec_imobi_cargos', JSON.stringify(novos));
+        showToast(`Cargo "${cargoParaRemover}" removido da lista.`, 'info');
+      }
+    });
   };
 
   // Métricas
@@ -125,10 +157,17 @@ export const AdminView: React.FC<AdminViewProps> = ({
   };
 
   const handleExcluir = (id: string, nome: string) => {
-    if (window.confirm(`Deseja realmente remover o corretor ${nome}?`)) {
-      onDeleteCorretor(id);
-      showToast(`Corretor ${nome} removido da equipe.`, 'info');
-    }
+    setModalConfirmacao({
+      aberto: true,
+      titulo: 'Confirmar Exclusão de Corretor',
+      mensagem: `Deseja realmente remover o corretor da equipe credenciada? Os contratos vinculados anteriormente continuarão registrados no histórico.`,
+      nomeItem: nome,
+      confirmText: 'Sim, Excluir Corretor',
+      onConfirmar: () => {
+        onDeleteCorretor(id);
+        showToast(`Corretor ${nome} removido da equipe.`, 'info');
+      }
+    });
   };
 
   return (
@@ -247,12 +286,12 @@ export const AdminView: React.FC<AdminViewProps> = ({
       </div>
 
       {/* ═════════════════════════════════════════════════════════════
-          SUB-ABAS: CADASTRO DE CORRETORES vs DADOS DA IMOBILIÁRIA
+          SUB-ABAS: CADASTRO DE CORRETORES vs CARGOS & FUNÇÕES vs EMPRESA
       ═════════════════════════════════════════════════════════════ */}
-      <div className="border-b border-slate-200 dark:border-slate-800 flex items-center gap-3">
+      <div className="border-b border-slate-200 dark:border-slate-800 flex items-center gap-2 sm:gap-3 overflow-x-auto">
         <button
           onClick={() => setSubAba('corretores')}
-          className={`py-3 px-4 text-xs font-bold border-b-2 flex items-center gap-2 transition-all cursor-pointer ${
+          className={`py-3 px-4 text-xs font-bold border-b-2 flex items-center gap-2 transition-all cursor-pointer whitespace-nowrap ${
             subAba === 'corretores'
               ? 'border-rose-600 text-rose-600 dark:text-rose-400'
               : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
@@ -266,8 +305,23 @@ export const AdminView: React.FC<AdminViewProps> = ({
         </button>
 
         <button
+          onClick={() => setSubAba('cargos')}
+          className={`py-3 px-4 text-xs font-bold border-b-2 flex items-center gap-2 transition-all cursor-pointer whitespace-nowrap ${
+            subAba === 'cargos'
+              ? 'border-rose-600 text-rose-600 dark:text-rose-400'
+              : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
+          }`}
+        >
+          <Award className="w-4 h-4" />
+          <span>Cargos e Funções</span>
+          <span className="text-[10px] px-2 py-0.5 rounded-full bg-rose-100 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 font-bold border border-rose-200 dark:border-rose-800">
+            {cargos.length}
+          </span>
+        </button>
+
+        <button
           onClick={() => setSubAba('empresa')}
-          className={`py-3 px-4 text-xs font-bold border-b-2 flex items-center gap-2 transition-all cursor-pointer ${
+          className={`py-3 px-4 text-xs font-bold border-b-2 flex items-center gap-2 transition-all cursor-pointer whitespace-nowrap ${
             subAba === 'empresa'
               ? 'border-rose-600 text-rose-600 dark:text-rose-400'
               : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
@@ -331,82 +385,34 @@ export const AdminView: React.FC<AdminViewProps> = ({
             </div>
           </div>
 
-          {/* PAINEL DE GESTÃO / CADASTRO DE CARGOS E FUNÇÕES DA EQUIPE */}
-          <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-2.5">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-              <div className="flex items-center gap-2">
-                <div className="w-7 h-7 rounded-lg bg-rose-50 dark:bg-rose-950/50 text-rose-600 dark:text-rose-400 flex items-center justify-center font-bold">
-                  <Award className="w-4 h-4" />
-                </div>
-                <div>
-                  <h4 className="text-xs font-bold text-slate-800 dark:text-slate-200">
-                    Cargos & Funções Cadastradas ({cargos.length})
-                  </h4>
-                  <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                    Local para cadastro e gestão das funções operacionais da equipe
-                  </p>
-                </div>
+          {/* BARRA DE ATALHO RÁPIDO PARA GESTÃO DE CARGOS */}
+          <div className="bg-white dark:bg-slate-900 p-3.5 rounded-2xl border border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-xl bg-rose-50 dark:bg-rose-950/50 text-rose-600 dark:text-rose-400 flex items-center justify-center font-bold">
+                <Award className="w-4 h-4" />
               </div>
-
-              {!mostrarAddCargo && (
-                <button
-                  type="button"
-                  onClick={() => setMostrarAddCargo(true)}
-                  className="px-3 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/50 dark:hover:bg-rose-900/60 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800 text-xs font-bold flex items-center gap-1.5 transition-all self-start sm:self-auto cursor-pointer"
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                  <span>+ Cadastrar Cargo / Função</span>
-                </button>
-              )}
+              <div>
+                <h4 className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2">
+                  <span>Cargos e Funções Ativas na Imobiliária</span>
+                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-rose-100 dark:bg-rose-950 text-rose-700 dark:text-rose-300 font-bold">
+                    {cargos.length} cadastrados
+                  </span>
+                </h4>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                  Gerencie ou crie novos cargos para atribuir aos membros da equipe
+                </p>
+              </div>
             </div>
 
-            {mostrarAddCargo && (
-              <div className="flex items-center gap-2 pt-1 max-w-md animate-fade-in">
-                <input
-                  type="text"
-                  autoFocus
-                  placeholder="Nome do cargo (ex: Gerente de Locação, Consultor...)"
-                  value={novoCargoInput}
-                  onChange={(e) => setNovoCargoInput(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleCadastrarCargo(); } }}
-                  className="flex-1 text-xs p-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-rose-400 outline-none font-medium"
-                />
-                <button
-                  type="button"
-                  onClick={handleCadastrarCargo}
-                  className="px-3.5 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold transition-colors cursor-pointer"
-                >
-                  Salvar
-                </button>
-                <button
-                  type="button"
-                  onClick={() => { setMostrarAddCargo(false); setNovoCargoInput(''); }}
-                  className="px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-xs text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
-                >
-                  Cancelar
-                </button>
-              </div>
-            )}
-
-            <div className="flex flex-wrap gap-1.5 pt-1">
-              {cargos.map((cargoNome, i) => (
-                <span 
-                  key={i}
-                  className="inline-flex items-center gap-1.5 text-[11px] px-2.5 py-1 rounded-xl bg-slate-50 dark:bg-slate-950 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-800 font-medium"
-                >
-                  <span>{cargoNome}</span>
-                  {cargos.length > 1 && (
-                    <button
-                      type="button"
-                      onClick={() => handleRemoverCargo(cargoNome)}
-                      title={`Remover cargo "${cargoNome}"`}
-                      className="text-slate-400 hover:text-red-500 transition-colors cursor-pointer text-xs"
-                    >
-                      ×
-                    </button>
-                  )}
-                </span>
-              ))}
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setSubAba('cargos')}
+                className="px-3.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer"
+              >
+                <span>Acessar Cadastro de Funções</span>
+                <span className="text-rose-600 dark:text-rose-400 font-black">→</span>
+              </button>
             </div>
           </div>
 
@@ -534,6 +540,7 @@ export const AdminView: React.FC<AdminViewProps> = ({
                     onClick={() => handleExcluir(corretor.id, corretor.nome)}
                     className="text-rose-500 hover:text-rose-700 dark:hover:text-rose-400 p-1.5 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-lg transition-colors cursor-pointer"
                     title="Excluir Corretor"
+                    aria-label={`Excluir Corretor ${corretor.nome}`}
                   >
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
@@ -553,6 +560,167 @@ export const AdminView: React.FC<AdminViewProps> = ({
               </p>
             </div>
           )}
+        </div>
+      )}
+
+      {/* ═════════════════════════════════════════════════════════════
+          CONTEÚDO DA SUB-ABA: CARGOS E FUNÇÕES DA EQUIPE
+      ═════════════════════════════════════════════════════════════ */}
+      {subAba === 'cargos' && (
+        <div className="space-y-6">
+          {/* Card de Apresentação e Boas Práticas */}
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="flex items-start gap-3.5">
+              <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-rose-500 to-red-600 text-white flex items-center justify-center font-bold shadow-md shadow-rose-900/20 shrink-0">
+                <Award className="w-6 h-6" />
+              </div>
+              <div>
+                <h2 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                  <span>Cadastro de Cargos & Funções Operacionais</span>
+                  <span className="text-xs px-2.5 py-0.5 rounded-full bg-rose-500/10 text-rose-600 dark:text-rose-400 font-bold border border-rose-500/20">
+                    {cargos.length} funções cadastradas
+                  </span>
+                </h2>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-2xl leading-relaxed">
+                  Estrutura de cargos da Manoel Jerônimo Imóveis. Ao cadastrar novas funções aqui, elas ficam disponíveis de imediato no formulário de novos corretores e na vinculação de contratos.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Painel para Cadastrar Novo Cargo */}
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm space-y-4">
+            <div className="flex items-center gap-2">
+              <div className="w-6 h-6 rounded-lg bg-rose-500/10 text-rose-600 dark:text-rose-400 flex items-center justify-center font-bold">
+                <Plus className="w-3.5 h-3.5" />
+              </div>
+              <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+                Cadastrar Nova Função
+              </h3>
+            </div>
+
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 max-w-xl">
+              <input
+                type="text"
+                placeholder="Ex: Gerente de Locação, Consultor Comercial, Perito Avaliador..."
+                value={novoCargoInput}
+                onChange={(e) => setNovoCargoInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    handleCadastrarCargo();
+                  }
+                }}
+                className="flex-1 text-xs px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 outline-none focus:ring-2 focus:ring-rose-500/30 font-medium"
+              />
+              <button
+                type="button"
+                onClick={() => handleCadastrarCargo()}
+                className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-500 hover:to-red-500 text-white text-xs font-bold shadow-md shadow-rose-900/20 transition-all cursor-pointer flex items-center justify-center gap-1.5"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Salvar Cargo</span>
+              </button>
+            </div>
+
+            {/* Sugestões Rápidas de Funções Imobiliárias */}
+            <div className="space-y-1.5 pt-1">
+              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
+                Sugestões Rápidas (clique para cadastrar):
+              </span>
+              <div className="flex flex-wrap gap-1.5">
+                {[
+                  'Captador(a) de Imóveis',
+                  'Gerente de Contratos',
+                  'Consultor(a) Imobiliário',
+                  'Coordenador(a) de Vistorias',
+                  'Assistente de Locação'
+                ].map((sugestao) => {
+                  const jaExiste = cargos.some(c => c.toLowerCase() === sugestao.toLowerCase());
+                  if (jaExiste) return null;
+                  return (
+                    <button
+                      key={sugestao}
+                      type="button"
+                      onClick={() => handleCadastrarCargo(sugestao)}
+                      className="text-[11px] px-2.5 py-1 rounded-xl bg-slate-50 dark:bg-slate-950 hover:bg-rose-50 dark:hover:bg-rose-950/60 text-slate-600 dark:text-slate-300 hover:text-rose-600 dark:hover:text-rose-300 border border-slate-200 dark:border-slate-800 hover:border-rose-300 dark:hover:border-rose-800 transition-all cursor-pointer flex items-center gap-1"
+                    >
+                      <span>+ {sugestao}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+
+          {/* Grid de Cargos Cadastrados */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {cargos.map((cargoNome) => {
+              const corretoresComEsseCargo = corretores.filter(c => c.cargo === cargoNome);
+              const totalVinculados = corretoresComEsseCargo.length;
+
+              return (
+                <div
+                  key={cargoNome}
+                  className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-sm hover:shadow-md transition-all flex flex-col justify-between space-y-3"
+                >
+                  <div className="space-y-2">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-9 h-9 rounded-xl bg-rose-50 dark:bg-rose-950/50 text-rose-600 dark:text-rose-400 flex items-center justify-center font-bold shrink-0">
+                          <Award className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <h4 className="font-bold text-xs text-slate-900 dark:text-white leading-snug">
+                            {cargoNome}
+                          </h4>
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full inline-block mt-0.5 ${
+                            totalVinculados > 0
+                              ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800'
+                              : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400'
+                          }`}>
+                            {totalVinculados === 0 
+                              ? 'Sem corretores vinculados' 
+                              : `${totalVinculados} ${totalVinculados === 1 ? 'corretor vinculado' : 'corretores vinculados'}`}
+                          </span>
+                        </div>
+                      </div>
+
+                      {cargos.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => handleRemoverCargo(cargoNome)}
+                          title={`Remover cargo "${cargoNome}"`}
+                          className="text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 p-1.5 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-lg transition-colors cursor-pointer"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Lista dos corretores que possuem essa função */}
+                    {totalVinculados > 0 && (
+                      <div className="pt-2 border-t border-slate-100 dark:border-slate-800/80">
+                        <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider block mb-1">
+                          Profissionais com esta função:
+                        </span>
+                        <div className="flex flex-wrap gap-1.5">
+                          {corretoresComEsseCargo.map(c => (
+                            <span
+                              key={c.id}
+                              className="text-[11px] px-2 py-0.5 rounded-md bg-slate-50 dark:bg-slate-950 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-800 font-medium"
+                            >
+                              {c.nome} <span className="text-slate-400 text-[10px]">({c.creci})</span>
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </div>
       )}
 
@@ -617,6 +785,17 @@ export const AdminView: React.FC<AdminViewProps> = ({
           }}
         />
       )}
+
+      {/* MODAL CUSTOMIZADO DE CONFIRMAÇÃO DE EXCLUSÃO */}
+      <ConfirmModal
+        isOpen={modalConfirmacao.aberto}
+        title={modalConfirmacao.titulo}
+        message={modalConfirmacao.mensagem}
+        itemName={modalConfirmacao.nomeItem}
+        confirmText={modalConfirmacao.confirmText || "Sim, Excluir"}
+        onClose={() => setModalConfirmacao(prev => ({ ...prev, aberto: false }))}
+        onConfirm={modalConfirmacao.onConfirmar}
+      />
 
     </div>
   );
