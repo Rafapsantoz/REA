@@ -227,15 +227,17 @@ export interface Corretor {
   email: string;
   telefone: string;
   cpf?: string;
-  cargo: string; // Ex: "Corretor de Imóveis", "Especialista em Locação", "Coordenador Comercial", "Avaliador Perito"
-  especialidades: string[]; // Ex: ["Locação Residencial", "Comercial", "Vistoria"]
-  comissaoPadrao?: number; // Percentual padrão, ex: 50%
-  status: 'ativo' | 'inativo';
+  cargo: string; // Ex: "Corretor de Imóveis", "Especialista em Locação", etc.
+  especialidades?: string[]; // Opcional / descontinuado a pedido do cliente
+  comissaoPadrao?: number; // Percentual se definido, ex: 50%
+  comissaoADefinir?: boolean; // Novo: flag para regra de comissão a definir pelo Manoel
+  status: 'ativo' | 'inativo'; // Status de credenciamento
   dataCadastro: string;
   totalContratos?: number;
   totalImoveis?: number;
   avatarUrl?: string;
-  bio?: string;
+  bio?: string; // Informações adicionais
+  informacoesAdicionais?: string; // Informações adicionais
 }
 
 export interface LocatarioAdicional {

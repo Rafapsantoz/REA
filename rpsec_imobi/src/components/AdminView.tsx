@@ -14,9 +14,12 @@ import {
   Copy, 
   Trash2, 
   ExternalLink,
-  Sparkles
+  Sparkles,
+  Percent,
+  Plus
 } from 'lucide-react';
 import { Corretor, ContratoLocacaoCompleto } from '../types';
+import { DEFAULT_CARGOS } from '../mockCorretores';
 import { NovoCorretorModal } from './NovoCorretorModal';
 import { useToast } from './Toast';
 
@@ -41,6 +44,50 @@ export const AdminView: React.FC<AdminViewProps> = ({
   const [filtroStatus, setFiltroStatus] = useState<'todos' | 'ativo' | 'inativo'>('todos');
   const [modalNovoAberto, setModalNovoAberto] = useState(false);
   const [subAba, setSubAba] = useState<'corretores' | 'empresa'>('corretores');
+
+  // Gestão / Cadastro de Cargos & Funções da Equipe
+  const [cargos, setCargos] = useState<string[]>(() => {
+    const salvos = localStorage.getItem('rpsec_imobi_cargos');
+    if (salvos) {
+      try {
+        return JSON.parse(salvos);
+      } catch (e) {
+        console.error('Falha ao restaurar cargos:', e);
+      }
+    }
+    return DEFAULT_CARGOS;
+  });
+  const [mostrarAddCargo, setMostrarAddCargo] = useState(false);
+  const [novoCargoInput, setNovoCargoInput] = useState('');
+
+  const handleCadastrarCargo = () => {
+    const limpo = novoCargoInput.trim();
+    if (!limpo) {
+      showToast('Digite o nome do cargo ou função para cadastrar.', 'error');
+      return;
+    }
+    if (cargos.includes(limpo)) {
+      showToast(`O cargo "${limpo}" já está cadastrado.`, 'error');
+      return;
+    }
+    const novos = [...cargos, limpo];
+    setCargos(novos);
+    localStorage.setItem('rpsec_imobi_cargos', JSON.stringify(novos));
+    setNovoCargoInput('');
+    setMostrarAddCargo(false);
+    showToast(`Cargo "${limpo}" cadastrado com sucesso!`, 'success');
+  };
+
+  const handleRemoverCargo = (cargoParaRemover: string) => {
+    if (cargos.length <= 1) {
+      showToast('A imobiliária precisa manter pelo menos um cargo cadastrado.', 'error');
+      return;
+    }
+    const novos = cargos.filter(c => c !== cargoParaRemover);
+    setCargos(novos);
+    localStorage.setItem('rpsec_imobi_cargos', JSON.stringify(novos));
+    showToast(`Cargo "${cargoParaRemover}" removido da lista.`, 'info');
+  };
 
   // Métricas
   const totalCorretores = corretores.length;
@@ -284,6 +331,85 @@ export const AdminView: React.FC<AdminViewProps> = ({
             </div>
           </div>
 
+          {/* PAINEL DE GESTÃO / CADASTRO DE CARGOS E FUNÇÕES DA EQUIPE */}
+          <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-2.5">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <div className="w-7 h-7 rounded-lg bg-rose-50 dark:bg-rose-950/50 text-rose-600 dark:text-rose-400 flex items-center justify-center font-bold">
+                  <Award className="w-4 h-4" />
+                </div>
+                <div>
+                  <h4 className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                    Cargos & Funções Cadastradas ({cargos.length})
+                  </h4>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                    Local para cadastro e gestão das funções operacionais da equipe
+                  </p>
+                </div>
+              </div>
+
+              {!mostrarAddCargo && (
+                <button
+                  type="button"
+                  onClick={() => setMostrarAddCargo(true)}
+                  className="px-3 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/50 dark:hover:bg-rose-900/60 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800 text-xs font-bold flex items-center gap-1.5 transition-all self-start sm:self-auto cursor-pointer"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>+ Cadastrar Cargo / Função</span>
+                </button>
+              )}
+            </div>
+
+            {mostrarAddCargo && (
+              <div className="flex items-center gap-2 pt-1 max-w-md animate-fade-in">
+                <input
+                  type="text"
+                  autoFocus
+                  placeholder="Nome do cargo (ex: Gerente de Locação, Consultor...)"
+                  value={novoCargoInput}
+                  onChange={(e) => setNovoCargoInput(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleCadastrarCargo(); } }}
+                  className="flex-1 text-xs p-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-rose-400 outline-none font-medium"
+                />
+                <button
+                  type="button"
+                  onClick={handleCadastrarCargo}
+                  className="px-3.5 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold transition-colors cursor-pointer"
+                >
+                  Salvar
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setMostrarAddCargo(false); setNovoCargoInput(''); }}
+                  className="px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-xs text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                >
+                  Cancelar
+                </button>
+              </div>
+            )}
+
+            <div className="flex flex-wrap gap-1.5 pt-1">
+              {cargos.map((cargoNome, i) => (
+                <span 
+                  key={i}
+                  className="inline-flex items-center gap-1.5 text-[11px] px-2.5 py-1 rounded-xl bg-slate-50 dark:bg-slate-950 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-800 font-medium"
+                >
+                  <span>{cargoNome}</span>
+                  {cargos.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => handleRemoverCargo(cargoNome)}
+                      title={`Remover cargo "${cargoNome}"`}
+                      className="text-slate-400 hover:text-red-500 transition-colors cursor-pointer text-xs"
+                    >
+                      ×
+                    </button>
+                  )}
+                </span>
+              ))}
+            </div>
+          </div>
+
           {/* Grid de Cards dos Corretores */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {corretoresFiltrados.map(corretor => (
@@ -368,17 +494,34 @@ export const AdminView: React.FC<AdminViewProps> = ({
                     </div>
                   </div>
 
-                  {/* Especialidades */}
-                  <div className="mt-3 flex flex-wrap gap-1">
-                    {corretor.especialidades.map((esp, i) => (
-                      <span 
-                        key={i}
-                        className="text-[10px] px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-medium border border-slate-200 dark:border-slate-700"
-                      >
-                        {esp}
+                  {/* Cálculo de Comissão (A Definir) */}
+                  <div className="mt-3 flex items-center justify-between p-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-100 dark:border-slate-800 text-xs">
+                    <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
+                      <Percent className="w-3.5 h-3.5 text-rose-500" />
+                      Comissão:
+                    </span>
+                    {corretor.comissaoADefinir || !corretor.comissaoPadrao ? (
+                      <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20">
+                        ⏳ A definir
                       </span>
-                    ))}
+                    ) : (
+                      <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20">
+                        {corretor.comissaoPadrao}% da locação
+                      </span>
+                    )}
                   </div>
+
+                  {/* Informações Adicionais (Antiga Biografia) */}
+                  {(corretor.bio || corretor.informacoesAdicionais) && (
+                    <div className="mt-2.5 p-2.5 bg-slate-50/70 dark:bg-slate-950/70 rounded-xl border border-slate-100 dark:border-slate-800 text-xs">
+                      <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider block mb-0.5">
+                        Informações Adicionais:
+                      </span>
+                      <p className="text-[11px] text-slate-600 dark:text-slate-300 italic leading-relaxed">
+                        "{corretor.bio || corretor.informacoesAdicionais}"
+                      </p>
+                    </div>
+                  )}
                 </div>
 
                 {/* Rodapé do Card com Produção e Ação de Excluir */}
@@ -464,6 +607,14 @@ export const AdminView: React.FC<AdminViewProps> = ({
         <NovoCorretorModal
           onClose={() => setModalNovoAberto(false)}
           onAddCorretor={onAddCorretor}
+          cargosCadastrados={cargos}
+          onCadastrarNovoCargo={(novoC) => {
+            if (!cargos.includes(novoC)) {
+              const novos = [...cargos, novoC];
+              setCargos(novos);
+              localStorage.setItem('rpsec_imobi_cargos', JSON.stringify(novos));
+            }
+          }}
         />
       )}
 

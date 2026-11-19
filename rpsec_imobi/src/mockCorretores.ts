@@ -1,5 +1,14 @@
 import { Corretor } from './types';
 
+export const DEFAULT_CARGOS: string[] = [
+  "Responsável Técnico & Diretor",
+  "Corretor de Imóveis",
+  "Corretora Especialista em Locação",
+  "Coordenador Comercial",
+  "Corretor Comercial & Rural",
+  "Avaliador Perito Imobiliário"
+];
+
 export const INITIAL_CORRETORES: Corretor[] = [
   {
     id: "cor_1",
@@ -9,8 +18,8 @@ export const INITIAL_CORRETORES: Corretor[] = [
     telefone: "(19) 99303-0194",
     cpf: "142.890.318-44",
     cargo: "Responsável Técnico & Diretor",
-    especialidades: ["Locação Residencial", "Locação Comercial", "Contratos Jurídicos", "Avaliação Pericial"],
     comissaoPadrao: 100,
+    comissaoADefinir: false,
     status: "ativo",
     dataCadastro: "10/01/2020",
     totalContratos: 14,
@@ -25,8 +34,8 @@ export const INITIAL_CORRETORES: Corretor[] = [
     telefone: "(19) 98877-3344",
     cpf: "289.441.788-12",
     cargo: "Corretora Especialista em Locação",
-    especialidades: ["Locação Residencial", "Vistoria de Entrada/Saída", "Gestão de Inquilinos"],
     comissaoPadrao: 50,
+    comissaoADefinir: true,
     status: "ativo",
     dataCadastro: "15/03/2023",
     totalContratos: 8,
@@ -41,8 +50,8 @@ export const INITIAL_CORRETORES: Corretor[] = [
     telefone: "(19) 99123-5566",
     cpf: "355.672.908-51",
     cargo: "Corretor Comercial & Rural",
-    especialidades: ["Salões Comerciais", "Galpões", "Sítios e Chácaras", "Vendas"],
     comissaoPadrao: 50,
+    comissaoADefinir: true,
     status: "ativo",
     dataCadastro: "05/08/2024",
     totalContratos: 5,
