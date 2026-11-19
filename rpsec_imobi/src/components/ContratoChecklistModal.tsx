@@ -67,8 +67,21 @@ export const ContratoChecklistModal: React.FC<ContratoChecklistModalProps> = ({
   const [mostrarAddMorador, setMostrarAddMorador] = useState(false);
 
   const handleSalvar = () => {
-    onUpdateContrato(contrato);
-    showToast(`Informações do Contrato nº ${contrato.numeroOrdem} salvas com sucesso!`, 'success');
+    let atualizado = { ...contrato };
+    // Se estiver na aba de encerramento ou em processo ativo de encerramento (e não estiver arquivado/encerrado),
+    // ao salvar ele passa a constar com status pendente de fechamento!
+    if ((activeTab === 'encerramento' || contrato.processoAtivo === 'encerramento') && contrato.status !== 'encerrado') {
+      atualizado.processoAtivo = 'encerramento';
+      atualizado.status = 'pendente';
+      setContrato(atualizado);
+    }
+    onUpdateContrato(atualizado);
+    
+    if (atualizado.processoAtivo === 'encerramento' && atualizado.status === 'pendente') {
+      showToast(`Contrato nº ${contrato.numeroOrdem} salvo com Pendências de Fechamento (${progressoEncerramento.concluidos}/${progressoEncerramento.total} etapas).`, 'info');
+    } else {
+      showToast(`Informações do Contrato nº ${contrato.numeroOrdem} salvas com sucesso!`, 'success');
+    }
   };
 
   // Transição de Status: Ativar Contrato
@@ -88,16 +101,17 @@ export const ContratoChecklistModal: React.FC<ContratoChecklistModalProps> = ({
     showToast(`O Contrato nº ${contrato.numeroOrdem} agora está 100% ativo e as chaves foram liberadas.`, 'success');
   };
 
-  // Iniciar Processo de Encerramento
+  // Iniciar Processo de Encerramento (coloca em pendente de fechamento)
   const handleIniciarEncerramento = () => {
     const atualizado: ContratoLocacaoCompleto = {
       ...contrato,
+      status: 'pendente',
       processoAtivo: 'encerramento'
     };
     setContrato(atualizado);
     setActiveTab('encerramento');
     onUpdateContrato(atualizado);
-    showToast("Processo de Encerramento Iniciado. Preencha o checklist de rescisão e quitações.", 'info');
+    showToast("Processo de Rescisão Iniciado. O contrato agora consta com Pendências de Fechamento.", 'info');
   };
 
   // Finalizar e Encerrar Contrato Definitivamente
@@ -282,16 +296,29 @@ export const ContratoChecklistModal: React.FC<ContratoChecklistModalProps> = ({
                 <h2 className="text-xl font-bold text-slate-900 dark:text-white">
                   Contrato de Locação Nº {contrato.numeroOrdem}
                 </h2>
-                {contrato.status === 'ativo' && (
+                {contrato.status === 'ativo' && contrato.processoAtivo !== 'encerramento' && (
                   <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-400 border border-emerald-300 dark:border-emerald-800 flex items-center gap-1">
                     <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
                     Ativo & Regular
                   </span>
                 )}
                 {contrato.status === 'pendente' && (
+                  contrato.processoAtivo === 'encerramento' ? (
+                    <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-400 border border-amber-300 dark:border-amber-800 flex items-center gap-1">
+                      <Lock className="w-3 h-3 text-amber-500" />
+                      Em Fechamento / Com Pendência ({progressoEncerramento.concluidos}/{progressoEncerramento.total})
+                    </span>
+                  ) : (
+                    <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-400 border border-amber-300 dark:border-amber-800 flex items-center gap-1">
+                      <AlertTriangle className="w-3 h-3 text-amber-500" />
+                      Em Abertura / Com Pendência ({progressoAbertura.concluidos}/{progressoAbertura.total})
+                    </span>
+                  )
+                )}
+                {contrato.processoAtivo === 'encerramento' && contrato.status === 'ativo' && (
                   <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-400 border border-amber-300 dark:border-amber-800 flex items-center gap-1">
-                    <AlertTriangle className="w-3 h-3 text-amber-500" />
-                    Em Abertura / Com Pendência
+                    <Lock className="w-3 h-3 text-amber-500" />
+                    Rescisão Iniciada / Pendência ({progressoEncerramento.concluidos}/{progressoEncerramento.total})
                   </span>
                 )}
                 {contrato.status === 'encerrado' && (

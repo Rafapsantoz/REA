@@ -52,8 +52,8 @@ export const DesktopView: React.FC<DesktopViewProps> = ({
 }) => {
   const { showToast } = useToast();
 
-  // Filtro de status: todos | pendente | ativo | encerrado
-  const [statusFilter, setStatusFilter] = useState<'todos' | 'pendente' | 'ativo' | 'encerrado'>('todos');
+  // Filtro de status: todos | pendente_abertura | pendente_fechamento | ativo | encerrado
+  const [statusFilter, setStatusFilter] = useState<'todos' | 'pendente_abertura' | 'pendente_fechamento' | 'ativo' | 'encerrado'>('todos');
   
   // Campo de Pesquisa: Nome do Inquilino ou Número do Contrato
   const [busca, setBusca] = useState('');
@@ -63,15 +63,24 @@ export const DesktopView: React.FC<DesktopViewProps> = ({
   const [abaInicialModal, setAbaInicialModal] = useState<'abertura' | 'encerramento' | 'anexos'>('abertura');
   const [modalNovoAberto, setModalNovoAberto] = useState(false);
 
-  // Contadores & Métricas dos Contratos
-  const contratosPendentes = contratos.filter(c => c.status === 'pendente');
-  const contratosAtivos = contratos.filter(c => c.status === 'ativo');
+  // Contadores & Métricas dos Contratos (Distinguindo Abertura vs Fechamento)
+  const contratosPendentesAbertura = contratos.filter(c => c.status === 'pendente' && c.processoAtivo !== 'encerramento');
+  const contratosPendentesFechamento = contratos.filter(c => c.processoAtivo === 'encerramento' && c.status !== 'encerrado');
+  const contratosAtivos = contratos.filter(c => c.status === 'ativo' && c.processoAtivo !== 'encerramento');
   const contratosEncerrados = contratos.filter(c => c.status === 'encerrado');
 
   // Filtragem estrita por Nome do Inquilino ou Número do Contrato
   const contratosFiltrados = contratos.filter(c => {
     // Filtro por status
-    if (statusFilter !== 'todos' && c.status !== statusFilter) return false;
+    if (statusFilter === 'pendente_abertura') {
+      if (!(c.status === 'pendente' && c.processoAtivo !== 'encerramento')) return false;
+    } else if (statusFilter === 'pendente_fechamento') {
+      if (!(c.processoAtivo === 'encerramento' && c.status !== 'encerrado')) return false;
+    } else if (statusFilter === 'ativo') {
+      if (!(c.status === 'ativo' && c.processoAtivo !== 'encerramento')) return false;
+    } else if (statusFilter === 'encerrado') {
+      if (c.status !== 'encerrado') return false;
+    }
 
     // Filtro por pesquisa (Nome do Inquilino ou Número do Contrato)
     if (busca.trim()) {
@@ -152,11 +161,11 @@ export const DesktopView: React.FC<DesktopViewProps> = ({
         {/* Atalhos Rápidos de Demonstração & Abas de Status */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1 border-t border-slate-100 dark:border-slate-800/80">
           
-          {/* Abas de Status com Encerrados em Vermelho */}
-          <div className="flex flex-wrap items-center bg-slate-100 dark:bg-slate-950 p-1 rounded-xl border border-slate-200 dark:border-slate-800">
+          {/* Abas de Status: Todos | Pendência de Abertura | Pendência de Fechamento | Ativos | Encerrados */}
+          <div className="flex flex-wrap items-center bg-slate-100 dark:bg-slate-950 p-1 rounded-xl border border-slate-200 dark:border-slate-800 gap-1">
             <button
               onClick={() => setStatusFilter('todos')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                 statusFilter === 'todos'
                   ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm'
                   : 'text-slate-500 hover:text-slate-900 dark:hover:text-slate-200'
@@ -165,19 +174,30 @@ export const DesktopView: React.FC<DesktopViewProps> = ({
               Todos ({contratos.length})
             </button>
             <button
-              onClick={() => setStatusFilter('pendente')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
-                statusFilter === 'pendente'
+              onClick={() => setStatusFilter('pendente_abertura')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                statusFilter === 'pendente_abertura'
                   ? 'bg-amber-500 text-white shadow-sm'
                   : 'text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/40'
               }`}
             >
-              <span className="w-2 h-2 rounded-full bg-amber-400"></span>
-              <span>Com Pendência ({contratosPendentes.length})</span>
+              <AlertTriangle className="w-3.5 h-3.5" />
+              <span>Pendências de Abertura ({contratosPendentesAbertura.length})</span>
+            </button>
+            <button
+              onClick={() => setStatusFilter('pendente_fechamento')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                statusFilter === 'pendente_fechamento'
+                  ? 'bg-orange-600 text-white shadow-sm'
+                  : 'text-orange-600 dark:text-orange-400 hover:bg-orange-50 dark:hover:bg-orange-950/40'
+              }`}
+            >
+              <Lock className="w-3.5 h-3.5" />
+              <span>Pendências de Fechamento ({contratosPendentesFechamento.length})</span>
             </button>
             <button
               onClick={() => setStatusFilter('ativo')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
                 statusFilter === 'ativo'
                   ? 'bg-emerald-600 text-white shadow-sm'
                   : 'text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40'
@@ -188,7 +208,7 @@ export const DesktopView: React.FC<DesktopViewProps> = ({
             </button>
             <button
               onClick={() => setStatusFilter('encerrado')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
                 statusFilter === 'encerrado'
                   ? 'bg-red-600 text-white shadow-sm'
                   : 'text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40'
@@ -227,15 +247,15 @@ export const DesktopView: React.FC<DesktopViewProps> = ({
       </div>
 
       {/* ═════════════════════════════════════════════════════════════
-          2º BLOCO: STATUS DOS CONTRATOS (SIMPLES E DIRETO)
+          2º BLOCO: STATUS DOS CONTRATOS (4 CARDS: ABERTURA, FECHAMENTO, ATIVOS, ENCERRADOS)
       ═════════════════════════════════════════════════════════════ */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         
-        {/* Card 1: Com Pendência / Abertura */}
+        {/* Card 1: Com Pendência de Abertura */}
         <div 
-          onClick={() => setStatusFilter('pendente')}
+          onClick={() => setStatusFilter('pendente_abertura')}
           className={`p-5 rounded-2xl border transition-all cursor-pointer ${
-            statusFilter === 'pendente'
+            statusFilter === 'pendente_abertura'
               ? 'bg-amber-500/10 border-amber-500/50 dark:bg-amber-950/40 shadow-lg'
               : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-amber-400'
           }`}
@@ -243,22 +263,49 @@ export const DesktopView: React.FC<DesktopViewProps> = ({
           <div className="flex items-center justify-between mb-2">
             <span className="text-xs font-bold text-amber-600 dark:text-amber-400 uppercase tracking-wider flex items-center gap-1.5">
               <AlertTriangle className="w-4 h-4 text-amber-500" />
-              Com Pendência / Abertura
+              Pendências de Abertura
             </span>
             <span className="w-2.5 h-2.5 rounded-full bg-amber-400 animate-pulse"></span>
           </div>
           <div className="flex items-baseline gap-2">
             <span className="text-3xl font-black text-slate-900 dark:text-white">
-              {contratosPendentes.length}
+              {contratosPendentesAbertura.length}
             </span>
-            <span className="text-xs text-slate-500">em processo de abertura</span>
+            <span className="text-xs text-slate-500">em abertura</span>
           </div>
           <p className="text-[11px] text-amber-700 dark:text-amber-300 mt-2 font-medium">
-            ⚠️ Bloqueado para entrega de chaves até 100% das etapas
+            ⚠️ Bloqueado para entrega de chaves até 100%
           </p>
         </div>
 
-        {/* Card 2: Contratos Ativos */}
+        {/* Card 2: Com Pendência de Fechamento / Rescisão */}
+        <div 
+          onClick={() => setStatusFilter('pendente_fechamento')}
+          className={`p-5 rounded-2xl border transition-all cursor-pointer ${
+            statusFilter === 'pendente_fechamento'
+              ? 'bg-orange-500/15 border-orange-500/60 dark:bg-orange-950/40 shadow-lg'
+              : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-orange-400'
+          }`}
+        >
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs font-bold text-orange-600 dark:text-orange-400 uppercase tracking-wider flex items-center gap-1.5">
+              <Lock className="w-4 h-4 text-orange-500" />
+              Pendências de Fechamento
+            </span>
+            <span className="w-2.5 h-2.5 rounded-full bg-orange-500 animate-pulse"></span>
+          </div>
+          <div className="flex items-baseline gap-2">
+            <span className="text-3xl font-black text-slate-900 dark:text-white">
+              {contratosPendentesFechamento.length}
+            </span>
+            <span className="text-xs text-slate-500">em rescisão/baixa</span>
+          </div>
+          <p className="text-[11px] text-orange-700 dark:text-orange-300 mt-2 font-medium">
+            🚪 Vistoria de saída, Sabesp/CPFL e termo final
+          </p>
+        </div>
+
+        {/* Card 3: Contratos Ativos */}
         <div 
           onClick={() => setStatusFilter('ativo')}
           className={`p-5 rounded-2xl border transition-all cursor-pointer ${
@@ -285,7 +332,7 @@ export const DesktopView: React.FC<DesktopViewProps> = ({
           </p>
         </div>
 
-        {/* Card 3: Contratos Encerrados (EM VERMELHO) */}
+        {/* Card 4: Contratos Encerrados (EM VERMELHO) */}
         <div 
           onClick={() => setStatusFilter('encerrado')}
           className={`p-5 rounded-2xl border transition-all cursor-pointer ${
@@ -351,11 +398,13 @@ export const DesktopView: React.FC<DesktopViewProps> = ({
                   
                   {/* Badge Grande de Número de Ordem */}
                   <div className={`w-14 h-14 rounded-2xl flex flex-col items-center justify-center font-bold flex-shrink-0 shadow-sm ${
-                    contrato.status === 'ativo'
-                      ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20'
-                      : contrato.status === 'pendente'
-                        ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20'
-                        : 'bg-red-500/10 text-red-600 dark:text-red-400 border border-red-500/30'
+                    contrato.status === 'encerrado'
+                      ? 'bg-red-500/10 text-red-600 dark:text-red-400 border border-red-500/30'
+                      : isEncerramento
+                        ? 'bg-orange-500/10 text-orange-600 dark:text-orange-400 border border-orange-500/30'
+                        : contrato.status === 'pendente'
+                          ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20'
+                          : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20'
                   }`}>
                     <span className="text-[10px] uppercase tracking-wider font-semibold opacity-70">Nº</span>
                     <span className="text-lg font-black leading-none">{contrato.numeroOrdem}</span>
@@ -377,17 +426,26 @@ export const DesktopView: React.FC<DesktopViewProps> = ({
                         </span>
                       )}
                       
-                      {contrato.status === 'ativo' && (
+                      {contrato.status === 'ativo' && !isEncerramento && (
                         <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-400 border border-emerald-300 dark:border-emerald-800 flex items-center gap-1">
                           <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
                           Ativo & Regular
                         </span>
                       )}
 
-                      {contrato.status === 'pendente' && (
+                      {/* BADGE: PENDÊNCIA DE ABERTURA */}
+                      {!isEncerramento && contrato.status === 'pendente' && (
                         <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-400 border border-amber-300 dark:border-amber-800 flex items-center gap-1">
                           <AlertTriangle className="w-3 h-3 text-amber-500" />
-                          Com Pendência ({progressoAbertura.concluidos}/{progressoAbertura.total})
+                          Com Pendência de Abertura ({progressoAbertura.concluidos}/{progressoAbertura.total})
+                        </span>
+                      )}
+
+                      {/* BADGE: PENDÊNCIA DE FECHAMENTO */}
+                      {isEncerramento && contrato.status !== 'encerrado' && (
+                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-orange-100 text-orange-800 dark:bg-orange-950 dark:text-orange-400 border border-orange-300 dark:border-orange-800 flex items-center gap-1">
+                          <Lock className="w-3 h-3 text-orange-500" />
+                          Com Pendência de Fechamento ({progressoEncerramento.concluidos}/{progressoEncerramento.total})
                         </span>
                       )}
 
@@ -395,12 +453,6 @@ export const DesktopView: React.FC<DesktopViewProps> = ({
                         <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-red-100 text-red-800 dark:bg-red-950/80 dark:text-red-400 border border-red-300 dark:border-red-800 flex items-center gap-1">
                           <span className="w-1.5 h-1.5 rounded-full bg-red-500"></span>
                           Contrato Encerrado & Quitado
-                        </span>
-                      )}
-
-                      {isEncerramento && contrato.status !== 'encerrado' && (
-                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-400 border border-rose-300 dark:border-rose-800">
-                          Rescisão em Andamento
                         </span>
                       )}
                     </div>
@@ -420,11 +472,11 @@ export const DesktopView: React.FC<DesktopViewProps> = ({
                       <span><strong>Vigência:</strong> {contrato.vigencia.inicio} a {contrato.vigencia.fim}</span>
                     </div>
 
-                    {/* BADGES DE ALERTAS IMEDIATOS DE PENDÊNCIAS */}
-                    {contrato.status === 'pendente' && progressoAbertura.pendencias.length > 0 && (
+                    {/* BADGES DE ALERTAS IMEDIATOS: PENDÊNCIAS DE ABERTURA */}
+                    {!isEncerramento && contrato.status === 'pendente' && progressoAbertura.pendencias.length > 0 && (
                       <div className="flex flex-wrap items-center gap-1.5 pt-2">
                         <span className="text-[10px] text-amber-700 dark:text-amber-300 font-bold uppercase tracking-wider mr-1">
-                          Pendências imediatas:
+                          Pendências de abertura:
                         </span>
                         {progressoAbertura.pendencias.slice(0, 3).map((pen, idx) => (
                           <span 
@@ -437,6 +489,28 @@ export const DesktopView: React.FC<DesktopViewProps> = ({
                         {progressoAbertura.pendencias.length > 3 && (
                           <span className="text-[10px] text-slate-400 font-semibold">
                             +{progressoAbertura.pendencias.length - 3} itens
+                          </span>
+                        )}
+                      </div>
+                    )}
+
+                    {/* BADGES DE ALERTAS IMEDIATOS: PENDÊNCIAS DE FECHAMENTO */}
+                    {isEncerramento && contrato.status !== 'encerrado' && progressoEncerramento.pendencias.length > 0 && (
+                      <div className="flex flex-wrap items-center gap-1.5 pt-2">
+                        <span className="text-[10px] text-orange-700 dark:text-orange-300 font-bold uppercase tracking-wider mr-1">
+                          Pendências de fechamento:
+                        </span>
+                        {progressoEncerramento.pendencias.slice(0, 3).map((pen, idx) => (
+                          <span 
+                            key={idx}
+                            className="px-2 py-0.5 rounded bg-orange-500/10 text-orange-700 dark:text-orange-300 border border-orange-500/20 text-[10px] font-medium"
+                          >
+                            🚪 {pen}
+                          </span>
+                        ))}
+                        {progressoEncerramento.pendencias.length > 3 && (
+                          <span className="text-[10px] text-slate-400 font-semibold">
+                            +{progressoEncerramento.pendencias.length - 3} etapas
                           </span>
                         )}
                       </div>
@@ -462,10 +536,10 @@ export const DesktopView: React.FC<DesktopViewProps> = ({
                   <div className="min-w-[160px] space-y-1">
                     <div className="flex items-center justify-between text-[11px] font-semibold">
                       <span className="text-slate-500">
-                        {isEncerramento ? 'Checklist Encerramento' : 'Checklist Abertura'}
+                        {isEncerramento ? 'Checklist Fechamento' : 'Checklist Abertura'}
                       </span>
                       <span className={isEncerramento 
-                        ? (progressoEncerramento.estaAptoParaEncerrar ? 'text-emerald-500 font-bold' : 'text-amber-500 font-bold')
+                        ? (progressoEncerramento.estaAptoParaEncerrar ? 'text-emerald-500 font-bold' : 'text-orange-500 font-bold')
                         : (progressoAbertura.estaAptoParaAtivar ? 'text-emerald-500 font-bold' : 'text-amber-500 font-bold')
                       }>
                         {isEncerramento ? `${progressoEncerramento.porcentagem}%` : `${progressoAbertura.porcentagem}%`}
@@ -475,7 +549,7 @@ export const DesktopView: React.FC<DesktopViewProps> = ({
                       <div 
                         className={`h-full rounded-full transition-all duration-300 ${
                           isEncerramento
-                            ? (progressoEncerramento.estaAptoParaEncerrar ? 'bg-emerald-500' : 'bg-amber-500')
+                            ? (progressoEncerramento.estaAptoParaEncerrar ? 'bg-emerald-500' : 'bg-gradient-to-r from-orange-500 to-red-500')
                             : (progressoAbertura.estaAptoParaAtivar ? 'bg-emerald-500' : 'bg-gradient-to-r from-amber-500 to-rose-500')
                         }`}
                         style={{ width: `${isEncerramento ? progressoEncerramento.porcentagem : progressoAbertura.porcentagem}%` }}
@@ -493,7 +567,7 @@ export const DesktopView: React.FC<DesktopViewProps> = ({
                   <div className="flex flex-wrap items-center gap-2">
                     <button
                       onClick={() => {
-                        setAbaInicialModal('abertura');
+                        setAbaInicialModal(isEncerramento ? 'encerramento' : 'abertura');
                         setContratoSelecionado(contrato);
                       }}
                       className="px-3.5 py-2.5 bg-slate-900 hover:bg-black dark:bg-white dark:hover:bg-slate-200 text-white dark:text-slate-900 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-sm transition-all whitespace-nowrap cursor-pointer"
@@ -503,21 +577,21 @@ export const DesktopView: React.FC<DesktopViewProps> = ({
                       <ChevronRight className="w-3.5 h-3.5 opacity-60" />
                     </button>
 
-                    {contrato.status === 'ativo' && (
+                    {contrato.status !== 'encerrado' && (
                       <button
                         onClick={() => {
                           setAbaInicialModal('encerramento');
                           setContratoSelecionado(contrato);
                         }}
                         className={`px-3 py-2.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all whitespace-nowrap cursor-pointer ${
-                          contrato.processoAtivo === 'encerramento'
-                            ? 'bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30 hover:bg-amber-500/25'
+                          isEncerramento
+                            ? 'bg-orange-500/15 text-orange-700 dark:text-orange-300 border border-orange-500/30 hover:bg-orange-500/25'
                             : 'bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 dark:hover:bg-rose-900/50 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800'
                         }`}
                         title="Abrir checklist de rescisão e encerramento deste contrato"
                       >
                         <Lock className="w-3.5 h-3.5 text-rose-500" />
-                        <span>{contrato.processoAtivo === 'encerramento' ? 'Continuar Encerramento (13 etapas)' : 'Encerrar Contrato 🚪'}</span>
+                        <span>{isEncerramento ? 'Continuar Fechamento (13 etapas) 🚪' : 'Encerrar Contrato 🚪'}</span>
                       </button>
                     )}
                   </div>
