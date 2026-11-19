@@ -7,10 +7,7 @@ import {
   EyeOff, 
   ShieldCheck, 
   ArrowRight, 
-  AlertCircle, 
-  CheckCircle2, 
-  Sparkles,
-  KeyRound
+  AlertCircle
 } from 'lucide-react';
 
 interface LoginViewProps {
@@ -24,8 +21,8 @@ export const CREDENCIAIS_AUTORIZADAS = [
     nome: "Manoel Jerônimo",
     cargo: "Diretor & Responsável Técnico",
     creci: "278536",
-    emails: ["manoel.jeronimo@imobiliariajeronimo.com.br", "manoel", "manoel@imobiliariajeronimo.com.br"],
-    senha: "MJ#278536@Mococa",
+    emails: ["manuel@teste.com.br", "manuel", "manoel@teste.com.br", "manoel.jeronimo@imobiliariajeronimo.com.br"],
+    senha: "ManoelJeronimo#278536@Mococa2026",
     avatar: "M"
   },
   {
@@ -39,7 +36,7 @@ export const CREDENCIAIS_AUTORIZADAS = [
 ];
 
 export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, theme }) => {
-  const [identificador, setIdentificador] = useState('manoel.jeronimo@imobiliariajeronimo.com.br');
+  const [identificador, setIdentificador] = useState('');
   const [senha, setSenha] = useState('');
   const [mostrarSenha, setMostrarSenha] = useState(false);
   const [lembrarAcesso, setLembrarAcesso] = useState(true);
@@ -75,16 +72,10 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, theme }) =
 
         onLoginSuccess(dadosSessao);
       } else {
-        setErro("Credenciais inválidas. Verifique o e-mail e a senha exclusiva de acesso.");
+        setErro("Credenciais inválidas. Verifique o e-mail e a senha de acesso.");
         setCarregando(false);
       }
     }, 450); // Feedback visual elegante de autenticação
-  };
-
-  const handlePreencherManoel = () => {
-    setIdentificador('manoel.jeronimo@imobiliariajeronimo.com.br');
-    setSenha('MJ#278536@Mococa');
-    setErro('');
   };
 
   return (
@@ -153,7 +144,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, theme }) =
                   required
                   value={identificador}
                   onChange={(e) => setIdentificador(e.target.value)}
-                  placeholder="Seu e-mail corporativo"
+                  placeholder="ex: manuel@teste.com.br"
                   className="w-full text-xs pl-10 pr-4 py-3 rounded-xl bg-slate-950/80 border border-slate-700/80 text-white placeholder-slate-500 focus:outline-none focus:border-rose-500 focus:ring-1 focus:ring-rose-500 transition-all font-medium"
                 />
               </div>
@@ -220,29 +211,6 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, theme }) =
               )}
             </button>
           </form>
-
-          {/* Dica de Acesso Rápido para a Demonstração */}
-          <div className="pt-2 border-t border-slate-800/80">
-            <div className="bg-slate-950/60 p-3 rounded-2xl border border-slate-800 space-y-2">
-              <div className="flex items-center justify-between text-[11px]">
-                <span className="text-slate-400 font-medium flex items-center gap-1.5">
-                  <KeyRound className="w-3.5 h-3.5 text-rose-400" />
-                  Credencial Gerada para Manoel:
-                </span>
-                <button
-                  type="button"
-                  onClick={handlePreencherManoel}
-                  className="text-rose-400 hover:text-rose-300 font-bold transition-colors cursor-pointer text-[10px] uppercase tracking-wider underline"
-                >
-                  Preencher
-                </button>
-              </div>
-              <div className="text-[11px] font-mono text-slate-300 bg-slate-900 px-2.5 py-1.5 rounded-lg border border-slate-800 flex items-center justify-between">
-                <span>Senha: <strong className="text-rose-400 font-bold">MJ#278536@Mococa</strong></span>
-                <span className="text-[10px] text-slate-500">Manoel Jerônimo</span>
-              </div>
-            </div>
-          </div>
 
         </div>
 

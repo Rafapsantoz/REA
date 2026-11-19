@@ -91,24 +91,24 @@ export const Navbar: React.FC<NavbarProps> = ({
               {theme === 'dark' ? (
                 <>
                   <Sun className="w-4 h-4 text-amber-400" />
-                  <span className="hidden md:inline text-[11px]">Tema Claro</span>
+                  <span className="hidden xl:inline text-[11px]">Tema Claro</span>
                 </>
               ) : (
                 <>
                   <Moon className="w-4 h-4 text-slate-700" />
-                  <span className="hidden md:inline text-[11px]">Tema Escuro</span>
+                  <span className="hidden xl:inline text-[11px]">Tema Escuro</span>
                 </>
               )}
             </button>
 
             {/* Usuário Logado & Botão de Sair */}
             {usuarioLogado && (
-              <div className="flex items-center gap-2 pl-2 border-l border-slate-200 dark:border-slate-800">
+              <div className="flex items-center gap-1.5 sm:gap-2 pl-2 border-l border-slate-200 dark:border-slate-800">
                 <div className="flex items-center gap-2">
                   <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-rose-600 to-red-700 text-white font-bold flex items-center justify-center text-xs shadow-sm">
                     {usuarioLogado.avatar || usuarioLogado.nome.charAt(0)}
                   </div>
-                  <div className="hidden sm:block text-left leading-tight">
+                  <div className="hidden md:block text-left leading-tight">
                     <span className="text-xs font-bold text-slate-800 dark:text-slate-200 block truncate max-w-[120px]">
                       {usuarioLogado.nome}
                     </span>
