@@ -1,18 +1,19 @@
 import React, { useState } from 'react';
-import { 
-  Building2, 
-  Lock, 
-  Mail, 
-  Eye, 
-  EyeOff, 
-  ShieldCheck, 
-  ArrowRight, 
-  AlertCircle
+import {
+  Lock,
+  Mail,
+  Eye,
+  EyeOff,
+  ArrowRight,
+  AlertCircle,
+  Sun,
+  Moon
 } from 'lucide-react';
 
 interface LoginViewProps {
   onLoginSuccess: (usuario: { nome: string; email: string; cargo: string; avatar: string }) => void;
   theme: 'light' | 'dark';
+  onToggleTheme?: () => void;
 }
 
 // Credenciais Autorizadas para a Demonstração Exclusiva
@@ -35,7 +36,7 @@ export const CREDENCIAIS_AUTORIZADAS = [
   }
 ];
 
-export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, theme }) => {
+export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, theme, onToggleTheme }) => {
   const [identificador, setIdentificador] = useState('');
   const [senha, setSenha] = useState('');
   const [mostrarSenha, setMostrarSenha] = useState(false);
@@ -72,160 +73,170 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, theme }) =
 
         onLoginSuccess(dadosSessao);
       } else {
-        setErro("Credenciais inválidas. Verifique o e-mail e a senha de acesso.");
+        setErro("Credenciais inválidas. Confira o usuário e a senha informados.");
         setCarregando(false);
       }
-    }, 450); // Feedback visual elegante de autenticação
+    }, 450);
   };
 
   return (
-    <div className="min-h-screen w-full flex items-center justify-center p-4 bg-gradient-to-br from-slate-900 via-slate-950 to-slate-900 text-slate-100 relative overflow-hidden">
-      
-      {/* Luzes de fundo / Efeito decorativo */}
-      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[550px] h-[550px] bg-rose-600/10 rounded-full blur-[130px] pointer-events-none"></div>
-      <div className="absolute bottom-10 right-10 w-[350px] h-[350px] bg-red-700/10 rounded-full blur-[100px] pointer-events-none"></div>
+    <div className="min-h-screen w-full flex flex-col justify-between p-4 sm:p-6 bg-[#F7F6F2] dark:bg-[#0D1014] text-[#141619] dark:text-[#F1F3F5] transition-colors duration-200">
+      {/* Barra superior discreta com alternador de tema */}
+      <div className="max-w-5xl w-full mx-auto flex items-center justify-between">
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-lg bg-[#B91C1C] text-white font-display font-bold text-sm flex items-center justify-center tracking-tight">
+            MJ
+          </div>
+          <span className="font-display font-semibold text-sm tracking-tight text-[#141619] dark:text-slate-100">
+            Manoel Jerônimo Imóveis
+          </span>
+        </div>
 
-      <div className="w-full max-w-md relative z-10 space-y-6">
-        
-        {/* Card Principal de Autenticação */}
-        <div className="bg-slate-900/90 backdrop-blur-xl border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-2xl shadow-black/60 space-y-6">
-          
+        {onToggleTheme && (
+          <button
+            type="button"
+            onClick={onToggleTheme}
+            aria-label={`Alternar para tema ${theme === 'dark' ? 'claro' : 'escuro'}`}
+            className="px-3 py-2 rounded-lg border border-[#E2DFD7] dark:border-[#252B37] bg-white dark:bg-[#151921] text-xs font-semibold text-[#525866] dark:text-slate-300 hover:text-[#141619] dark:hover:text-white transition-colors flex items-center gap-2 cursor-pointer"
+          >
+            {theme === 'dark' ? (
+              <>
+                <Sun className="w-4 h-4 text-amber-400" />
+                <span>Tema claro</span>
+              </>
+            ) : (
+              <>
+                <Moon className="w-4 h-4 text-[#525866]" />
+                <span>Tema escuro</span>
+              </>
+            )}
+          </button>
+        )}
+      </div>
+
+      {/* Container Principal */}
+      <div className="w-full max-w-md mx-auto my-8 animate-scale-up">
+        <div className="bg-white dark:bg-[#151921] border border-[#E2DFD7] dark:border-[#252B37] rounded-xl p-6 sm:p-8 shadow-sm">
           {/* Cabeçalho da Marca */}
-          <div className="text-center space-y-3">
-            <div className="inline-flex w-14 h-14 rounded-2xl bg-gradient-to-br from-rose-600 to-red-700 items-center justify-center shadow-lg shadow-rose-900/40 text-white font-black text-xl mb-1">
-              <Building2 className="w-7 h-7" />
+          <div className="border-b border-[#E2DFD7] dark:border-[#252B37] pb-5 mb-6">
+            <div className="flex items-center justify-between gap-3 mb-2">
+              <h1 className="font-display text-2xl font-bold tracking-tight text-[#141619] dark:text-white">
+                Acesso ao sistema
+              </h1>
+              <span className="text-xs font-semibold px-2.5 py-0.5 rounded-md bg-red-50 text-[#B91C1C] dark:bg-red-950/50 dark:text-red-300 border border-red-200 dark:border-red-900/60 tabular-nums">
+                CRECI 278536
+              </span>
             </div>
-
-            <div>
-              <div className="flex items-center justify-center gap-2">
-                <h1 className="text-xl font-black text-white tracking-tight uppercase">
-                  Manoel Jerônimo
-                </h1>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-rose-500/20 text-rose-400 border border-rose-500/30">
-                  CRECI 278536
-                </span>
-              </div>
-              <p className="text-xs text-slate-400 mt-1 font-medium">
-                Inteligência Imobiliária & Gestão de Contratos
-              </p>
-            </div>
-
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[11px] font-semibold">
-              <ShieldCheck className="w-3.5 h-3.5" />
-              <span>Ambiente Privado de Demonstração</span>
-            </div>
+            <p className="text-sm text-[#525866] dark:text-slate-400 leading-relaxed">
+              Gestão de contratos de locação e administração da equipe em Mococa/SP.
+            </p>
           </div>
 
-          {/* Mensagem de Erro se houver */}
+          {/* Mensagem de Erro */}
           {erro && (
-            <div className="p-3.5 rounded-xl bg-red-500/10 border border-red-500/30 text-red-300 text-xs flex items-start gap-2.5 animate-shake">
-              <AlertCircle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
+            <div
+              role="alert"
+              className="mb-5 p-3.5 rounded-lg bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900/60 text-red-800 dark:text-red-200 text-sm flex items-start gap-2.5 animate-shake"
+            >
+              <AlertCircle className="w-4 h-4 text-red-600 dark:text-red-400 shrink-0 mt-0.5" />
               <div className="space-y-0.5">
-                <p className="font-bold">Acesso negado</p>
-                <p className="text-[11px] text-red-300/90">{erro}</p>
+                <p className="font-semibold">Acesso não autorizado</p>
+                <p className="text-xs text-red-700 dark:text-red-300/90">{erro}</p>
               </div>
             </div>
           )}
 
           {/* Formulário de Login */}
           <form onSubmit={handleSubmit} className="space-y-4">
-            
-            {/* Campo E-mail / Usuário */}
             <div className="space-y-1.5">
-              <label className="text-xs font-bold text-slate-300 block">
-                E-mail ou Usuário Autorizado
+              <label htmlFor="login-identificador" className="text-sm font-semibold text-[#141619] dark:text-slate-200 block">
+                E-mail ou usuário
               </label>
               <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[#525866] dark:text-slate-400">
                   <Mail className="w-4 h-4" />
                 </div>
                 <input
+                  id="login-identificador"
                   type="text"
                   required
+                  autoComplete="username"
                   value={identificador}
                   onChange={(e) => setIdentificador(e.target.value)}
-                  placeholder="ex: manuel@teste.com.br"
-                  className="w-full text-xs pl-10 pr-4 py-3 rounded-xl bg-slate-950/80 border border-slate-700/80 text-white placeholder-slate-500 focus:outline-none focus:border-rose-500 focus:ring-1 focus:ring-rose-500 transition-all font-medium"
+                  placeholder="seu@email.com.br"
+                  className="w-full text-sm pl-10 pr-4 py-2.5 rounded-lg bg-[#F7F6F2] dark:bg-[#0D1014] border border-[#E2DFD7] dark:border-[#252B37] text-[#141619] dark:text-white placeholder-[#525866]/60 dark:placeholder-slate-500 focus:outline-none focus:border-[#B91C1C] transition-colors"
                 />
               </div>
             </div>
 
-            {/* Campo Senha */}
             <div className="space-y-1.5">
-              <div className="flex items-center justify-between">
-                <label className="text-xs font-bold text-slate-300 block">
-                  Senha Exclusiva de Acesso
-                </label>
-              </div>
+              <label htmlFor="login-senha" className="text-sm font-semibold text-[#141619] dark:text-slate-200 block">
+                Senha de acesso
+              </label>
               <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[#525866] dark:text-slate-400">
                   <Lock className="w-4 h-4" />
                 </div>
                 <input
+                  id="login-senha"
                   type={mostrarSenha ? "text" : "password"}
                   required
+                  autoComplete="current-password"
                   value={senha}
                   onChange={(e) => setSenha(e.target.value)}
-                  placeholder="••••••••••••••••"
-                  className="w-full text-xs pl-10 pr-10 py-3 rounded-xl bg-slate-950/80 border border-slate-700/80 text-white placeholder-slate-500 focus:outline-none focus:border-rose-500 focus:ring-1 focus:ring-rose-500 transition-all font-mono"
+                  placeholder="Digite sua senha"
+                  className="w-full text-sm pl-10 pr-11 py-2.5 rounded-lg bg-[#F7F6F2] dark:bg-[#0D1014] border border-[#E2DFD7] dark:border-[#252B37] text-[#141619] dark:text-white placeholder-[#525866]/60 dark:placeholder-slate-500 focus:outline-none focus:border-[#B91C1C] transition-colors"
                 />
                 <button
                   type="button"
                   onClick={() => setMostrarSenha(!mostrarSenha)}
-                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-200 transition-colors"
+                  aria-label={mostrarSenha ? "Ocultar senha" : "Mostrar senha"}
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-[#525866] dark:text-slate-400 hover:text-[#141619] dark:hover:text-white transition-colors cursor-pointer"
                 >
                   {mostrarSenha ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
             </div>
 
-            {/* Lembrar Acesso */}
             <div className="flex items-center justify-between pt-1">
               <label className="flex items-center gap-2 cursor-pointer">
                 <input
                   type="checkbox"
                   checked={lembrarAcesso}
                   onChange={(e) => setLembrarAcesso(e.target.checked)}
-                  className="rounded text-rose-600 focus:ring-rose-500 w-4 h-4 bg-slate-950 border-slate-700"
+                  className="rounded text-[#B91C1C] focus:ring-[#B91C1C] w-4 h-4 bg-[#F7F6F2] dark:bg-[#0D1014] border-[#E2DFD7] dark:border-[#252B37]"
                 />
-                <span className="text-xs text-slate-400 font-medium">Manter conectado neste aparelho</span>
+                <span className="text-xs text-[#525866] dark:text-slate-400 font-medium">
+                  Manter conectado neste aparelho
+                </span>
               </label>
             </div>
 
-            {/* Botão Entrar */}
             <button
               type="submit"
               disabled={carregando}
-              className="w-full py-3.5 px-4 bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-500 hover:to-red-500 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2 shadow-lg shadow-rose-900/30 transition-all cursor-pointer disabled:opacity-50 mt-2"
+              className="w-full py-3 px-4 bg-[#B91C1C] hover:bg-[#991B1B] text-white rounded-lg text-sm font-semibold flex items-center justify-center gap-2 transition-colors cursor-pointer disabled:opacity-50 mt-2"
             >
               {carregando ? (
                 <>
                   <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                  <span>Autenticando acesso...</span>
+                  <span>Entrando...</span>
                 </>
               ) : (
                 <>
-                  <span>Acessar Painel Imobiliário</span>
+                  <span>Entrar no sistema</span>
                   <ArrowRight className="w-4 h-4" />
                 </>
               )}
             </button>
           </form>
-
         </div>
-
-        {/* Rodapé Seguro */}
-        <div className="text-center space-y-1">
-          <p className="text-[11px] text-slate-500">
-            Desenvolvido sob medida por <strong className="text-slate-400">RPsecti Soluções Inteligentes</strong>
-          </p>
-          <p className="text-[10px] text-slate-600">
-            Criptografia ponta a ponta • Hospedagem em Nuvem de Alta Disponibilidade
-          </p>
-        </div>
-
       </div>
 
+      {/* Rodapé discreto */}
+      <footer className="text-center text-xs text-[#525866] dark:text-slate-500">
+        Desenvolvido por <strong className="text-[#141619] dark:text-slate-300 font-semibold">RPsecti Soluções Inteligentes</strong>
+      </footer>
     </div>
   );
 };

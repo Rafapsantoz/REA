@@ -6,8 +6,18 @@ import { LoginView } from './components/LoginView';
 import { INITIAL_CLIENTES, INITIAL_IMOVEIS, INITIAL_VISITAS } from './mockData';
 import { INITIAL_CONTRATOS } from './mockContratos';
 import { INITIAL_CORRETORES } from './mockCorretores';
-import { Cliente, Imovel, VisitaLead, ContratoLocacaoCompleto, Corretor } from './types';
+import { Cliente, Imovel, VisitaLead, ContratoLocacaoCompleto, Corretor, DadosImobiliaria } from './types';
 import { ToastProvider } from './components/Toast';
+
+const DEFAULT_DADOS_EMPRESA: DadosImobiliaria = {
+  nomeFantasia: 'Manoel Jerônimo Imóveis',
+  creci: '278536-J',
+  regiaoCreci: '2ª Região / SP',
+  email: 'manoel.jeronimo@imobiliariajeronimo.com.br',
+  telefone: '(19) 99303-0194',
+  cidade: 'Mococa / SP',
+  observacaoSede: 'Atendimento regional'
+};
 
 export function App() {
   // Controle de Sessão de Acesso / Demonstração Privada
@@ -61,6 +71,23 @@ export function App() {
   useEffect(() => {
     localStorage.setItem('rpsec_imobi_corretores', JSON.stringify(corretores));
   }, [corretores]);
+
+  // Dados institucionais da imobiliária com persistência local
+  const [dadosEmpresa, setDadosEmpresa] = useState<DadosImobiliaria>(() => {
+    const saved = localStorage.getItem('rpsec_imobi_empresa');
+    if (saved) {
+      try {
+        return { ...DEFAULT_DADOS_EMPRESA, ...JSON.parse(saved) };
+      } catch (e) {
+        console.error('Falha ao restaurar dados da imobiliária:', e);
+      }
+    }
+    return DEFAULT_DADOS_EMPRESA;
+  });
+
+  useEffect(() => {
+    localStorage.setItem('rpsec_imobi_empresa', JSON.stringify(dadosEmpresa));
+  }, [dadosEmpresa]);
 
   // Gerenciamento de Tema (Claro / Escuro) com persistência
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
@@ -138,7 +165,8 @@ export function App() {
       <ToastProvider>
         <LoginView 
           onLoginSuccess={setUsuarioLogado} 
-          theme={theme} 
+          theme={theme}
+          onToggleTheme={toggleTheme}
         />
       </ToastProvider>
     );
@@ -146,7 +174,7 @@ export function App() {
 
   return (
     <ToastProvider>
-      <div className="min-h-screen bg-slate-100 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col transition-colors duration-200">
+      <div className="min-h-screen bg-[#F7F6F2] dark:bg-[#0D1014] text-[#141619] dark:text-[#F1F3F5] flex flex-col transition-colors duration-200">
         {/* Top Navigation com Abas de Contratos & Administração */}
         <Navbar 
           theme={theme}
@@ -156,10 +184,11 @@ export function App() {
           totalCorretores={corretores.length}
           usuarioLogado={usuarioLogado}
           onLogout={handleLogout}
+          dadosEmpresa={dadosEmpresa}
         />
 
         {/* Main Content Area */}
-        <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
           {currentTab === 'contratos' && (
             <DesktopView
               clientes={clientes}
@@ -182,6 +211,8 @@ export function App() {
             <AdminView
               corretores={corretores}
               contratos={contratos}
+              dadosEmpresa={dadosEmpresa}
+              onUpdateDadosEmpresa={setDadosEmpresa}
               onAddCorretor={handleAddCorretor}
               onUpdateCorretor={handleUpdateCorretor}
               onDeleteCorretor={handleDeleteCorretor}
@@ -189,15 +220,17 @@ export function App() {
           )}
         </main>
 
-        {/* Rodapé Institucional com Copyrights RPsecti */}
-        <footer className="border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 py-4 px-4 text-xs text-slate-500 dark:text-slate-400 transition-colors duration-200">
+        {/* Rodapé Institucional */}
+        <footer className="border-t border-[#E2DFD7] dark:border-[#252B37] bg-white dark:bg-[#151921] py-4 px-4 sm:px-6 text-xs text-[#525866] dark:text-slate-400 transition-colors duration-200">
           <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2 text-center sm:text-left">
-            <div className="flex items-center gap-2 font-medium">
-              <span>© {new Date().getFullYear()} Manoel Jerônimo Imóveis • CRECI 278536. Todos os direitos reservados.</span>
+            <div className="flex flex-wrap items-center justify-center sm:justify-start gap-x-4 gap-y-1 font-medium">
+              <span>© {new Date().getFullYear()} {dadosEmpresa.nomeFantasia} (CRECI {dadosEmpresa.creci})</span>
+              <span className="hidden sm:inline text-[#E2DFD7] dark:text-[#252B37]">|</span>
+              <span>{dadosEmpresa.cidade} — Plantão {dadosEmpresa.telefone}</span>
             </div>
-            <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
-              <span>Desenvolvido e mantido por</span>
-              <strong className="text-slate-800 dark:text-slate-200 font-bold">RPsecti Soluções Inteligentes</strong>
+            <div className="flex items-center gap-1.5">
+              <span>Desenvolvido por</span>
+              <strong className="text-[#141619] dark:text-slate-200 font-semibold">RPsecti Soluções Inteligentes</strong>
             </div>
           </div>
         </footer>

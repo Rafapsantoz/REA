@@ -40,6 +40,14 @@ export const NovoContratoModal: React.FC<NovoContratoModalProps> = ({
     setNumeroOrdem(proximoNumeroSugerido);
   }, [proximoNumeroSugerido]);
 
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onClose]);
+
   // Lista consolidada de corretores disponíveis
   const listaCorretores = useMemo(() => {
     return corretores.length > 0 ? corretores : INITIAL_CORRETORES;
@@ -306,38 +314,50 @@ export const NovoContratoModal: React.FC<NovoContratoModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/80 backdrop-blur-sm flex justify-center items-center p-2 sm:p-4 animate-fade-in">
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl w-full max-w-2xl shadow-2xl max-h-[92vh] flex flex-col overflow-hidden">
-        
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="novo-contrato-title"
+      onClick={onClose}
+      className="fixed inset-0 z-50 overflow-y-auto bg-[#0D1014]/75 backdrop-blur-xs flex justify-center items-center p-2 sm:p-4 animate-fade-in"
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="bg-white dark:bg-[#151921] border border-[#E2DFD7] dark:border-[#252B37] rounded-xl w-full max-w-2xl shadow-2xl max-h-[92vh] flex flex-col overflow-hidden animate-scale-up"
+      >
         {/* Cabeçalho */}
-        <div className="p-6 bg-slate-50 dark:bg-slate-950 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between flex-shrink-0">
+        <div className="p-5 sm:p-6 bg-[#F7F6F2] dark:bg-[#0D1014] border-b border-[#E2DFD7] dark:border-[#252B37] flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-rose-500 to-red-600 text-white flex items-center justify-center font-bold">
+            <div className="w-10 h-10 rounded-lg bg-[#B91C1C] text-white flex items-center justify-center shrink-0">
               <FileText className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-lg font-bold text-slate-900 dark:text-white">
-                Iniciar Novo Contrato de Locação
+              <h2 id="novo-contrato-title" className="font-display text-lg font-bold text-[#141619] dark:text-white">
+                Iniciar contrato de locação
               </h2>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
-                O contrato entrará com status <strong>Em Abertura / Pendente</strong> até que todos os 25 itens do checklist sejam cumpridos.
+              <p className="text-xs sm:text-sm text-[#525866] dark:text-slate-400">
+                O contrato inicia em abertura até que os 25 itens obrigatórios sejam concluídos.
               </p>
             </div>
           </div>
-          <button onClick={onClose} className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-white rounded-xl">
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Fechar janela"
+            className="p-2 text-[#525866] dark:text-slate-400 hover:text-[#141619] dark:hover:text-white rounded-lg hover:bg-[#EFECE6] dark:hover:bg-[#1C212B] transition-colors cursor-pointer"
+          >
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        {/* Formulário com rolagem independente */}
-        <form onSubmit={handleSubmit} className="p-6 space-y-4 overflow-y-auto flex-1">
-          {/* Parâmetros Básicos: Nº Contrato, Vencimento e Repasse */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        {/* Formulário */}
+        <form onSubmit={handleSubmit} className="p-5 sm:p-6 space-y-5 overflow-y-auto flex-1">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
             <div>
-              <div className="flex items-center justify-between mb-1">
-                <label className="text-xs font-bold text-slate-700 dark:text-slate-300">Nº Ordem Contrato *</label>
-                <span className="text-[10px] font-semibold text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/60 px-1.5 py-0.5 rounded border border-rose-200 dark:border-rose-800">
-                  Autoincremento
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="text-xs sm:text-sm font-semibold text-[#141619] dark:text-slate-200">Nº do contrato *</label>
+                <span className="text-xs font-medium text-[#B91C1C] dark:text-red-400">
+                  Automático
                 </span>
               </div>
               <input
@@ -346,51 +366,46 @@ export const NovoContratoModal: React.FC<NovoContratoModalProps> = ({
                 value={numeroOrdem}
                 onChange={(e) => setNumeroOrdem(e.target.value)}
                 placeholder={`Sugerido: ${proximoNumeroSugerido}`}
-                className="w-full text-xs p-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 font-black text-rose-600 dark:text-rose-400"
+                className="w-full text-sm px-3 py-2 rounded-lg bg-[#F7F6F2] dark:bg-[#0D1014] border border-[#E2DFD7] dark:border-[#252B37] font-display font-bold text-[#B91C1C] dark:text-red-400 tabular-nums focus:border-[#B91C1C] outline-none"
               />
             </div>
             <div>
-              <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">Dia Vencimento *</label>
+              <label className="text-xs sm:text-sm font-semibold text-[#141619] dark:text-slate-200 block mb-1.5">Dia de vencimento *</label>
               <input
                 type="number"
                 min="1"
                 max="31"
                 value={vencimentoDia}
                 onChange={(e) => setVencimentoDia(Number(e.target.value))}
-                className="w-full text-xs p-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 font-semibold"
+                className="w-full text-sm px-3 py-2 rounded-lg bg-[#F7F6F2] dark:bg-[#0D1014] border border-[#E2DFD7] dark:border-[#252B37] text-[#141619] dark:text-white font-semibold tabular-nums focus:border-[#B91C1C] outline-none"
               />
             </div>
             <div>
-              <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">Dia Repasse Locador *</label>
+              <label className="text-xs sm:text-sm font-semibold text-[#141619] dark:text-slate-200 block mb-1.5">Dia de repasse *</label>
               <input
                 type="number"
                 min="1"
                 max="31"
                 value={repasseDia}
                 onChange={(e) => setRepasseDia(Number(e.target.value))}
-                className="w-full text-xs p-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 font-semibold"
+                className="w-full text-sm px-3 py-2 rounded-lg bg-[#F7F6F2] dark:bg-[#0D1014] border border-[#E2DFD7] dark:border-[#252B37] text-[#141619] dark:text-white font-semibold tabular-nums focus:border-[#B91C1C] outline-none"
               />
             </div>
           </div>
 
-          {/* Seleção de Múltiplos Corretores Responsáveis */}
-          <div className="p-3.5 bg-slate-50 dark:bg-slate-950 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-2">
+          {/* Corretores Responsáveis */}
+          <div className="p-4 bg-[#F7F6F2] dark:bg-[#0D1014] rounded-xl border border-[#E2DFD7] dark:border-[#252B37] space-y-2.5">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
-              <label className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-                <Shield className="w-3.5 h-3.5 text-rose-500" />
-                <span>Corretores Responsáveis pelo Contrato *</span>
-                <span className="text-[11px] font-normal text-slate-400 hidden sm:inline">
-                  (Clique para marcar/desmarcar; pode selecionar mais de um)
-                </span>
+              <label className="text-sm font-semibold text-[#141619] dark:text-slate-200 flex items-center gap-1.5">
+                <Shield className="w-4 h-4 text-[#B91C1C] dark:text-red-400" />
+                <span>Corretores responsáveis *</span>
               </label>
-              <div className="flex items-center gap-1.5">
-                <span className="text-[10px] font-bold text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/60 px-2 py-0.5 rounded-full border border-rose-200 dark:border-rose-800">
-                  {corretoresSelecionados.length} selecionado{corretoresSelecionados.length > 1 ? 's' : ''}
-                </span>
-              </div>
+              <span className="text-xs font-semibold text-[#B91C1C] dark:text-red-400 tabular-nums">
+                {corretoresSelecionados.length} selecionado{corretoresSelecionados.length > 1 ? 's' : ''}
+              </span>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
               {listaCorretores.map(c => {
                 const isSelected = corretoresSelecionados.includes(c.nome);
                 return (
@@ -398,33 +413,33 @@ export const NovoContratoModal: React.FC<NovoContratoModalProps> = ({
                     type="button"
                     key={c.id || c.nome}
                     onClick={() => toggleCorretor(c.nome)}
-                    className={`p-2.5 rounded-xl border text-left flex items-center justify-between transition-all cursor-pointer ${
+                    className={`p-2.5 rounded-lg border text-left flex items-center justify-between transition-colors cursor-pointer ${
                       isSelected
-                        ? 'bg-rose-50 dark:bg-rose-950/40 border-rose-400 dark:border-rose-600 shadow-sm ring-1 ring-rose-400'
-                        : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
+                        ? 'bg-red-50 dark:bg-red-950/40 border-[#B91C1C] dark:border-red-600'
+                        : 'bg-white dark:bg-[#151921] border-[#E2DFD7] dark:border-[#252B37] hover:border-[#C9C4B8] dark:hover:border-slate-600'
                     }`}
                   >
                     <div className="flex items-center gap-2.5 min-w-0">
-                      <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold flex-shrink-0 ${
-                        isSelected 
-                          ? 'bg-rose-600 text-white' 
-                          : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
+                      <div className={`w-7 h-7 rounded-md flex items-center justify-center text-xs font-bold shrink-0 ${
+                        isSelected
+                          ? 'bg-[#B91C1C] text-white'
+                          : 'bg-[#EFECE6] dark:bg-[#1C212B] text-[#525866] dark:text-slate-300'
                       }`}>
                         {c.nome.charAt(0)}
                       </div>
                       <div className="min-w-0 truncate">
-                        <p className={`text-xs truncate ${isSelected ? 'font-bold text-rose-950 dark:text-rose-100' : 'font-medium text-slate-700 dark:text-slate-300'}`}>
+                        <p className={`text-xs truncate ${isSelected ? 'font-bold text-[#141619] dark:text-white' : 'font-medium text-[#141619] dark:text-slate-300'}`}>
                           {c.nome}
                         </p>
-                        <p className="text-[10px] text-slate-400 font-medium truncate">
+                        <p className="text-xs text-[#525866] dark:text-slate-400 truncate tabular-nums">
                           CRECI {c.creci}
                         </p>
                       </div>
                     </div>
-                    <div className={`w-5 h-5 rounded-md flex items-center justify-center flex-shrink-0 text-xs transition-colors ml-2 ${
-                      isSelected 
-                        ? 'bg-rose-600 text-white' 
-                        : 'border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800'
+                    <div className={`w-5 h-5 rounded flex items-center justify-center shrink-0 ml-2 ${
+                      isSelected
+                        ? 'bg-[#B91C1C] text-white'
+                        : 'border border-[#C9C4B8] dark:border-slate-600 bg-white dark:bg-[#0D1014]'
                     }`}>
                       {isSelected ? <Check className="w-3.5 h-3.5 stroke-[3]" /> : null}
                     </div>
@@ -435,54 +450,53 @@ export const NovoContratoModal: React.FC<NovoContratoModalProps> = ({
           </div>
 
           {/* Dados do Locador */}
-          <div className="p-4 bg-slate-50 dark:bg-slate-950 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-3">
+          <div className="p-4 bg-[#F7F6F2] dark:bg-[#0D1014] rounded-xl border border-[#E2DFD7] dark:border-[#252B37] space-y-3">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-              <span className="text-xs font-bold text-rose-600 dark:text-rose-400 flex items-center gap-1.5 uppercase tracking-wider">
-                <Building className="w-4 h-4" />
-                Dados do Proprietário (Locador)
+              <span className="text-sm font-bold text-[#141619] dark:text-white flex items-center gap-1.5">
+                <Building className="w-4 h-4 text-[#B91C1C] dark:text-red-400" />
+                <span>Proprietário (locador)</span>
               </span>
 
-              {/* FLAG / CHECKBOX PARA CÔNJUGE */}
-              <label className="flex items-center gap-2 cursor-pointer bg-white dark:bg-slate-900 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-800 hover:border-rose-300 dark:hover:border-rose-700 transition-colors">
+              <label className="flex items-center gap-2 cursor-pointer bg-white dark:bg-[#151921] px-3 py-1.5 rounded-lg border border-[#E2DFD7] dark:border-[#252B37] hover:border-[#B91C1C] transition-colors">
                 <input
                   type="checkbox"
                   checked={temConjugeLocador}
                   onChange={(e) => setTemConjugeLocador(e.target.checked)}
-                  className="rounded text-rose-600 focus:ring-rose-500 w-4 h-4"
+                  className="rounded text-[#B91C1C] focus:ring-[#B91C1C] w-4 h-4"
                 />
-                <span className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-                  <Heart className="w-3.5 h-3.5 text-rose-500" />
-                  Possui Cônjuge (Casado/União Estável)
+                <span className="text-xs font-semibold text-[#141619] dark:text-slate-200 flex items-center gap-1.5">
+                  <Heart className="w-3.5 h-3.5 text-[#B91C1C] dark:text-red-400" />
+                  Possui cônjuge
                 </span>
               </label>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
               <div>
-                <label className="text-[11px] text-slate-500 block mb-0.5">Nome do Proprietário *</label>
+                <label className="text-xs font-medium text-[#525866] dark:text-slate-400 block mb-1">Nome do proprietário *</label>
                 <input
                   type="text"
                   required
-                  placeholder="Nome do Locador"
+                  placeholder="Nome completo"
                   value={locadorNome}
                   onChange={(e) => setLocadorNome(e.target.value)}
-                  className="w-full text-xs p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-medium"
+                  className="w-full text-sm px-3 py-2 rounded-lg bg-white dark:bg-[#151921] border border-[#E2DFD7] dark:border-[#252B37] text-[#141619] dark:text-white"
                 />
               </div>
               <div>
-                <label className="text-[11px] text-slate-500 block mb-0.5">Telefone / WhatsApp</label>
+                <label className="text-xs font-medium text-[#525866] dark:text-slate-400 block mb-1">Telefone / WhatsApp</label>
                 <input
                   type="text"
                   placeholder="(19) 99781-2345"
                   value={locadorTelefone}
                   onChange={(e) => setLocadorTelefone(e.target.value)}
-                  className="w-full text-xs p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-medium"
+                  className="w-full text-sm px-3 py-2 rounded-lg bg-white dark:bg-[#151921] border border-[#E2DFD7] dark:border-[#252B37] text-[#141619] dark:text-white tabular-nums"
                 />
               </div>
               <div>
-                <label className="text-[11px] text-slate-500 block mb-0.5 flex items-center gap-1">
-                  <Mail className="w-3 h-3 text-rose-500" />
-                  <span>Endereço de E-mail *</span>
+                <label className="text-xs font-medium text-[#525866] dark:text-slate-400 mb-1 flex items-center gap-1">
+                  <Mail className="w-3.5 h-3.5 text-[#B91C1C] dark:text-red-400" />
+                  <span>E-mail *</span>
                 </label>
                 <input
                   type="email"
@@ -490,60 +504,58 @@ export const NovoContratoModal: React.FC<NovoContratoModalProps> = ({
                   placeholder="proprietario@email.com"
                   value={locadorEmail}
                   onChange={(e) => setLocadorEmail(e.target.value)}
-                  className="w-full text-xs p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-medium"
+                  className="w-full text-sm px-3 py-2 rounded-lg bg-white dark:bg-[#151921] border border-[#E2DFD7] dark:border-[#252B37] text-[#141619] dark:text-white"
                 />
               </div>
             </div>
 
-            {/* SEÇÃO CONDICIONAL: DADOS DO CÔNJUGE DO LOCADOR */}
             {temConjugeLocador && (
-              <div className="p-3.5 bg-rose-500/5 dark:bg-rose-950/20 rounded-xl border border-rose-500/20 space-y-2.5 animate-fade-in">
+              <div className="p-3.5 bg-red-50/70 dark:bg-red-950/20 rounded-lg border border-red-200 dark:border-red-900/50 space-y-2.5 animate-fade-in">
                 <div className="flex items-center justify-between">
-                  <span className="text-[11px] font-bold text-rose-700 dark:text-rose-300 uppercase tracking-wider flex items-center gap-1.5">
-                    <Heart className="w-3.5 h-3.5 text-rose-500" />
-                    Informações do Cônjuge do Proprietário
+                  <span className="text-xs font-semibold text-[#B91C1C] dark:text-red-300 flex items-center gap-1.5">
+                    <Heart className="w-3.5 h-3.5" />
+                    Dados do cônjuge (assinatura conjunta)
                   </span>
-                  <span className="text-[10px] text-rose-500 font-medium">Requerido para assinatura conjunta</span>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                   <div>
-                    <label className="text-[10px] text-slate-500 block mb-0.5">Nome do Cônjuge *</label>
+                    <label className="text-xs text-[#525866] dark:text-slate-400 block mb-1">Nome do cônjuge *</label>
                     <input
                       type="text"
-                      placeholder="Nome Completo do Cônjuge"
+                      placeholder="Nome completo"
                       value={conjugeNome}
                       onChange={(e) => setConjugeNome(e.target.value)}
-                      className="w-full text-xs p-2 rounded-lg bg-white dark:bg-slate-900 border border-rose-200 dark:border-rose-900/50"
+                      className="w-full text-sm px-3 py-2 rounded-lg bg-white dark:bg-[#151921] border border-red-200 dark:border-red-900/50 text-[#141619] dark:text-white"
                     />
                   </div>
                   <div>
-                    <label className="text-[10px] text-slate-500 block mb-0.5">CPF do Cônjuge</label>
+                    <label className="text-xs text-[#525866] dark:text-slate-400 block mb-1">CPF</label>
                     <input
                       type="text"
                       placeholder="000.000.000-00"
                       value={conjugeCpf}
                       onChange={(e) => setConjugeCpf(e.target.value)}
-                      className="w-full text-xs p-2 rounded-lg bg-white dark:bg-slate-900 border border-rose-200 dark:border-rose-900/50"
+                      className="w-full text-sm px-3 py-2 rounded-lg bg-white dark:bg-[#151921] border border-red-200 dark:border-red-900/50 text-[#141619] dark:text-white tabular-nums"
                     />
                   </div>
                   <div>
-                    <label className="text-[10px] text-slate-500 block mb-0.5">Telefone / WhatsApp</label>
+                    <label className="text-xs text-[#525866] dark:text-slate-400 block mb-1">Telefone</label>
                     <input
                       type="text"
                       placeholder="(19) 99999-9999"
                       value={conjugeTelefone}
                       onChange={(e) => setConjugeTelefone(e.target.value)}
-                      className="w-full text-xs p-2 rounded-lg bg-white dark:bg-slate-900 border border-rose-200 dark:border-rose-900/50"
+                      className="w-full text-sm px-3 py-2 rounded-lg bg-white dark:bg-[#151921] border border-red-200 dark:border-red-900/50 text-[#141619] dark:text-white tabular-nums"
                     />
                   </div>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   <div>
-                    <label className="text-[10px] text-slate-500 block mb-0.5">Regime de Bens</label>
+                    <label className="text-xs text-[#525866] dark:text-slate-400 block mb-1">Regime de bens</label>
                     <select
                       value={conjugeRegimeBens}
                       onChange={(e) => setConjugeRegimeBens(e.target.value)}
-                      className="w-full text-xs p-2 rounded-lg bg-white dark:bg-slate-900 border border-rose-200 dark:border-rose-900/50 text-slate-700 dark:text-slate-200"
+                      className="w-full text-sm px-3 py-2 rounded-lg bg-white dark:bg-[#151921] border border-red-200 dark:border-red-900/50 text-[#141619] dark:text-slate-200"
                     >
                       <option value="Comunhão Parcial de Bens">Comunhão Parcial de Bens (Padrão)</option>
                       <option value="Comunhão Universal de Bens">Comunhão Universal de Bens</option>
@@ -553,13 +565,13 @@ export const NovoContratoModal: React.FC<NovoContratoModalProps> = ({
                     </select>
                   </div>
                   <div>
-                    <label className="text-[10px] text-slate-500 block mb-0.5">E-mail do Cônjuge (Opcional)</label>
+                    <label className="text-xs text-[#525866] dark:text-slate-400 block mb-1">E-mail (opcional)</label>
                     <input
                       type="email"
                       placeholder="conjuge@email.com"
                       value={conjugeEmail}
                       onChange={(e) => setConjugeEmail(e.target.value)}
-                      className="w-full text-xs p-2 rounded-lg bg-white dark:bg-slate-900 border border-rose-200 dark:border-rose-900/50"
+                      className="w-full text-sm px-3 py-2 rounded-lg bg-white dark:bg-[#151921] border border-red-200 dark:border-red-900/50 text-[#141619] dark:text-white"
                     />
                   </div>
                 </div>
@@ -567,116 +579,108 @@ export const NovoContratoModal: React.FC<NovoContratoModalProps> = ({
             )}
           </div>
 
-          {/* Dados do Locatário Principal e Co-inquilinos */}
-          <div className="p-4 bg-slate-50 dark:bg-slate-950 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-3">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-indigo-600 dark:text-indigo-400 flex items-center gap-1.5 uppercase tracking-wider">
-                <Users className="w-4 h-4" />
-                Dados do(s) Inquilino(s) / Locatário(s)
+          {/* Dados do Locatário */}
+          <div className="p-4 bg-[#F7F6F2] dark:bg-[#0D1014] rounded-xl border border-[#E2DFD7] dark:border-[#252B37] space-y-3">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-sm font-bold text-[#141619] dark:text-white flex items-center gap-1.5">
+                <Users className="w-4 h-4 text-[#B91C1C] dark:text-red-400" />
+                <span>Locatários (inquilinos)</span>
               </span>
 
-              {/* BOTÃO + PARA ADICIONAR MAIS DE UM LOCATÁRIO */}
               <button
                 type="button"
                 onClick={handleAddLocatario}
-                className="px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/60 dark:hover:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all shadow-sm cursor-pointer"
-                title="Adicionar co-locatário ao contrato"
+                className="px-3 py-1.5 bg-white hover:bg-[#EFECE6] dark:bg-[#151921] dark:hover:bg-[#1C212B] text-[#141619] dark:text-slate-200 border border-[#E2DFD7] dark:border-[#252B37] rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
               >
-                <Plus className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
-                <span>Adicionar Locatário</span>
+                <Plus className="w-3.5 h-3.5 text-[#B91C1C] dark:text-red-400" />
+                <span>Adicionar co-locatário</span>
               </button>
             </div>
 
-            {/* 1º Locatário (Principal / Titular) */}
-            <div className="p-3.5 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 space-y-2">
+            <div className="p-3.5 bg-white dark:bg-[#151921] rounded-lg border border-[#E2DFD7] dark:border-[#252B37] space-y-2.5">
               <div className="flex items-center justify-between">
-                <span className="text-[11px] font-extrabold text-slate-700 dark:text-slate-300 uppercase flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-indigo-500"></span>
-                  1º Locatário (Titular Principal)
+                <span className="text-xs font-semibold text-[#141619] dark:text-slate-200">
+                  1º locatário (titular principal)
                 </span>
-                <span className="text-[10px] text-slate-400 font-medium">Responsável principal</span>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-4 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                 <input
                   type="text"
                   required
-                  placeholder="Nome Completo *"
+                  placeholder="Nome completo *"
                   value={locatarioNome}
                   onChange={(e) => setLocatarioNome(e.target.value)}
-                  className="text-xs p-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 font-medium"
+                  className="text-sm px-3 py-2 rounded-lg bg-[#F7F6F2] dark:bg-[#0D1014] border border-[#E2DFD7] dark:border-[#252B37] text-[#141619] dark:text-white"
+                />
+                <input
+                  type="email"
+                  required
+                  placeholder="E-mail *"
+                  value={locatarioEmail}
+                  onChange={(e) => setLocatarioEmail(e.target.value)}
+                  className="text-sm px-3 py-2 rounded-lg bg-[#F7F6F2] dark:bg-[#0D1014] border border-[#E2DFD7] dark:border-[#252B37] text-[#141619] dark:text-white"
                 />
                 <input
                   type="text"
                   placeholder="CPF"
                   value={locatarioCpf}
                   onChange={(e) => setLocatarioCpf(e.target.value)}
-                  className="text-xs p-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700"
+                  className="text-sm px-3 py-2 rounded-lg bg-[#F7F6F2] dark:bg-[#0D1014] border border-[#E2DFD7] dark:border-[#252B37] text-[#141619] dark:text-white tabular-nums"
                 />
                 <input
                   type="text"
                   placeholder="Telefone / WhatsApp"
                   value={locatarioTelefone}
                   onChange={(e) => setLocatarioTelefone(e.target.value)}
-                  className="text-xs p-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700"
-                />
-                <input
-                  type="email"
-                  required
-                  placeholder="Endereço de E-mail *"
-                  value={locatarioEmail}
-                  onChange={(e) => setLocatarioEmail(e.target.value)}
-                  className="text-xs p-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 font-medium"
+                  className="text-sm px-3 py-2 rounded-lg bg-[#F7F6F2] dark:bg-[#0D1014] border border-[#E2DFD7] dark:border-[#252B37] text-[#141619] dark:text-white tabular-nums"
                 />
               </div>
             </div>
 
-            {/* Locatários Adicionais */}
             {locatariosAdicionais.map((loc, idx) => (
-              <div key={loc.id} className="p-3.5 bg-indigo-50/60 dark:bg-indigo-950/20 rounded-xl border border-indigo-200 dark:border-indigo-800/60 space-y-2 animate-fade-in">
+              <div key={loc.id} className="p-3.5 bg-white dark:bg-[#151921] rounded-lg border border-[#E2DFD7] dark:border-[#252B37] space-y-2.5 animate-fade-in">
                 <div className="flex items-center justify-between">
-                  <span className="text-[11px] font-extrabold text-indigo-700 dark:text-indigo-300 uppercase flex items-center gap-1.5">
-                    <span className="w-2 h-2 rounded-full bg-indigo-400"></span>
-                    {idx + 2}º Locatário (Co-inquilino)
+                  <span className="text-xs font-semibold text-[#141619] dark:text-slate-200">
+                    {idx + 2}º locatário (co-inquilino)
                   </span>
                   <button
                     type="button"
                     onClick={() => handleRemoveLocatario(loc.id)}
-                    className="text-rose-500 hover:text-rose-700 dark:hover:text-rose-400 p-1 hover:bg-rose-100 dark:hover:bg-rose-950/40 rounded-lg transition-colors flex items-center gap-1 text-[11px] font-bold cursor-pointer"
-                    title="Remover este locatário"
+                    className="text-[#B91C1C] hover:underline text-xs font-semibold flex items-center gap-1 cursor-pointer"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
                     <span>Remover</span>
                   </button>
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-4 gap-2">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                   <input
                     type="text"
                     required
-                    placeholder="Nome Completo *"
+                    placeholder="Nome completo *"
                     value={loc.nome}
                     onChange={(e) => handleUpdateLocatario(loc.id, 'nome', e.target.value)}
-                    className="text-xs p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-medium"
+                    className="text-sm px-3 py-2 rounded-lg bg-[#F7F6F2] dark:bg-[#0D1014] border border-[#E2DFD7] dark:border-[#252B37] text-[#141619] dark:text-white"
+                  />
+                  <input
+                    type="email"
+                    placeholder="E-mail"
+                    value={loc.email || ''}
+                    onChange={(e) => handleUpdateLocatario(loc.id, 'email', e.target.value)}
+                    className="text-sm px-3 py-2 rounded-lg bg-[#F7F6F2] dark:bg-[#0D1014] border border-[#E2DFD7] dark:border-[#252B37] text-[#141619] dark:text-white"
                   />
                   <input
                     type="text"
                     placeholder="CPF"
                     value={loc.cpf}
                     onChange={(e) => handleUpdateLocatario(loc.id, 'cpf', e.target.value)}
-                    className="text-xs p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700"
+                    className="text-sm px-3 py-2 rounded-lg bg-[#F7F6F2] dark:bg-[#0D1014] border border-[#E2DFD7] dark:border-[#252B37] text-[#141619] dark:text-white tabular-nums"
                   />
                   <input
                     type="text"
                     placeholder="Telefone / WhatsApp"
                     value={loc.telefone}
                     onChange={(e) => handleUpdateLocatario(loc.id, 'telefone', e.target.value)}
-                    className="text-xs p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700"
-                  />
-                  <input
-                    type="email"
-                    placeholder="Endereço de E-mail *"
-                    value={loc.email || ''}
-                    onChange={(e) => handleUpdateLocatario(loc.id, 'email', e.target.value)}
-                    className="text-xs p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-medium"
+                    className="text-sm px-3 py-2 rounded-lg bg-[#F7F6F2] dark:bg-[#0D1014] border border-[#E2DFD7] dark:border-[#252B37] text-[#141619] dark:text-white tabular-nums"
                   />
                 </div>
               </div>
@@ -684,50 +688,49 @@ export const NovoContratoModal: React.FC<NovoContratoModalProps> = ({
           </div>
 
           {/* Valores & Garantia */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
             <div>
-              <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">Valor Aluguel (R$)</label>
+              <label className="text-sm font-semibold text-[#141619] dark:text-slate-200 block mb-1.5">Valor do aluguel (R$)</label>
               <input
                 type="number"
                 value={aluguelValor}
                 onChange={(e) => setAluguelValor(Number(e.target.value))}
-                className="w-full text-xs p-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 font-bold text-emerald-500"
+                className="w-full text-sm px-3.5 py-2.5 rounded-lg bg-[#F7F6F2] dark:bg-[#0D1014] border border-[#E2DFD7] dark:border-[#252B37] font-bold text-emerald-700 dark:text-emerald-400 tabular-nums"
               />
             </div>
             <div>
-              <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">Garantia</label>
+              <label className="text-sm font-semibold text-[#141619] dark:text-slate-200 block mb-1.5">Tipo de garantia</label>
               <select
                 value={tipoGarantidor}
                 onChange={(e) => setTipoGarantidor(e.target.value as any)}
-                className="w-full text-xs p-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700"
+                className="w-full text-sm px-3.5 py-2.5 rounded-lg bg-[#F7F6F2] dark:bg-[#0D1014] border border-[#E2DFD7] dark:border-[#252B37] text-[#141619] dark:text-white"
               >
-                <option value="caucao">Caução Dinheiro</option>
-                <option value="capitalizacao">Capitalização</option>
-                <option value="seguro_fianca">Seguro Fiança</option>
+                <option value="caucao">Caução em dinheiro</option>
+                <option value="capitalizacao">Título de capitalização</option>
+                <option value="seguro_fianca">Seguro fiança</option>
                 <option value="fiador">Fiador</option>
               </select>
             </div>
           </div>
 
           {/* Botões */}
-          <div className="flex justify-end gap-2 pt-4 border-t border-slate-100 dark:border-slate-800">
+          <div className="flex justify-end gap-2.5 pt-4 border-t border-[#E2DFD7] dark:border-[#252B37]">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2.5 text-xs font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl"
+              className="px-4 py-2.5 text-sm font-semibold text-[#525866] dark:text-slate-300 border border-[#E2DFD7] dark:border-[#252B37] hover:bg-[#EFECE6] dark:hover:bg-[#1C212B] rounded-lg transition-colors cursor-pointer"
             >
               Cancelar
             </button>
             <button
               type="submit"
-              className="px-5 py-2.5 text-xs font-bold text-white bg-rose-600 hover:bg-rose-700 rounded-xl shadow-md shadow-rose-900/20 flex items-center gap-2"
+              className="px-5 py-2.5 text-sm font-semibold text-white bg-[#B91C1C] hover:bg-[#991B1B] rounded-lg flex items-center gap-2 transition-colors cursor-pointer"
             >
               <CheckCircle2 className="w-4 h-4" />
-              <span>Criar Contrato & Abrir Checklist</span>
+              <span>Criar contrato</span>
             </button>
           </div>
         </form>
-
       </div>
     </div>
   );

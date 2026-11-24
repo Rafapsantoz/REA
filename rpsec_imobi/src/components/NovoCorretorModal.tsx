@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, UserPlus, Mail, Phone, Shield, CheckCircle2, Percent, FileText, Plus } from 'lucide-react';
 import { Corretor } from '../types';
 import { DEFAULT_CARGOS } from '../mockCorretores';
@@ -18,6 +18,14 @@ export const NovoCorretorModal: React.FC<NovoCorretorModalProps> = ({
   onCadastrarNovoCargo
 }) => {
   const { showToast } = useToast();
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onClose]);
 
   const [nome, setNome] = useState('');
   const [creci, setCreci] = useState('');
@@ -118,90 +126,97 @@ export const NovoCorretorModal: React.FC<NovoCorretorModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/80 backdrop-blur-sm flex justify-center items-center p-3 sm:p-4 animate-fade-in">
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl w-full max-w-xl shadow-2xl flex flex-col max-h-[92vh] overflow-hidden">
-        
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="novo-corretor-title"
+      onClick={onClose}
+      className="fixed inset-0 z-50 overflow-y-auto bg-[#0D1014]/75 backdrop-blur-xs flex justify-center items-center p-3 sm:p-4 animate-fade-in"
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="bg-white dark:bg-[#151921] border border-[#E2DFD7] dark:border-[#252B37] rounded-xl w-full max-w-xl shadow-2xl flex flex-col max-h-[92vh] overflow-hidden animate-scale-up"
+      >
         {/* Cabeçalho */}
-        <div className="p-5 sm:p-6 bg-slate-50 dark:bg-slate-950 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
+        <div className="p-5 sm:p-6 bg-[#F7F6F2] dark:bg-[#0D1014] border-b border-[#E2DFD7] dark:border-[#252B37] flex items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-rose-500 to-red-700 text-white flex items-center justify-center shadow-md shadow-rose-900/20">
+            <div className="w-10 h-10 rounded-lg bg-[#B91C1C] text-white flex items-center justify-center shrink-0">
               <UserPlus className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-lg font-bold text-slate-900 dark:text-white">
-                Cadastrar Novo Corretor
+              <h2 id="novo-corretor-title" className="font-display text-lg font-bold text-[#141619] dark:text-white">
+                Cadastrar corretor
               </h2>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
-                Credenciamento de equipe, controle de CRECI e e-mail institucional
+              <p className="text-xs sm:text-sm text-[#525866] dark:text-slate-400">
+                Credenciamento de equipe, registro CRECI e contato institucional.
               </p>
             </div>
           </div>
           <button
+            type="button"
             onClick={onClose}
-            className="p-2 text-slate-400 hover:text-slate-700 dark:hover:text-white rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-all cursor-pointer"
+            aria-label="Fechar janela"
+            className="p-2 text-[#525866] dark:text-slate-400 hover:text-[#141619] dark:hover:text-white rounded-lg hover:bg-[#EFECE6] dark:hover:bg-[#1C212B] transition-colors cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        {/* Formulário com Scroll Suave */}
+        {/* Formulário */}
         <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-4">
-          
-          {/* Dados Pessoais & Profissionais */}
-          <div className="space-y-3">
+          <div className="space-y-4">
             <div>
-              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                Nome Completo do Corretor *
+              <label className="block text-sm font-semibold text-[#141619] dark:text-slate-200 mb-1.5">
+                Nome completo *
               </label>
               <input
                 type="text"
                 required
-                placeholder="Ex: Carlos Eduardo de Oliveira"
+                placeholder="Ex.: Carlos Eduardo de Oliveira"
                 value={nome}
                 onChange={(e) => setNome(e.target.value)}
-                className="w-full text-xs p-3 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 font-medium focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 outline-none"
+                className="w-full text-sm px-3.5 py-2.5 rounded-lg bg-[#F7F6F2] dark:bg-[#0D1014] border border-[#E2DFD7] dark:border-[#252B37] text-[#141619] dark:text-white focus:border-[#B91C1C] outline-none transition-colors"
               />
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
               <div>
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1 flex items-center gap-1.5">
-                  <Shield className="w-3.5 h-3.5 text-rose-500" />
-                  Registro CRECI *
+                <label className="text-sm font-semibold text-[#141619] dark:text-slate-200 mb-1.5 flex items-center gap-1.5">
+                  <Shield className="w-4 h-4 text-[#B91C1C] dark:text-red-400" />
+                  <span>Registro CRECI *</span>
                 </label>
                 <input
                   type="text"
                   required
-                  placeholder="Ex: 278536-F"
+                  placeholder="Ex.: 278536-F"
                   value={creci}
                   onChange={(e) => setCreci(e.target.value)}
-                  className="w-full text-xs p-3 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 font-semibold uppercase focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 outline-none"
+                  className="w-full text-sm px-3.5 py-2.5 rounded-lg bg-[#F7F6F2] dark:bg-[#0D1014] border border-[#E2DFD7] dark:border-[#252B37] text-[#141619] dark:text-white font-semibold uppercase focus:border-[#B91C1C] outline-none transition-colors tabular-nums"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1 flex items-center gap-1.5">
-                  <FileText className="w-3.5 h-3.5 text-slate-400" />
-                  CPF (Opcional)
+                <label className="text-sm font-semibold text-[#141619] dark:text-slate-200 mb-1.5 flex items-center gap-1.5">
+                  <FileText className="w-4 h-4 text-[#525866] dark:text-slate-400" />
+                  <span>CPF (opcional)</span>
                 </label>
                 <input
                   type="text"
                   placeholder="000.000.000-00"
                   value={cpf}
                   onChange={(e) => setCpf(e.target.value)}
-                  className="w-full text-xs p-3 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 outline-none"
+                  className="w-full text-sm px-3.5 py-2.5 rounded-lg bg-[#F7F6F2] dark:bg-[#0D1014] border border-[#E2DFD7] dark:border-[#252B37] text-[#141619] dark:text-white focus:border-[#B91C1C] outline-none transition-colors tabular-nums"
                 />
               </div>
             </div>
 
-            {/* Endereço de E-mail (OBRIGATÓRIO) */}
             <div>
-              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1 flex items-center justify-between">
+              <label className="text-sm font-semibold text-[#141619] dark:text-slate-200 mb-1.5 flex items-center justify-between">
                 <span className="flex items-center gap-1.5">
-                  <Mail className="w-3.5 h-3.5 text-rose-500" />
-                  Endereço de E-mail Institucional *
+                  <Mail className="w-4 h-4 text-[#B91C1C] dark:text-red-400" />
+                  <span>E-mail institucional *</span>
                 </span>
-                <span className="text-[10px] text-rose-500 font-bold uppercase tracking-wider">Obrigatório</span>
+                <span className="text-xs text-[#B91C1C] dark:text-red-400 font-medium">Obrigatório</span>
               </label>
               <input
                 type="email"
@@ -209,16 +224,15 @@ export const NovoCorretorModal: React.FC<NovoCorretorModalProps> = ({
                 placeholder="corretor@imobiliariajeronimo.com.br"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full text-xs p-3 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 font-medium focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 outline-none"
+                className="w-full text-sm px-3.5 py-2.5 rounded-lg bg-[#F7F6F2] dark:bg-[#0D1014] border border-[#E2DFD7] dark:border-[#252B37] text-[#141619] dark:text-white focus:border-[#B91C1C] outline-none transition-colors"
               />
             </div>
 
-            {/* Telefone & Cargo/Função (com local para cadastro de novos cargos) */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
               <div>
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1 flex items-center gap-1.5">
-                  <Phone className="w-3.5 h-3.5 text-emerald-500" />
-                  Telefone / WhatsApp *
+                <label className="text-sm font-semibold text-[#141619] dark:text-slate-200 mb-1.5 flex items-center gap-1.5">
+                  <Phone className="w-4 h-4 text-emerald-700 dark:text-emerald-400" />
+                  <span>Telefone / WhatsApp *</span>
                 </label>
                 <input
                   type="text"
@@ -226,23 +240,23 @@ export const NovoCorretorModal: React.FC<NovoCorretorModalProps> = ({
                   placeholder="(19) 99999-9999"
                   value={telefone}
                   onChange={(e) => setTelefone(e.target.value)}
-                  className="w-full text-xs p-3 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 outline-none"
+                  className="w-full text-sm px-3.5 py-2.5 rounded-lg bg-[#F7F6F2] dark:bg-[#0D1014] border border-[#E2DFD7] dark:border-[#252B37] text-[#141619] dark:text-white focus:border-[#B91C1C] outline-none transition-colors tabular-nums"
                 />
               </div>
 
               <div>
-                <div className="flex items-center justify-between mb-1">
-                  <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block">
-                    Cargo / Função *
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="text-sm font-semibold text-[#141619] dark:text-slate-200 block">
+                    Cargo ou função *
                   </label>
                   {!cadastrandoCargo && (
                     <button
                       type="button"
                       onClick={() => setCadastrandoCargo(true)}
-                      className="text-[11px] font-bold text-rose-600 dark:text-rose-400 hover:text-rose-700 flex items-center gap-0.5 cursor-pointer"
+                      className="text-xs font-semibold text-[#B91C1C] dark:text-red-400 hover:underline flex items-center gap-1 cursor-pointer"
                     >
-                      <Plus className="w-3 h-3" />
-                      <span>Cadastrar</span>
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>Novo cargo</span>
                     </button>
                   )}
                 </div>
@@ -252,25 +266,26 @@ export const NovoCorretorModal: React.FC<NovoCorretorModalProps> = ({
                     <input
                       type="text"
                       autoFocus
-                      placeholder="Novo cargo..."
+                      placeholder="Nome do cargo..."
                       value={novoCargoTexto}
                       onChange={(e) => setNovoCargoTexto(e.target.value)}
                       onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleSalvarCargo(); } }}
-                      className="flex-1 text-xs p-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-rose-500 outline-none font-medium"
+                      className="flex-1 text-sm px-3 py-2 rounded-lg bg-[#F7F6F2] dark:bg-[#0D1014] border border-[#B91C1C] text-[#141619] dark:text-white outline-none"
                     />
                     <button
                       type="button"
                       onClick={handleSalvarCargo}
-                      className="px-2.5 py-2.5 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-xl cursor-pointer"
+                      className="px-3 py-2 bg-[#B91C1C] hover:bg-[#991B1B] text-white text-xs font-semibold rounded-lg cursor-pointer"
                     >
                       Salvar
                     </button>
                     <button
                       type="button"
                       onClick={() => { setCadastrandoCargo(false); setNovoCargoTexto(''); }}
-                      className="px-2 py-2.5 border border-slate-200 dark:border-slate-700 text-xs text-slate-500 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
+                      aria-label="Cancelar novo cargo"
+                      className="p-2 border border-[#E2DFD7] dark:border-[#252B37] text-xs text-[#525866] dark:text-slate-400 rounded-lg hover:bg-[#EFECE6] dark:hover:bg-[#1C212B] cursor-pointer"
                     >
-                      ✕
+                      <X className="w-4 h-4" />
                     </button>
                   </div>
                 ) : (
@@ -283,44 +298,40 @@ export const NovoCorretorModal: React.FC<NovoCorretorModalProps> = ({
                         setCargo(e.target.value);
                       }
                     }}
-                    className="w-full text-xs p-3 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 outline-none font-medium"
+                    className="w-full text-sm px-3.5 py-2.5 rounded-lg bg-[#F7F6F2] dark:bg-[#0D1014] border border-[#E2DFD7] dark:border-[#252B37] text-[#141619] dark:text-slate-200 focus:border-[#B91C1C] outline-none transition-colors"
                   >
                     {listaCargos.map((c, i) => (
                       <option key={i} value={c}>{c}</option>
                     ))}
-                    <option value="__novo__">+ Cadastrar Novo Cargo...</option>
+                    <option value="__novo__">Cadastrar novo cargo...</option>
                   </select>
                 )}
               </div>
             </div>
 
-            {/* Cálculo de Comissão & Status de Credenciamento */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              
-              {/* Cálculo de Comissão com quadradinho "A definir" */}
-              <div className="space-y-1.5">
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-                  <Percent className="w-3.5 h-3.5 text-rose-500" />
-                  Cálculo de Comissão de Locação
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+              <div className="space-y-2">
+                <label className="text-sm font-semibold text-[#141619] dark:text-slate-200 flex items-center gap-1.5">
+                  <Percent className="w-4 h-4 text-[#B91C1C] dark:text-red-400" />
+                  <span>Comissão de locação</span>
                 </label>
 
-                {/* Quadradinho a definir porque o Manoel ainda não fechou a regra */}
-                <label className="flex items-center gap-2.5 cursor-pointer bg-slate-50 dark:bg-slate-950 p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 hover:border-amber-400 dark:hover:border-amber-500 transition-colors">
+                <label className="flex items-center gap-2.5 cursor-pointer bg-[#F7F6F2] dark:bg-[#0D1014] p-2.5 rounded-lg border border-[#E2DFD7] dark:border-[#252B37] hover:border-amber-500 transition-colors">
                   <input
                     type="checkbox"
                     checked={comissaoADefinir}
                     onChange={(e) => setComissaoADefinir(e.target.checked)}
-                    className="rounded text-amber-500 focus:ring-amber-400 w-4 h-4 cursor-pointer"
+                    className="rounded text-amber-600 focus:ring-amber-500 w-4 h-4 cursor-pointer"
                   />
-                  <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
-                    A definir (Regra comercial em definição)
+                  <span className="text-xs font-semibold text-[#141619] dark:text-slate-200">
+                    A definir (regra em aberto)
                   </span>
                 </label>
 
                 {!comissaoADefinir && (
                   <div className="pt-1">
-                    <label className="block text-[11px] text-slate-500 mb-1">
-                      Percentual Padrão de Comissão (%)
+                    <label className="block text-xs text-[#525866] dark:text-slate-400 mb-1">
+                      Percentual padrão (%)
                     </label>
                     <input
                       type="number"
@@ -328,75 +339,72 @@ export const NovoCorretorModal: React.FC<NovoCorretorModalProps> = ({
                       max="100"
                       value={comissaoPadrao}
                       onChange={(e) => setComissaoPadrao(Number(e.target.value))}
-                      placeholder="Ex: 50%"
-                      className="w-full text-xs p-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 outline-none font-semibold"
+                      placeholder="Ex.: 50"
+                      className="w-full text-sm px-3 py-2 rounded-lg bg-[#F7F6F2] dark:bg-[#0D1014] border border-[#E2DFD7] dark:border-[#252B37] text-[#141619] dark:text-white outline-none font-semibold tabular-nums"
                     />
                   </div>
                 )}
               </div>
 
-              {/* Status de Credenciamento (pode ficar) */}
               <div>
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
-                  Status de Credenciamento
+                <label className="block text-sm font-semibold text-[#141619] dark:text-slate-200 mb-1.5">
+                  Situação cadastral
                 </label>
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
                     onClick={() => setStatus('ativo')}
-                    className={`flex-1 py-2.5 px-3 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
+                    className={`flex-1 py-2.5 px-3 rounded-lg text-xs font-semibold border transition-colors cursor-pointer ${
                       status === 'ativo'
-                        ? 'bg-emerald-50 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border-emerald-300 dark:border-emerald-700 shadow-sm'
-                        : 'bg-slate-50 dark:bg-slate-950 text-slate-500 border-slate-200 dark:border-slate-800'
+                        ? 'bg-emerald-50 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border-emerald-300 dark:border-emerald-700'
+                        : 'bg-[#F7F6F2] dark:bg-[#0D1014] text-[#525866] dark:text-slate-400 border-[#E2DFD7] dark:border-[#252B37]'
                     }`}
                   >
-                    ✓ Ativo Regular
+                    Ativo
                   </button>
                   <button
                     type="button"
                     onClick={() => setStatus('inativo')}
-                    className={`flex-1 py-2.5 px-3 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
+                    className={`flex-1 py-2.5 px-3 rounded-lg text-xs font-semibold border transition-colors cursor-pointer ${
                       status === 'inativo'
-                        ? 'bg-slate-200 text-slate-800 dark:bg-slate-800 dark:text-slate-300 border-slate-400 dark:border-slate-600 shadow-sm'
-                        : 'bg-slate-50 dark:bg-slate-950 text-slate-500 border-slate-200 dark:border-slate-800'
+                        ? 'bg-[#141619] text-white dark:bg-slate-700 dark:text-white border-transparent'
+                        : 'bg-[#F7F6F2] dark:bg-[#0D1014] text-[#525866] dark:text-slate-400 border-[#E2DFD7] dark:border-[#252B37]'
                     }`}
                   >
-                    ⚪ Inativo
+                    Inativo
                   </button>
                 </div>
               </div>
             </div>
 
-            {/* Informações Adicionais (Antiga Biografia) */}
             <div>
-              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                Informações Adicionais
+              <label className="block text-sm font-semibold text-[#141619] dark:text-slate-200 mb-1.5">
+                Observações adicionais
               </label>
               <textarea
                 rows={2}
-                placeholder="Informações adicionais, observações operacionais, anotações internas ou histórico do corretor..."
+                placeholder="Anotações internas ou histórico do corretor..."
                 value={informacoesAdicionais}
                 onChange={(e) => setInformacoesAdicionais(e.target.value)}
-                className="w-full text-xs p-3 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 outline-none resize-none"
+                className="w-full text-sm px-3.5 py-2.5 rounded-lg bg-[#F7F6F2] dark:bg-[#0D1014] border border-[#E2DFD7] dark:border-[#252B37] text-[#141619] dark:text-white focus:border-[#B91C1C] outline-none resize-none transition-colors"
               />
             </div>
           </div>
 
-          {/* Rodapé / Botão de Ação */}
-          <div className="pt-2 flex items-center justify-end gap-2 border-t border-slate-200 dark:border-slate-800">
+          <div className="pt-4 flex items-center justify-end gap-2.5 border-t border-[#E2DFD7] dark:border-[#252B37]">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 text-xs font-semibold hover:bg-slate-100 dark:hover:bg-slate-800 transition-all cursor-pointer"
+              className="px-4 py-2.5 rounded-lg border border-[#E2DFD7] dark:border-[#252B37] text-[#525866] dark:text-slate-300 text-sm font-semibold hover:bg-[#EFECE6] dark:hover:bg-[#1C212B] transition-colors cursor-pointer"
             >
               Cancelar
             </button>
             <button
               type="submit"
-              className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-700 hover:to-red-700 text-white text-xs font-bold flex items-center gap-2 shadow-lg shadow-rose-900/20 transition-all cursor-pointer"
+              className="px-5 py-2.5 rounded-lg bg-[#B91C1C] hover:bg-[#991B1B] text-white text-sm font-semibold flex items-center gap-2 transition-colors cursor-pointer"
             >
               <CheckCircle2 className="w-4 h-4" />
-              <span>Concluir Cadastro do Corretor</span>
+              <span>Salvar corretor</span>
             </button>
           </div>
         </form>

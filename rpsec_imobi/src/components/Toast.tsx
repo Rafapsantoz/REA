@@ -26,7 +26,6 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const id = `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
     setToasts(prev => [...prev, { id, message, type }]);
 
-    // Auto dismiss após 3.5 segundos
     setTimeout(() => {
       removeToast(id);
     }, 3500);
@@ -36,41 +35,44 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     <ToastContext.Provider value={{ showToast }}>
       {children}
 
-      {/* Floating Modern Toast Container */}
-      <div className="fixed top-5 right-5 z-[9999] flex flex-col gap-2.5 max-w-md w-full px-4 sm:px-0 pointer-events-none">
+      {/* Notificações Toast adaptadas ao tema */}
+      <div
+        role="status"
+        aria-live="polite"
+        className="fixed top-5 right-5 z-[9999] flex flex-col gap-2.5 max-w-md w-full px-4 sm:px-0 pointer-events-none"
+      >
         {toasts.map(toast => (
           <div
             key={toast.id}
-            className={`pointer-events-auto flex items-center justify-between gap-3 p-4 rounded-2xl shadow-2xl backdrop-blur-xl border transition-all duration-300 animate-in slide-in-from-top-3 fade-in ${
+            className={`pointer-events-auto flex items-center justify-between gap-3 p-3.5 rounded-xl shadow-lg border bg-white dark:bg-[#151921] text-[#141619] dark:text-[#F1F3F5] animate-toast-in ${
               toast.type === 'success'
-                ? 'bg-slate-900/95 dark:bg-slate-900/95 text-white border-emerald-500/40 shadow-emerald-950/20'
+                ? 'border-emerald-300 dark:border-emerald-800/70'
                 : toast.type === 'error'
-                ? 'bg-slate-900/95 dark:bg-slate-900/95 text-white border-rose-500/40 shadow-rose-950/20'
-                : 'bg-slate-900/95 dark:bg-slate-900/95 text-white border-blue-500/40 shadow-blue-950/20'
+                ? 'border-red-300 dark:border-red-800/70'
+                : 'border-[#E2DFD7] dark:border-[#252B37]'
             }`}
           >
             <div className="flex items-center gap-3">
-              <div className={`w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 ${
+              <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
                 toast.type === 'success'
-                  ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                  ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400'
                   : toast.type === 'error'
-                  ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30'
-                  : 'bg-blue-500/20 text-blue-400 border border-blue-500/30'
+                  ? 'bg-red-50 dark:bg-red-950/60 text-[#B91C1C] dark:text-red-400'
+                  : 'bg-[#EFECE6] dark:bg-[#1C212B] text-[#525866] dark:text-slate-300'
               }`}>
                 {toast.type === 'success' && <CheckCircle2 className="w-4 h-4" />}
                 {toast.type === 'error' && <AlertTriangle className="w-4 h-4" />}
                 {toast.type === 'info' && <Info className="w-4 h-4" />}
               </div>
 
-              <div>
-                <p className="text-xs font-bold tracking-tight text-white">{toast.message}</p>
-                <span className="text-[10px] text-slate-400 font-medium">Manoel Jerônimo • Sistema BI</span>
-              </div>
+              <p className="text-sm font-medium leading-snug">{toast.message}</p>
             </div>
 
             <button
+              type="button"
               onClick={() => removeToast(toast.id)}
-              className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+              aria-label="Fechar notificação"
+              className="p-1.5 rounded-lg text-[#525866] dark:text-slate-400 hover:text-[#141619] dark:hover:text-white hover:bg-[#EFECE6] dark:hover:bg-[#1C212B] transition-colors cursor-pointer"
             >
               <X className="w-4 h-4" />
             </button>

@@ -319,3 +319,13 @@ export interface ContratoLocacaoCompleto {
   checklistEncerramento: ChecklistEncerramento;
   anexos: AnexoArquivo[];
 }
+
+export interface DadosImobiliaria {
+  nomeFantasia: string;
+  creci: string;
+  regiaoCreci: string;
+  email: string;
+  telefone: string;
+  cidade: string;
+  observacaoSede: string;
+}

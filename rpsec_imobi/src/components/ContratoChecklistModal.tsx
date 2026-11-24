@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   X, 
   CheckCircle2, 
@@ -309,75 +309,88 @@ export const ContratoChecklistModal: React.FC<ContratoChecklistModalProps> = ({
     }));
   };
 
+  // Fechar com ESC
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onClose]);
+
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/80 backdrop-blur-sm flex justify-center p-2 sm:p-4 md:p-6 animate-fade-in">
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl w-full max-w-5xl shadow-2xl flex flex-col max-h-[92vh] overflow-hidden">
-        
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="checklist-modal-title"
+      onClick={onClose}
+      className="fixed inset-0 z-50 overflow-y-auto bg-[#0D1014]/75 backdrop-blur-xs flex justify-center p-2 sm:p-4 md:p-6 animate-fade-in"
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="bg-white dark:bg-[#151921] border border-[#E2DFD7] dark:border-[#252B37] rounded-xl w-full max-w-5xl shadow-2xl flex flex-col max-h-[92vh] overflow-hidden animate-scale-up"
+      >
         {/* CABEÇALHO DO MODAL */}
-        <div className="p-6 bg-slate-50 dark:bg-slate-950 border-b border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-rose-500 to-red-700 text-white flex items-center justify-center font-bold text-lg shadow-lg shadow-rose-900/30">
+        <div className="p-5 sm:p-6 bg-[#F7F6F2] dark:bg-[#0D1014] border-b border-[#E2DFD7] dark:border-[#252B37] flex flex-wrap items-center justify-between gap-4">
+          <div className="flex items-center gap-3.5">
+            <div className="w-12 h-12 rounded-lg bg-[#B91C1C] text-white flex items-center justify-center font-display font-bold text-lg tabular-nums shrink-0">
               #{contrato.numeroOrdem}
             </div>
             <div>
-              <div className="flex items-center gap-2">
-                <h2 className="text-xl font-bold text-slate-900 dark:text-white">
-                  Contrato de Locação Nº {contrato.numeroOrdem}
+              <div className="flex flex-wrap items-center gap-2">
+                <h2 id="checklist-modal-title" className="font-display text-xl font-bold text-[#141619] dark:text-white">
+                  Contrato de locação nº {contrato.numeroOrdem}
                 </h2>
                 {contrato.status === 'ativo' && contrato.processoAtivo !== 'encerramento' && (
-                  <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-400 border border-emerald-300 dark:border-emerald-800 flex items-center gap-1">
-                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                    Ativo & Regular
+                  <span className="px-2.5 py-0.5 rounded-md text-xs font-semibold bg-emerald-50 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/70">
+                    Ativo e regular
                   </span>
                 )}
                 {contrato.status === 'pendente' && (
                   contrato.processoAtivo === 'encerramento' ? (
-                    <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-400 border border-amber-300 dark:border-amber-800 flex items-center gap-1">
-                      <Lock className="w-3 h-3 text-amber-500" />
-                      Em Fechamento / Com Pendência ({progressoEncerramento.concluidos}/{progressoEncerramento.total})
+                    <span className="px-2.5 py-0.5 rounded-md text-xs font-semibold bg-orange-50 text-orange-800 dark:bg-orange-950/60 dark:text-orange-300 border border-orange-200 dark:border-orange-800/70 flex items-center gap-1 tabular-nums">
+                      <Lock className="w-3 h-3" />
+                      Em fechamento ({progressoEncerramento.concluidos}/{progressoEncerramento.total})
                     </span>
                   ) : (
-                    <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-400 border border-amber-300 dark:border-amber-800 flex items-center gap-1">
-                      <AlertTriangle className="w-3 h-3 text-amber-500" />
-                      Em Abertura / Com Pendência ({progressoAbertura.concluidos}/{progressoAbertura.total})
+                    <span className="px-2.5 py-0.5 rounded-md text-xs font-semibold bg-amber-50 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-200 dark:border-amber-800/70 flex items-center gap-1 tabular-nums">
+                      <AlertTriangle className="w-3 h-3" />
+                      Em abertura ({progressoAbertura.concluidos}/{progressoAbertura.total})
                     </span>
                   )
                 )}
                 {contrato.processoAtivo === 'encerramento' && contrato.status === 'ativo' && (
-                  <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-400 border border-amber-300 dark:border-amber-800 flex items-center gap-1">
-                    <Lock className="w-3 h-3 text-amber-500" />
-                    Rescisão Iniciada / Pendência ({progressoEncerramento.concluidos}/{progressoEncerramento.total})
+                  <span className="px-2.5 py-0.5 rounded-md text-xs font-semibold bg-orange-50 text-orange-800 dark:bg-orange-950/60 dark:text-orange-300 border border-orange-200 dark:border-orange-800/70 flex items-center gap-1 tabular-nums">
+                    <Lock className="w-3 h-3" />
+                    Rescisão iniciada ({progressoEncerramento.concluidos}/{progressoEncerramento.total})
                   </span>
                 )}
                 {contrato.status === 'encerrado' && (
-                  <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-300 border border-slate-300 dark:border-slate-700">
-                    ⚪ Encerrado & Arquivado
+                  <span className="px-2.5 py-0.5 rounded-md text-xs font-semibold bg-red-50 text-[#B91C1C] dark:bg-red-950/60 dark:text-red-300 border border-red-200 dark:border-red-800/70">
+                    Encerrado e arquivado
                   </span>
                 )}
               </div>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 flex flex-wrap items-center gap-2">
+              <p className="text-xs sm:text-sm text-[#525866] dark:text-slate-400 mt-1 flex flex-wrap items-center gap-x-4 gap-y-0.5">
                 <span>
-                  <strong>Locador:</strong> {contrato.locador.nome}
+                  <strong className="text-[#141619] dark:text-slate-200">Locador:</strong> {contrato.locador.nome}
                   {contrato.locador.conjuge?.nome && (
-                    <span className="text-rose-600 dark:text-rose-400 ml-1 font-medium">
-                      (Cônjuge: {contrato.locador.conjuge.nome})
+                    <span className="text-[#B91C1C] dark:text-red-400 ml-1 font-medium">
+                      (cônjuge: {contrato.locador.conjuge.nome})
                     </span>
                   )}
                 </span>
-                <span>•</span>
                 <span>
-                  <strong>Inquilino:</strong> {contrato.locatario.nome}
+                  <strong className="text-[#141619] dark:text-slate-200">Inquilino:</strong> {contrato.locatario.nome}
                   {contrato.locatariosAdicionais && contrato.locatariosAdicionais.length > 0 && (
-                    <span className="text-indigo-600 dark:text-indigo-400 ml-1 font-medium">
+                    <span className="text-[#525866] dark:text-slate-300 ml-1 font-medium">
                       (+{contrato.locatariosAdicionais.length} co-locatário{contrato.locatariosAdicionais.length > 1 ? 's' : ''})
                     </span>
                   )}
                 </span>
-                <span>•</span>
-                <span><strong>Aluguel:</strong> R$ {contrato.valores.aluguel.toLocaleString('pt-BR')},00</span>
-                <span>•</span>
-                <span className="text-rose-600 dark:text-rose-400 font-medium">
-                  <strong>Corretor(es):</strong> {contrato.corretoresResponsaveis?.join(', ') || contrato.corretorResponsavel || 'Manoel Jerônimo'}
+                <span className="tabular-nums"><strong className="text-[#141619] dark:text-slate-200">Aluguel:</strong> R$ {contrato.valores.aluguel.toLocaleString('pt-BR')}</span>
+                <span className="text-[#B91C1C] dark:text-red-400 font-medium">
+                  <strong>Corretores:</strong> {contrato.corretoresResponsaveis?.join(', ') || contrato.corretorResponsavel || 'Manoel Jerônimo'}
                 </span>
               </p>
             </div>
@@ -385,66 +398,69 @@ export const ContratoChecklistModal: React.FC<ContratoChecklistModalProps> = ({
 
           <div className="flex items-center gap-2">
             <button
+              type="button"
               onClick={handleSalvar}
-              className="px-4 py-2 bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all"
+              className="px-4 py-2 bg-[#EFECE6] dark:bg-[#1C212B] hover:bg-[#E2DFD7] dark:hover:bg-[#252B37] text-[#141619] dark:text-slate-200 rounded-lg text-xs sm:text-sm font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
             >
-              <Save className="w-4 h-4 text-rose-500" />
-              <span>Salvar Alterações</span>
+              <Save className="w-4 h-4 text-[#B91C1C] dark:text-red-400" />
+              <span>Salvar alterações</span>
             </button>
             <button
+              type="button"
               onClick={onClose}
-              className="p-2 text-slate-400 hover:text-slate-700 dark:hover:text-white rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-all"
+              aria-label="Fechar janela"
+              className="p-2 text-[#525866] dark:text-slate-400 hover:text-[#141619] dark:hover:text-white rounded-lg hover:bg-[#EFECE6] dark:hover:bg-[#1C212B] transition-colors cursor-pointer"
             >
               <X className="w-5 h-5" />
             </button>
           </div>
         </div>
 
-        {/* BARRA DE PROGRESSO & GATILHOS DE TRANSIÇÃO DE STATUS */}
-        <div className="px-6 py-4 bg-slate-100/60 dark:bg-slate-900/60 border-b border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-4">
-          <div className="flex-1 min-w-[280px]">
-            <div className="flex items-center justify-between text-xs mb-1.5 font-semibold">
-              <span className="text-slate-600 dark:text-slate-300 flex items-center gap-1.5">
+        {/* BARRA DE PROGRESSO & TRANSIÇÃO DE STATUS */}
+        <div className="px-6 py-4 bg-white dark:bg-[#151921] border-b border-[#E2DFD7] dark:border-[#252B37] flex flex-wrap items-center justify-between gap-4">
+          <div className="flex-1 min-w-[260px]">
+            <div className="flex items-center justify-between text-xs sm:text-sm mb-1.5 font-semibold tabular-nums">
+              <span className="text-[#525866] dark:text-slate-300">
                 {activeTab === 'abertura' ? (
-                  <>Checklist de Abertura ({progressoAbertura.concluidos}/{progressoAbertura.total} concluídos)</>
+                  <>Checklist de abertura ({progressoAbertura.concluidos}/{progressoAbertura.total} concluídos)</>
                 ) : (
-                  <>Checklist de Encerramento ({progressoEncerramento.concluidos}/{progressoEncerramento.total} concluídos)</>
+                  <>Checklist de encerramento ({progressoEncerramento.concluidos}/{progressoEncerramento.total} concluídos)</>
                 )}
               </span>
-              <span className={activeTab === 'abertura' 
-                ? (progressoAbertura.estaAptoParaAtivar ? 'text-emerald-500 font-bold' : 'text-amber-500 font-bold')
-                : (progressoEncerramento.estaAptoParaEncerrar ? 'text-emerald-500 font-bold' : 'text-amber-500 font-bold')
+              <span className={activeTab === 'abertura'
+                ? (progressoAbertura.estaAptoParaAtivar ? 'text-emerald-700 dark:text-emerald-400 font-bold' : 'text-amber-700 dark:text-amber-400 font-bold')
+                : (progressoEncerramento.estaAptoParaEncerrar ? 'text-emerald-700 dark:text-emerald-400 font-bold' : 'text-orange-700 dark:text-orange-400 font-bold')
               }>
                 {activeTab === 'abertura' ? `${progressoAbertura.porcentagem}%` : `${progressoEncerramento.porcentagem}%`}
               </span>
             </div>
-            <div className="w-full bg-slate-200 dark:bg-slate-800 h-2.5 rounded-full overflow-hidden">
-              <div 
-                className={`h-full transition-all duration-500 rounded-full ${
+            <div className="w-full bg-[#EFECE6] dark:bg-[#0D1014] h-2 rounded-full overflow-hidden">
+              <div
+                className={`h-full transition-all duration-300 rounded-full ${
                   activeTab === 'abertura'
-                    ? (progressoAbertura.estaAptoParaAtivar ? 'bg-emerald-500' : 'bg-gradient-to-r from-amber-500 to-rose-500')
-                    : (progressoEncerramento.estaAptoParaEncerrar ? 'bg-emerald-500' : 'bg-gradient-to-r from-amber-500 to-indigo-500')
+                    ? (progressoAbertura.estaAptoParaAtivar ? 'bg-emerald-600' : 'bg-amber-500')
+                    : (progressoEncerramento.estaAptoParaEncerrar ? 'bg-emerald-600' : 'bg-orange-500')
                 }`}
                 style={{ width: `${activeTab === 'abertura' ? progressoAbertura.porcentagem : progressoEncerramento.porcentagem}%` }}
-              ></div>
+              />
             </div>
           </div>
 
-          {/* BOTÕES DE TRANSIÇÃO RIGOROSOS CONFORME REGRA RPSECTI */}
           <div className="flex items-center gap-2">
             {contrato.status === 'pendente' && (
               <button
+                type="button"
                 onClick={handleAtivarContrato}
                 disabled={!progressoAbertura.estaAptoParaAtivar}
-                className={`px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 shadow-sm transition-all ${
+                className={`px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold flex items-center gap-2 transition-colors ${
                   progressoAbertura.estaAptoParaAtivar
-                    ? 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-900/30 cursor-pointer animate-pulse'
-                    : 'bg-slate-200 dark:bg-slate-800 text-slate-400 dark:text-slate-500 cursor-not-allowed opacity-70'
+                    ? 'bg-emerald-700 hover:bg-emerald-800 text-white cursor-pointer'
+                    : 'bg-[#EFECE6] dark:bg-[#1C212B] text-[#525866] dark:text-slate-500 cursor-not-allowed opacity-75'
                 }`}
                 title={!progressoAbertura.estaAptoParaAtivar ? "Complete os 25 itens da abertura para liberar a ativação" : "Liberar ativação e entrega de chaves"}
               >
                 <CheckCircle2 className="w-4 h-4" />
-                <span>{progressoAbertura.estaAptoParaAtivar ? "Ativar Contrato & Liberar Chaves 🟢" : `Faltam ${progressoAbertura.total - progressoAbertura.concluidos} itens para Ativar`}</span>
+                <span>{progressoAbertura.estaAptoParaAtivar ? "Ativar contrato e liberar chaves" : `Faltam ${progressoAbertura.total - progressoAbertura.concluidos} itens para ativar`}</span>
               </button>
             )}
 
@@ -452,84 +468,95 @@ export const ContratoChecklistModal: React.FC<ContratoChecklistModalProps> = ({
               <>
                 {(activeTab === 'encerramento' || contrato.processoAtivo === 'encerramento') ? (
                   <button
+                    type="button"
                     onClick={handleConcluirEncerramento}
                     disabled={!progressoEncerramento.estaAptoParaEncerrar}
-                    className={`px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 shadow-sm transition-all ${
+                    className={`px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold flex items-center gap-2 transition-colors ${
                       progressoEncerramento.estaAptoParaEncerrar
-                        ? 'bg-red-600 hover:bg-red-700 text-white shadow-red-900/30 cursor-pointer animate-pulse'
-                        : 'bg-slate-200 dark:bg-slate-800 text-slate-400 dark:text-slate-500 cursor-not-allowed opacity-70'
+                        ? 'bg-[#B91C1C] hover:bg-[#991B1B] text-white cursor-pointer'
+                        : 'bg-[#EFECE6] dark:bg-[#1C212B] text-[#525866] dark:text-slate-500 cursor-not-allowed opacity-75'
                     }`}
                     title={!progressoEncerramento.estaAptoParaEncerrar ? "Complete as 13 etapas de rescisão para encerrar o contrato" : "Finalizar encerramento do contrato"}
                   >
                     <Lock className="w-4 h-4" />
-                    <span>{progressoEncerramento.estaAptoParaEncerrar ? "Concluir Encerramento Definitivo ⚪" : `Faltam ${progressoEncerramento.total - progressoEncerramento.concluidos} etapas para Encerrar`}</span>
+                    <span>{progressoEncerramento.estaAptoParaEncerrar ? "Concluir encerramento definitivo" : `Faltam ${progressoEncerramento.total - progressoEncerramento.concluidos} etapas`}</span>
                   </button>
                 ) : (
                   <button
+                    type="button"
                     onClick={handleIniciarEncerramento}
-                    className="px-4 py-2.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 border border-rose-500/30 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer"
+                    className="px-4 py-2 bg-red-50 hover:bg-red-100 dark:bg-red-950/40 dark:hover:bg-red-950/70 text-[#B91C1C] dark:text-red-300 border border-red-200 dark:border-red-900/60 rounded-lg text-xs sm:text-sm font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
                     title="Ir para o checklist de rescisão e encerramento"
                   >
-                    <AlertTriangle className="w-4 h-4 text-rose-500" />
-                    <span>Iniciar Processo de Rescisão / Saída 🚪</span>
+                    <AlertTriangle className="w-4 h-4" />
+                    <span>Iniciar rescisão</span>
                   </button>
                 )}
               </>
             )}
 
             {contrato.status === 'encerrado' && (
-              <span className="px-3.5 py-2 rounded-xl text-xs font-bold bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-300 flex items-center gap-1.5 border border-slate-300 dark:border-slate-700">
-                <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-                <span>Contrato Encerrado & Arquivado</span>
+              <span className="px-3.5 py-2 rounded-lg text-xs sm:text-sm font-semibold bg-[#EFECE6] dark:bg-[#1C212B] text-[#525866] dark:text-slate-300 flex items-center gap-1.5 border border-[#E2DFD7] dark:border-[#252B37]">
+                <CheckCircle2 className="w-4 h-4 text-emerald-700 dark:text-emerald-400" />
+                <span>Contrato encerrado</span>
               </span>
             )}
           </div>
         </div>
 
         {/* NAVEGAÇÃO DE ABAS INTERNAS */}
-        <div className="flex border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-6">
+        <div role="tablist" aria-label="Etapas do contrato" className="flex border-b border-[#E2DFD7] dark:border-[#252B37] bg-white dark:bg-[#151921] px-6 overflow-x-auto">
           <button
+            type="button"
+            role="tab"
+            aria-selected={activeTab === 'abertura'}
             onClick={() => setActiveTab('abertura')}
-            className={`py-3 px-4 text-xs font-bold border-b-2 flex items-center gap-2 transition-all ${
+            className={`py-3 px-4 text-xs sm:text-sm font-semibold border-b-2 flex items-center gap-2 transition-colors whitespace-nowrap cursor-pointer ${
               activeTab === 'abertura'
-                ? 'border-rose-600 text-rose-600 dark:text-rose-400'
-                : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
+                ? 'border-[#B91C1C] text-[#141619] dark:text-white'
+                : 'border-transparent text-[#525866] dark:text-slate-400 hover:text-[#141619] dark:hover:text-slate-200'
             }`}
           >
             <FileText className="w-4 h-4" />
-            <span>Processo 1: Abertura (25 Etapas)</span>
-            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-semibold">
+            <span>Abertura (25 etapas)</span>
+            <span className="text-xs px-2 py-0.5 rounded bg-[#EFECE6] dark:bg-[#1C212B] text-[#141619] dark:text-slate-300 font-semibold tabular-nums">
               {progressoAbertura.concluidos}/{progressoAbertura.total}
             </span>
           </button>
 
           <button
+            type="button"
+            role="tab"
+            aria-selected={activeTab === 'encerramento'}
             onClick={() => setActiveTab('encerramento')}
-            className={`py-3 px-4 text-xs font-bold border-b-2 flex items-center gap-2 transition-all ${
+            className={`py-3 px-4 text-xs sm:text-sm font-semibold border-b-2 flex items-center gap-2 transition-colors whitespace-nowrap cursor-pointer ${
               activeTab === 'encerramento'
-                ? 'border-rose-600 text-rose-600 dark:text-rose-400'
-                : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
+                ? 'border-[#B91C1C] text-[#141619] dark:text-white'
+                : 'border-transparent text-[#525866] dark:text-slate-400 hover:text-[#141619] dark:hover:text-slate-200'
             }`}
           >
             <Key className="w-4 h-4" />
-            <span>Processo 2: Encerramento (13 Etapas)</span>
+            <span>Encerramento (13 etapas)</span>
             {contrato.processoAtivo === 'encerramento' && (
-              <span className="w-2 h-2 rounded-full bg-rose-500 animate-ping"></span>
+              <span className="w-2 h-2 rounded-full bg-[#B91C1C]" aria-label="Processo em andamento"></span>
             )}
           </button>
 
           <button
+            type="button"
+            role="tab"
+            aria-selected={activeTab === 'anexos'}
             onClick={() => setActiveTab('anexos')}
-            className={`py-3 px-4 text-xs font-bold border-b-2 flex items-center gap-2 transition-all ${
+            className={`py-3 px-4 text-xs sm:text-sm font-semibold border-b-2 flex items-center gap-2 transition-colors whitespace-nowrap cursor-pointer ${
               activeTab === 'anexos'
-                ? 'border-rose-600 text-rose-600 dark:text-rose-400'
-                : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
+                ? 'border-[#B91C1C] text-[#141619] dark:text-white'
+                : 'border-transparent text-[#525866] dark:text-slate-400 hover:text-[#141619] dark:hover:text-slate-200'
             }`}
           >
             <UploadCloud className="w-4 h-4" />
-            <span>Pasta Digital & Documentos</span>
-            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-semibold">
-              {contrato.anexos.length} arquivos
+            <span>Pasta digital e anexos</span>
+            <span className="text-xs px-2 py-0.5 rounded bg-[#EFECE6] dark:bg-[#1C212B] text-[#141619] dark:text-slate-300 font-semibold tabular-nums">
+              {contrato.anexos.length}
             </span>
           </button>
         </div>
@@ -1128,10 +1155,10 @@ export const ContratoChecklistModal: React.FC<ContratoChecklistModalProps> = ({
                         })}
                         className="text-xs p-1 rounded bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700"
                       >
-                        <option value="aprovado">🟢 Aprovado</option>
-                        <option value="ressalvas">🟡 Aprovado com Ressalvas</option>
-                        <option value="em_analise">⚪ Em Análise</option>
-                        <option value="reprovado">🔴 Reprovado</option>
+                        <option value="aprovado">Aprovado</option>
+                        <option value="ressalvas">Aprovado com ressalvas</option>
+                        <option value="em_analise">Em análise</option>
+                        <option value="reprovado">Reprovado</option>
                       </select>
                     </div>
                     <div className="flex items-center justify-between text-xs pt-1">
@@ -1620,8 +1647,8 @@ export const ContratoChecklistModal: React.FC<ContratoChecklistModalProps> = ({
                         })}
                         className="rounded text-rose-600 w-4 h-4"
                       />
-                      <span className={contrato.checklistAbertura.notaPromissoriaAssinada ? 'text-emerald-500' : 'text-amber-500'}>
-                        {contrato.checklistAbertura.notaPromissoriaAssinada ? "Assinatura Coletada" : "⚠️ Assinatura Pendente"}
+                      <span className={contrato.checklistAbertura.notaPromissoriaAssinada ? 'text-emerald-700 dark:text-emerald-400' : 'text-amber-700 dark:text-amber-400'}>
+                        {contrato.checklistAbertura.notaPromissoriaAssinada ? "Assinatura coletada" : "Assinatura pendente"}
                       </span>
                     </label>
                   </div>
@@ -2004,37 +2031,38 @@ export const ContratoChecklistModal: React.FC<ContratoChecklistModalProps> = ({
               </div>
 
               {/* CARD DE CONCLUSÃO DEFINITIVA DO ENCERRAMENTO */}
-              <div className="p-5 bg-gradient-to-r from-red-500/10 via-rose-500/10 to-slate-900/10 border-2 border-red-500/30 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-4 mt-6">
+              <div className="p-5 bg-red-50/70 dark:bg-red-950/20 border border-red-200 dark:border-red-900/60 rounded-xl flex flex-col sm:flex-row items-center justify-between gap-4 mt-6">
                 <div>
-                  <h4 className="font-black text-sm text-red-600 dark:text-red-400 flex items-center gap-2">
+                  <h4 className="font-display font-bold text-sm text-[#B91C1C] dark:text-red-400 flex items-center gap-2">
                     <Lock className="w-4 h-4" />
                     {contrato.status === 'encerrado'
-                      ? 'Contrato Encerrado & Quitado ⚪'
-                      : 'Finalização do Encerramento do Contrato'}
+                      ? 'Contrato encerrado e quitado'
+                      : 'Finalização do encerramento do contrato'}
                   </h4>
-                  <p className="text-xs text-slate-600 dark:text-slate-300 mt-1">
+                  <p className="text-xs sm:text-sm text-[#525866] dark:text-slate-300 mt-1">
                     {contrato.status === 'encerrado'
-                      ? 'Este contrato já foi finalizado, vistoriado e arquivado com sucesso no histórico da imobiliária.'
+                      ? 'Este contrato já foi finalizado, vistoriado e arquivado no histórico da imobiliária.'
                       : progressoEncerramento.estaAptoParaEncerrar
-                        ? 'Todas as 13 etapas de vistoria, rescisão, Sabesp, CPFL e chaves foram cumpridas. O contrato está apto para quitação final.'
-                        : `Atenção: ainda faltam ${progressoEncerramento.total - progressoEncerramento.concluidos} etapas obrigatórias do checklist para permitir o encerramento seguro.`}
+                        ? 'Todas as 13 etapas de vistoria, rescisão, Sabesp, CPFL e chaves foram cumpridas.'
+                        : `Ainda faltam ${progressoEncerramento.total - progressoEncerramento.concluidos} etapas obrigatórias do checklist para permitir o encerramento.`}
                   </p>
                 </div>
 
                 {contrato.status !== 'encerrado' && (
                   <button
+                    type="button"
                     onClick={handleConcluirEncerramento}
                     disabled={!progressoEncerramento.estaAptoParaEncerrar}
-                    className={`px-5 py-3 rounded-xl text-xs font-black flex items-center gap-2 shadow-lg transition-all whitespace-nowrap ${
+                    className={`px-5 py-2.5 rounded-lg text-xs sm:text-sm font-semibold flex items-center gap-2 transition-colors whitespace-nowrap ${
                       progressoEncerramento.estaAptoParaEncerrar
-                        ? 'bg-red-600 hover:bg-red-700 text-white shadow-red-900/30 cursor-pointer animate-pulse'
-                        : 'bg-slate-200 dark:bg-slate-800 text-slate-400 dark:text-slate-500 cursor-not-allowed opacity-70'
+                        ? 'bg-[#B91C1C] hover:bg-[#991B1B] text-white cursor-pointer'
+                        : 'bg-[#EFECE6] dark:bg-[#1C212B] text-[#525866] dark:text-slate-500 cursor-not-allowed opacity-75'
                     }`}
                   >
                     <Lock className="w-4 h-4" />
                     <span>
                       {progressoEncerramento.estaAptoParaEncerrar
-                        ? 'Concluir Encerramento Definitivo ⚪'
+                        ? 'Concluir encerramento definitivo'
                         : `Faltam ${progressoEncerramento.total - progressoEncerramento.concluidos} etapas`}
                     </span>
                   </button>

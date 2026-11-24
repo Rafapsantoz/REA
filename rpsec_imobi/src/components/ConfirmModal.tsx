@@ -17,14 +17,13 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
   isOpen,
   onClose,
   onConfirm,
-  title = "Confirmar Exclusão",
+  title = "Confirmar exclusão",
   message,
   itemName,
-  confirmText = "Sim, Excluir",
+  confirmText = "Excluir",
   cancelText = "Cancelar",
   variant = 'danger'
 }) => {
-  // Fechar com tecla ESC
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && isOpen) {
@@ -38,67 +37,67 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/75 backdrop-blur-sm animate-fade-in">
-      <div 
-        className="w-full max-w-md bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-2xl space-y-5 animate-scale-up"
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="confirm-modal-title"
+      onClick={onClose}
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#0D1014]/75 backdrop-blur-xs animate-fade-in"
+    >
+      <div
+        className="w-full max-w-md bg-white dark:bg-[#151921] border border-[#E2DFD7] dark:border-[#252B37] rounded-xl p-6 shadow-2xl space-y-5 animate-scale-up"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Cabeçalho */}
-        <div className="flex items-start justify-between">
+        <div className="flex items-start justify-between gap-3">
           <div className="flex items-center gap-3">
-            <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shadow-md ${
+            <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${
               variant === 'danger'
-                ? 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20 shadow-rose-900/10'
-                : 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 shadow-amber-900/10'
+                ? 'bg-red-50 text-[#B91C1C] dark:bg-red-950/60 dark:text-red-400 border border-red-200 dark:border-red-900/60'
+                : 'bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-400 border border-amber-200 dark:border-amber-900/60'
             }`}>
               {variant === 'danger' ? (
-                <Trash2 className="w-6 h-6 text-rose-600 dark:text-rose-400" />
+                <Trash2 className="w-5 h-5" />
               ) : (
-                <AlertTriangle className="w-6 h-6 text-amber-600 dark:text-amber-400" />
+                <AlertTriangle className="w-5 h-5" />
               )}
             </div>
-            <div>
-              <h3 className="text-base font-bold text-slate-900 dark:text-white leading-snug">
-                {title}
-              </h3>
-              <span className="text-[11px] font-semibold text-rose-600 dark:text-rose-400 uppercase tracking-wider">
-                Manoel Jerônimo Imóveis
-              </span>
-            </div>
+            <h3 id="confirm-modal-title" className="font-display text-lg font-bold text-[#141619] dark:text-white leading-snug">
+              {title}
+            </h3>
           </div>
 
           <button
             type="button"
             onClick={onClose}
-            className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-white rounded-xl transition-colors cursor-pointer"
+            aria-label="Fechar janela"
+            className="p-1.5 text-[#525866] dark:text-slate-400 hover:text-[#141619] dark:hover:text-white rounded-lg hover:bg-[#EFECE6] dark:hover:bg-[#1C212B] transition-colors cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        {/* Mensagem Principal */}
-        <div className="space-y-2 text-xs text-slate-600 dark:text-slate-300">
+        <div className="space-y-3 text-sm text-[#525866] dark:text-slate-300">
           <p className="leading-relaxed">
             {message}
           </p>
 
           {itemName && (
-            <div className="p-3 bg-slate-50 dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-slate-800 font-mono font-bold text-rose-600 dark:text-rose-400 text-xs break-all">
+            <div className="p-3 bg-[#F7F6F2] dark:bg-[#0D1014] rounded-lg border border-[#E2DFD7] dark:border-[#252B37] font-semibold text-[#141619] dark:text-slate-100 text-sm break-words">
               {itemName}
             </div>
           )}
 
-          <p className="text-[11px] text-slate-400">
-            ⚠️ Esta operação é permanente e não poderá ser desfeita após a confirmação.
+          <p className="text-xs text-[#525866] dark:text-slate-400 flex items-center gap-1.5">
+            <AlertTriangle className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
+            <span>Esta ação é permanente e não poderá ser desfeita.</span>
           </p>
         </div>
 
-        {/* Botões de Ação */}
-        <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-slate-100 dark:border-slate-800/80">
+        <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-[#E2DFD7] dark:border-[#252B37]">
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all cursor-pointer"
+            className="px-4 py-2 rounded-lg border border-[#E2DFD7] dark:border-[#252B37] text-sm font-semibold text-[#525866] dark:text-slate-300 hover:bg-[#EFECE6] dark:hover:bg-[#1C212B] transition-colors cursor-pointer"
           >
             {cancelText}
           </button>
@@ -109,10 +108,10 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
               onConfirm();
               onClose();
             }}
-            className={`px-4 py-2.5 rounded-xl text-xs font-bold text-white shadow-md flex items-center gap-1.5 transition-all cursor-pointer ${
+            className={`px-4 py-2 rounded-lg text-sm font-semibold text-white flex items-center gap-1.5 transition-colors cursor-pointer ${
               variant === 'danger'
-                ? 'bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-500 hover:to-red-500 shadow-rose-900/20'
-                : 'bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 shadow-amber-900/20'
+                ? 'bg-[#B91C1C] hover:bg-[#991B1B]'
+                : 'bg-amber-600 hover:bg-amber-700'
             }`}
           >
             <Trash2 className="w-4 h-4" />
