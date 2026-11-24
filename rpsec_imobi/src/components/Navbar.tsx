@@ -35,52 +35,52 @@ export const Navbar: React.FC<NavbarProps> = ({
   return (
     <header className="sticky top-0 z-40 bg-white/95 dark:bg-[#151921]/95 backdrop-blur-md border-b border-[#E2DFD7] dark:border-[#252B37] transition-colors duration-200">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16 gap-3">
+        <div className="flex items-center justify-between h-16 gap-2 sm:gap-3">
           {/* Identidade da Imobiliária */}
-          <div className="flex items-center gap-3 shrink-0">
-            <div className="w-9 h-9 rounded-lg bg-[#B91C1C] flex items-center justify-center text-white font-display font-bold text-sm tracking-tight">
+          <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+            <div className="w-9 h-9 rounded-lg bg-[#B91C1C] flex items-center justify-center text-white font-display font-bold text-sm tracking-tight shrink-0">
               {iniciais}
             </div>
-            <div className="leading-tight">
+            <div className="leading-tight min-w-0">
               <div className="flex items-center gap-2">
-                <span className="font-display font-bold text-base text-[#141619] dark:text-white tracking-tight truncate max-w-[180px] sm:max-w-none">
+                <span className="font-display font-bold text-sm sm:text-base text-[#141619] dark:text-white tracking-tight truncate">
                   {nomeEmpresa}
                 </span>
-                <span className="hidden sm:inline-block text-xs font-semibold px-2 py-0.5 rounded bg-red-50 text-[#B91C1C] dark:bg-red-950/50 dark:text-red-300 border border-red-200 dark:border-red-900/60 tabular-nums">
+                <span className="hidden sm:inline-block shrink-0 text-xs font-semibold px-2 py-0.5 rounded bg-red-50 text-[#B91C1C] dark:bg-red-950/50 dark:text-red-300 border border-red-200 dark:border-red-900/60 tabular-nums">
                   CRECI {creciEmpresa}
                 </span>
               </div>
-              <p className="hidden sm:block text-xs text-[#525866] dark:text-slate-400">
+              <p className="hidden sm:block text-xs text-[#525866] dark:text-slate-400 truncate">
                 Gestão de locações
               </p>
             </div>
           </div>
 
           {/* Navegação Principal */}
-          <nav aria-label="Navegação principal" className="flex items-center gap-1 bg-[#EFECE6] dark:bg-[#0D1014] p-1 rounded-lg border border-[#E2DFD7] dark:border-[#252B37]">
+          <nav aria-label="Navegação principal" className="flex items-center gap-1 bg-[#EFECE6] dark:bg-[#0D1014] p-1 rounded-lg border border-[#E2DFD7] dark:border-[#252B37] shrink-0">
             <button
               type="button"
               onClick={() => onTabChange('contratos')}
-              className={`px-3.5 py-1.5 rounded-md text-xs sm:text-sm font-semibold flex items-center gap-1.5 transition-colors cursor-pointer ${
+              className={`px-3 sm:px-3.5 py-1.5 rounded-md text-xs sm:text-sm font-semibold flex items-center gap-1.5 transition-colors cursor-pointer ${
                 currentTab === 'contratos'
                   ? 'bg-white dark:bg-[#1C212B] text-[#141619] dark:text-white shadow-xs'
                   : 'text-[#525866] dark:text-slate-400 hover:text-[#141619] dark:hover:text-white'
               }`}
             >
-              <FileText className="w-4 h-4 text-[#B91C1C] dark:text-red-400" />
+              <FileText className="w-4 h-4 text-[#B91C1C] dark:text-red-400 shrink-0" />
               <span>Contratos</span>
             </button>
 
             <button
               type="button"
               onClick={() => onTabChange('admin')}
-              className={`px-3.5 py-1.5 rounded-md text-xs sm:text-sm font-semibold flex items-center gap-1.5 transition-colors cursor-pointer ${
+              className={`px-3 sm:px-3.5 py-1.5 rounded-md text-xs sm:text-sm font-semibold flex items-center gap-1.5 transition-colors cursor-pointer ${
                 currentTab === 'admin'
                   ? 'bg-white dark:bg-[#1C212B] text-[#141619] dark:text-white shadow-xs'
                   : 'text-[#525866] dark:text-slate-400 hover:text-[#141619] dark:hover:text-white'
               }`}
             >
-              <Shield className="w-4 h-4 text-[#B91C1C] dark:text-red-400" />
+              <Shield className="w-4 h-4 text-[#B91C1C] dark:text-red-400 shrink-0" />
               <span>Administração</span>
               <span className={`text-xs px-1.5 py-0.5 rounded tabular-nums font-bold ${
                 currentTab === 'admin'
@@ -93,7 +93,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           </nav>
 
           {/* Ações do Usuário & Tema */}
-          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+          <div className="flex items-center gap-2 shrink-0">
             <button
               type="button"
               onClick={onToggleTheme}
@@ -103,13 +103,13 @@ export const Navbar: React.FC<NavbarProps> = ({
             >
               {theme === 'dark' ? (
                 <>
-                  <Sun className="w-4 h-4 text-amber-400" />
-                  <span className="hidden lg:inline">Tema claro</span>
+                  <Sun className="w-4 h-4 text-amber-400 shrink-0" />
+                  <span className="hidden xl:inline">Tema claro</span>
                 </>
               ) : (
                 <>
-                  <Moon className="w-4 h-4 text-[#525866]" />
-                  <span className="hidden lg:inline">Tema escuro</span>
+                  <Moon className="w-4 h-4 text-[#525866] shrink-0" />
+                  <span className="hidden xl:inline">Tema escuro</span>
                 </>
               )}
             </button>
@@ -117,14 +117,14 @@ export const Navbar: React.FC<NavbarProps> = ({
             {usuarioLogado && (
               <div className="flex items-center gap-2 pl-2 border-l border-[#E2DFD7] dark:border-[#252B37]">
                 <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-lg bg-[#141619] dark:bg-[#252B37] text-white font-display font-bold flex items-center justify-center text-xs">
+                  <div className="w-8 h-8 rounded-lg bg-[#141619] dark:bg-[#252B37] text-white font-display font-bold flex items-center justify-center text-xs shrink-0">
                     {usuarioLogado.avatar || usuarioLogado.nome.charAt(0)}
                   </div>
-                  <div className="hidden md:block text-left leading-tight">
-                    <span className="text-xs font-semibold text-[#141619] dark:text-slate-200 block truncate max-w-[130px]">
+                  <div className="hidden lg:block text-left leading-tight">
+                    <span className="text-xs font-semibold text-[#141619] dark:text-slate-200 block truncate max-w-[125px]">
                       {usuarioLogado.nome}
                     </span>
-                    <span className="text-xs text-[#525866] dark:text-slate-400 block truncate max-w-[130px]">
+                    <span className="text-xs text-[#525866] dark:text-slate-400 block truncate max-w-[125px]">
                       {usuarioLogado.cargo}
                     </span>
                   </div>

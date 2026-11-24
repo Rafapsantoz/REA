@@ -140,11 +140,11 @@ export const DesktopView: React.FC<DesktopViewProps> = ({
           <span className="text-xs font-semibold text-[#525866] dark:text-slate-400 block">
             Aluguéis ativos por mês
           </span>
-          <div className="mt-1.5 flex items-baseline gap-2">
-            <span className="font-display text-2xl font-bold text-[#141619] dark:text-white tabular-nums">
+          <div className="mt-1.5 flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+            <span className="font-display text-2xl font-bold text-[#141619] dark:text-white tabular-nums whitespace-nowrap shrink-0">
               R$ {receitaAtivaTotal.toLocaleString('pt-BR')}
             </span>
-            <span className="text-xs font-medium text-emerald-700 dark:text-emerald-400">
+            <span className="text-xs font-medium text-emerald-700 dark:text-emerald-400 whitespace-nowrap">
               {contratosAtivos.length} {contratosAtivos.length === 1 ? 'contrato regular' : 'contratos regulares'}
             </span>
           </div>
@@ -154,11 +154,11 @@ export const DesktopView: React.FC<DesktopViewProps> = ({
           <span className="text-xs font-semibold text-[#525866] dark:text-slate-400 block">
             Garantias e cauções em custódia
           </span>
-          <div className="mt-1.5 flex items-baseline gap-2">
-            <span className="font-display text-2xl font-bold text-[#141619] dark:text-white tabular-nums">
+          <div className="mt-1.5 flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+            <span className="font-display text-2xl font-bold text-[#141619] dark:text-white tabular-nums whitespace-nowrap shrink-0">
               R$ {caucaoTotalCustodia.toLocaleString('pt-BR')}
             </span>
-            <span className="text-xs text-[#525866] dark:text-slate-400">
+            <span className="text-xs text-[#525866] dark:text-slate-400 whitespace-nowrap">
               em contratos vigentes
             </span>
           </div>
@@ -382,11 +382,11 @@ export const DesktopView: React.FC<DesktopViewProps> = ({
                       )}
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1 text-xs sm:text-sm text-[#525866] dark:text-slate-400">
-                      <p className="truncate">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1.5 text-xs sm:text-sm text-[#525866] dark:text-slate-400">
+                      <p className="leading-snug break-words">
                         <span className="font-semibold text-[#141619] dark:text-slate-200">Locador:</span> {contrato.locador.nome}
                         {contrato.locador.conjuge?.nome && (
-                          <span className="text-[#B91C1C] dark:text-red-400 font-medium ml-1">
+                          <span className="text-[#B91C1C] dark:text-red-400 font-medium ml-1 inline-block">
                             (cônjuge: {contrato.locador.conjuge.nome})
                           </span>
                         )}
@@ -397,10 +397,12 @@ export const DesktopView: React.FC<DesktopViewProps> = ({
                       <p className="tabular-nums">
                         <span className="font-semibold text-[#141619] dark:text-slate-200">Vigência:</span> {contrato.vigencia.inicio} a {contrato.vigencia.fim}
                       </p>
-                      <p className="flex items-center gap-1.5 truncate">
-                        <Shield className="w-3.5 h-3.5 text-[#B91C1C] dark:text-red-400 shrink-0" />
-                        <span className="font-semibold text-[#141619] dark:text-slate-200">Corretores:</span>
-                        <span className="truncate">{corretoresTexto}</span>
+                      <p className="flex items-start gap-1.5 leading-snug">
+                        <Shield className="w-3.5 h-3.5 text-[#B91C1C] dark:text-red-400 shrink-0 mt-0.5" />
+                        <span>
+                          <span className="font-semibold text-[#141619] dark:text-slate-200">Corretores:</span>{' '}
+                          {corretoresTexto}
+                        </span>
                       </p>
                     </div>
 

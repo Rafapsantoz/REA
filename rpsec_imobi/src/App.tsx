@@ -50,7 +50,21 @@ export function App() {
   const [clientes, setClientes] = useState<Cliente[]>(INITIAL_CLIENTES);
   const [imoveis, setImoveis] = useState<Imovel[]>(INITIAL_IMOVEIS);
   const [visitas, setVisitas] = useState<VisitaLead[]>(INITIAL_VISITAS);
-  const [contratos, setContratos] = useState<ContratoLocacaoCompleto[]>(INITIAL_CONTRATOS);
+  const [contratos, setContratos] = useState<ContratoLocacaoCompleto[]>(() => {
+    const saved = localStorage.getItem('rpsec_imobi_contratos');
+    if (saved !== null) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {
+        console.error('Falha ao restaurar contratos locais:', e);
+      }
+    }
+    return INITIAL_CONTRATOS;
+  });
+
+  useEffect(() => {
+    localStorage.setItem('rpsec_imobi_contratos', JSON.stringify(contratos));
+  }, [contratos]);
 
   // Aba Principal do Sistema: 'contratos' (Painel Operacional) ou 'admin' (Administração & Corretores)
   const [currentTab, setCurrentTab] = useState<'contratos' | 'admin'>('contratos');

@@ -686,11 +686,11 @@ export const AdminView: React.FC<AdminViewProps> = ({
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
-                <div className="p-4 bg-[#F7F6F2] dark:bg-[#0D1014] rounded-lg border border-[#E2DFD7] dark:border-[#252B37] space-y-1.5">
+                <div className="p-4 bg-[#F7F6F2] dark:bg-[#0D1014] rounded-lg border border-[#E2DFD7] dark:border-[#252B37] space-y-1.5 min-w-0">
                   <span className="text-xs font-semibold text-[#525866] dark:text-slate-400 block">E-mail institucional</span>
-                  <p className="font-semibold text-[#141619] dark:text-white flex items-center gap-2 break-all">
-                    <Mail className="w-4 h-4 text-[#B91C1C] dark:text-red-400 shrink-0" />
-                    <span>{dadosEmpresa.email}</span>
+                  <p className="font-semibold text-[#141619] dark:text-white flex items-start gap-2 text-xs sm:text-sm min-w-0">
+                    <Mail className="w-4 h-4 text-[#B91C1C] dark:text-red-400 shrink-0 mt-0.5" />
+                    <span className="min-w-0 break-words [overflow-wrap:anywhere]">{dadosEmpresa.email}</span>
                   </p>
                 </div>
 
